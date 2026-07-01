@@ -996,3 +996,223 @@ footer strong { color: #0f172a; }
 .challenge-section h2 {
   font-size: clamp(38px, 5vw, 62px);
 }
+
+.cinematic-hero {
+  position: relative;
+  max-width: none;
+  padding: 92px max(22px, calc((100vw - 1180px) / 2)) 110px;
+  background:
+    radial-gradient(circle at 75% 35%, rgba(234, 88, 12, 0.24), transparent 30%),
+    radial-gradient(circle at 24% 20%, rgba(255, 237, 213, 0.95), transparent 34%),
+    linear-gradient(135deg, #fff7ed 0%, #ffffff 44%, #f8fafc 100%);
+  overflow: hidden;
+}
+
+.cinematic-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(255,255,255,.7), transparent 58%),
+    radial-gradient(circle at 50% 110%, rgba(15, 23, 42, 0.08), transparent 35%);
+  pointer-events: none;
+}
+
+.cinematic-hero > * {
+  position: relative;
+  z-index: 2;
+}
+
+.cinematic-hero h1 span {
+  color: #ea580c;
+}
+
+.input-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: white;
+  border-radius: 18px;
+  padding-left: 16px;
+}
+
+.input-wrap input {
+  border: 0;
+  background: transparent;
+}
+
+.premium-join-form {
+  margin-top: 34px;
+  background: rgba(255,255,255,.78);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  box-shadow: 0 24px 70px rgba(15,23,42,.10);
+  padding: 10px;
+  border-radius: 24px;
+}
+
+.premium-join-form button {
+  min-height: 58px;
+  padding-left: 26px;
+  padding-right: 26px;
+}
+
+.hero-showcase {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+.phone-glow {
+  position: absolute;
+  width: 360px;
+  height: 360px;
+  background: rgba(234, 88, 12, .24);
+  filter: blur(80px);
+  border-radius: 999px;
+  top: 8%;
+}
+
+.premium-phone-card {
+  width: min(100%, 430px);
+  border-radius: 42px;
+  padding: 26px;
+  background: #08111f;
+  color: white;
+  box-shadow: 0 30px 90px rgba(15, 23, 42, 0.35);
+  animation: phoneFloat 5s ease-in-out infinite;
+}
+
+.phone-mini-top,
+.phone-greeting {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.phone-mini-top {
+  color: #cbd5e1;
+  font-size: 12px;
+  margin-bottom: 22px;
+}
+
+.phone-greeting {
+  margin-bottom: 18px;
+}
+
+.phone-greeting span {
+  color: #cbd5e1;
+  font-size: 14px;
+}
+
+.phone-greeting strong {
+  background: rgba(249, 115, 22, .16);
+  color: #fb923c;
+  padding: 10px 12px;
+  border-radius: 999px;
+}
+
+.workout-preview-card {
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 24px;
+  padding: 20px;
+}
+
+.workout-preview-card span {
+  color: #fb923c;
+  font-weight: 900;
+}
+
+.workout-preview-card h3 {
+  margin: 10px 0 16px;
+  font-size: 28px;
+}
+
+.mini-feed {
+  margin-top: 20px;
+  display: grid;
+  gap: 10px;
+}
+
+.mini-feed p {
+  margin: 0;
+  color: #e2e8f0;
+  background: rgba(255,255,255,.06);
+  padding: 12px 14px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@keyframes phoneFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@media (max-width: 860px) {
+  .cinematic-hero {
+    padding-top: 64px;
+    padding-bottom: 78px;
+  }
+
+  .premium-join-form {
+    flex-direction: column;
+  }
+
+  .premium-phone-card {
+    animation: none;
+  }
+}
+
+.cinematic-hero-v2 {
+  max-width: none;
+  padding: 96px max(22px, calc((100vw - 1180px) / 2)) 110px;
+  background:
+    radial-gradient(circle at 75% 35%, rgba(234, 88, 12, 0.25), transparent 30%),
+    linear-gradient(135deg, #fff7ed 0%, #ffffff 42%, #f8fafc 100%);
+}
+
+.cinematic-hero-v2 h1 span {
+  color: #ea580c;
+}
+
+.premium-join-form-v2 {
+  margin-top: 34px;
+  background: rgba(255,255,255,.9);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  box-shadow: 0 24px 70px rgba(15,23,42,.12);
+  padding: 10px;
+  border-radius: 24px;
+}
+
+.input-wrap-v2 {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: white;
+  border-radius: 18px;
+  padding-left: 16px;
+}
+
+.input-wrap-v2 input {
+  border: 0;
+  background: transparent;
+}
+
+.hero-showcase-v2 {
+  display: flex;
+  justify-content: center;
+}
+
+.premium-phone-card-v2 {
+  width: min(100%, 430px);
+  border-radius: 42px;
+  padding: 26px;
+  background: #08111f;
+  color: white;
+  box-shadow: 0 30px 90px rgba(15, 23, 42, 0.35);
+  animation: phoneFloat 5s ease-in-out infinite;
+}
