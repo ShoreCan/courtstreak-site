@@ -7,6 +7,8 @@ import ParentTrust from '../components/ParentTrust.jsx';
 import Mission from '../components/Mission.jsx';
 import Testimonials from '../components/Testimonials.jsx';
 import FAQ from '../components/FAQ.jsx';
+import CoachDashboard from '../components/CoachDashboard.jsx';
+import ContactSupport from '../components/ContactSupport.jsx';
 import Pricing from '../components/Pricing.jsx';
 import DownloadCTA from '../components/DownloadCTA.jsx';
 import Footer from '../components/Footer.jsx';
@@ -49,6 +51,8 @@ export default function Home() {
       <Mission />
       <ParentTrust />
       <Testimonials />
+      <CoachDashboard />
+      <ContactSupport />
       <FAQ />
       <Pricing />
       <DownloadCTA />
