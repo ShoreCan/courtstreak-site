@@ -5,6 +5,7 @@ import AppPreview from '../components/AppPreview.jsx';
 import ChallengeHub from '../components/ChallengeHub.jsx';
 import ParentTrust from '../components/ParentTrust.jsx';
 import Testimonials from '../components/Testimonials.jsx';
+import FAQ from '../components/FAQ.jsx';
 import Pricing from '../components/Pricing.jsx';
 import Footer from '../components/Footer.jsx';
 
@@ -45,6 +46,7 @@ export default function Home() {
       <ChallengeHub />
       <ParentTrust />
       <Testimonials />
+      <FAQ />
       <Pricing />
       <Footer />
     </main>
