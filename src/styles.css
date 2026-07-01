@@ -2093,3 +2093,142 @@ footer strong { color: #0f172a; }
     grid-template-columns: 1fr;
   }
 }
+
+/* Cleaner support section */
+.support-card-grid {
+  grid-template-columns: repeat(2, 1fr) !important;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.support-card {
+  min-height: 170px;
+}
+
+.contact-action-grid {
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* FAQ visual upgrade */
+.faq-section {
+  display: grid;
+  grid-template-columns: 0.95fr 1.05fr;
+  gap: 34px;
+  align-items: start;
+}
+
+.faq-section .section-heading {
+  grid-column: 1 / -1;
+}
+
+.faq-list {
+  max-width: none;
+}
+
+.faq-visual-card {
+  background: #0f172a;
+  color: white;
+  border-radius: 34px;
+  padding: 30px;
+  box-shadow: 0 26px 80px rgba(15, 23, 42, 0.18);
+  position: sticky;
+  top: 110px;
+}
+
+.faq-visual-card h3 {
+  font-size: 34px;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  margin: 0 0 14px;
+}
+
+.faq-visual-card p {
+  color: #cbd5e1;
+}
+
+.faq-mini-phone {
+  margin-top: 22px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 26px;
+  padding: 18px;
+}
+
+.faq-mini-phone div {
+  background: rgba(255,255,255,0.08);
+  border-radius: 18px;
+  padding: 14px;
+  margin-top: 10px;
+}
+
+.faq-mini-phone strong {
+  display: block;
+  color: #fb923c;
+}
+
+.faq-mini-phone span {
+  color: #e2e8f0;
+  font-size: 14px;
+}
+
+/* Membership visual upgrade */
+.premium-pricing {
+  position: relative;
+}
+
+.pricing-visual-card {
+  background: #0f172a;
+  color: white;
+  border-radius: 34px;
+  padding: 28px;
+  box-shadow: 0 26px 80px rgba(15, 23, 42, 0.18);
+  margin-top: 22px;
+}
+
+.pricing-visual-card h3 {
+  font-size: 30px;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  margin: 0 0 12px;
+}
+
+.pricing-visual-card p {
+  color: #cbd5e1;
+}
+
+.member-mockup {
+  margin-top: 18px;
+  display: grid;
+  gap: 10px;
+}
+
+.member-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255,255,255,0.08);
+  border-radius: 18px;
+  padding: 14px;
+}
+
+.member-row strong {
+  color: white;
+}
+
+.member-row span {
+  color: #fb923c;
+  font-weight: 900;
+}
+
+@media (max-width: 860px) {
+  .support-card-grid,
+  .faq-section {
+    grid-template-columns: 1fr !important;
+  }
+
+  .faq-visual-card {
+    position: static;
+  }
+}

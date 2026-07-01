@@ -27,6 +27,29 @@ export default function Pricing() {
           <span><Sparkles size={16} /> New workouts weekly</span>
           <span><CheckCircle2 size={16} /> No long-term contract</span>
         </div>
+
+        <div className="pricing-visual-card">
+          <h3>Membership that feels like progress.</h3>
+          <p>
+            Players do not just unlock workouts. They unlock structure, accountability,
+            private competition, and a reason to come back tomorrow.
+          </p>
+
+          <div className="member-mockup">
+            <div className="member-row">
+              <strong>Daily Workout</strong>
+              <span>Included</span>
+            </div>
+            <div className="member-row">
+              <strong>Training Circles</strong>
+              <span>Included</span>
+            </div>
+            <div className="member-row">
+              <strong>Coach Tools</strong>
+              <span>Coming Soon</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="pricing-card premium-price-card">

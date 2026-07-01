@@ -27,6 +27,30 @@ export default function FAQ() {
           </details>
         ))}
       </div>
+
+      <div className="faq-visual-card">
+        <h3>Questions should feel easy to answer.</h3>
+        <p>
+          Parents, players, and coaches should quickly understand how CourtStreak works,
+          what it costs, and why it helps players stay consistent.
+        </p>
+
+        <div className="faq-mini-phone">
+          <strong>Need help?</strong>
+          <div>
+            <strong>Training Question</strong>
+            <span>Ask about drills, workouts, or progress.</span>
+          </div>
+          <div>
+            <strong>Parent Support</strong>
+            <span>Understand pricing, circles, and player progress.</span>
+          </div>
+          <div>
+            <strong>Coach Setup</strong>
+            <span>Learn how teams and challenges will work.</span>
+          </div>
+        </div>
+      </div>
     </section>
   );
 }
