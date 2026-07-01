@@ -3,6 +3,9 @@ import Navbar from '../components/Navbar.jsx';
 import Hero from '../components/Hero.jsx';
 import AppPreview from '../components/AppPreview.jsx';
 import ChallengeHub from '../components/ChallengeHub.jsx';
+import WhatsIncluded from '../components/WhatsIncluded.jsx';
+import WhyItWorks from '../components/WhyItWorks.jsx';
+import PlayersSection from '../components/PlayersSection.jsx';
 import ParentTrust from '../components/ParentTrust.jsx';
 import Mission from '../components/Mission.jsx';
 import Testimonials from '../components/Testimonials.jsx';
@@ -28,6 +31,8 @@ export default function Home() {
       <Navbar />
       <Hero email={email} setEmail={setEmail} joined={joined} handleSubmit={handleSubmit} />
       <AppPreview />
+      <PlayersSection />
+      <WhyItWorks />
 
       <section className="section visual-preview-section">
         <div className="section-heading center">
@@ -54,6 +59,7 @@ export default function Home() {
       <CoachDashboard />
       <ContactSupport />
       <FAQ />
+      <WhatsIncluded />
       <Pricing />
       <DownloadCTA />
       <Footer />

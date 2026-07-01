@@ -1826,3 +1826,188 @@ footer strong { color: #0f172a; }
     grid-template-columns: 1fr;
   }
 }
+
+/* Premium players section */
+.players-section {
+  background:
+    radial-gradient(circle at 80% 20%, rgba(249, 115, 22, 0.10), transparent 30%),
+    linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.player-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+
+.player-card {
+  background: white;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 32px;
+  padding: 30px;
+  min-height: 270px;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.07);
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.player-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 30px 90px rgba(15, 23, 42, 0.12);
+}
+
+.player-card svg {
+  color: #ea580c;
+}
+
+.player-card h3 {
+  font-size: 30px;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  margin: 22px 0 12px;
+}
+
+/* Why it works */
+.why-section {
+  background: #0f172a;
+  color: white;
+  max-width: none;
+  padding-left: max(22px, calc((100vw - 1180px) / 2));
+  padding-right: max(22px, calc((100vw - 1180px) / 2));
+}
+
+.why-section p {
+  color: #cbd5e1;
+}
+
+.why-flow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-top: 32px;
+}
+
+.why-step {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 28px;
+  padding: 24px;
+}
+
+.why-step span {
+  color: #fb923c;
+  font-weight: 950;
+  letter-spacing: .12em;
+}
+
+.why-step h3 {
+  font-size: 26px;
+  margin: 18px 0 8px;
+}
+
+/* What's included */
+.included-section {
+  display: grid;
+  grid-template-columns: .9fr 1.1fr;
+  gap: 34px;
+  align-items: center;
+  border-top: 1px solid rgba(226, 232, 240, 0.9);
+}
+
+.included-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.included-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: white;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 18px;
+  padding: 15px;
+  font-weight: 850;
+  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.05);
+}
+
+.included-item svg {
+  color: #ea580c;
+  flex-shrink: 0;
+}
+
+/* Premium pricing */
+.premium-pricing {
+  background:
+    radial-gradient(circle at 20% 20%, rgba(249, 115, 22, 0.12), transparent 28%),
+    linear-gradient(180deg, #fff7ed 0%, #ffffff 100%);
+  border-top: 1px solid rgba(226, 232, 240, 0.9);
+}
+
+.pricing-copy {
+  max-width: 680px;
+}
+
+.pricing-trust-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.pricing-trust-row span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: white;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 999px;
+  padding: 10px 13px;
+  color: #475569;
+  font-weight: 850;
+}
+
+.premium-price-card {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  box-shadow: 0 30px 90px rgba(15, 23, 42, 0.16);
+  position: relative;
+  overflow: hidden;
+}
+
+.premium-price-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 7px;
+  background: linear-gradient(90deg, #ea580c, #fb923c);
+}
+
+.pricing-label {
+  display: inline-flex;
+  color: #ea580c;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-size: 12px;
+}
+
+.price-subcopy {
+  margin-top: -8px;
+}
+
+.premium-price-card a {
+  width: 100%;
+  justify-content: center;
+  text-align: center;
+  margin-top: 14px;
+  font-size: 16px;
+}
+
+@media (max-width: 860px) {
+  .player-card-grid,
+  .why-flow,
+  .included-section,
+  .included-grid {
+    grid-template-columns: 1fr;
+  }
+}
