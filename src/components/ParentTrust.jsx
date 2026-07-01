@@ -1,28 +1,34 @@
 import React from 'react';
-import { ShieldCheck, CalendarCheck, BarChart3 } from 'lucide-react';
+import { ShieldCheck, CalendarCheck, BarChart3, HeartHandshake } from 'lucide-react';
 
 const items = [
-  ['Structure', 'Players know exactly what to do every day.', CalendarCheck],
-  ['Accountability', 'Streaks and XP keep players coming back.', ShieldCheck],
-  ['Progress', 'Parents can understand what their player is completing.', BarChart3],
+  ['Structure families can trust', 'Players know exactly what to work on without guessing or scrolling through random videos.', CalendarCheck],
+  ['Accountability that feels positive', 'Streaks, XP, and challenges help players stay consistent without parents having to remind them every day.', ShieldCheck],
+  ['Progress parents can see', 'Families can follow completed workouts, effort, and consistency—not just hope training is happening.', BarChart3],
 ];
 
 export default function ParentTrust() {
   return (
-    <section id="parents" className="section parent-section">
-      <div className="section-heading">
-        <p className="eyebrow">For parents</p>
-        <h2>Finally, an app that gets your player excited to practice.</h2>
+    <section id="parents" className="section parent-section parent-premium">
+      <div className="parent-copy">
+        <p className="eyebrow">For Parents</p>
+        <h2>More than drills — a system that helps players stay committed.</h2>
         <p>
-          CourtStreak is built to feel simple for families and motivating for players.
-          The goal is to make training consistent, organized, and worth the investment.
+          CourtStreak gives families a simple, affordable way to support player development
+          from anywhere. Players get daily structure and motivation, while parents get confidence
+          that real work is being done.
         </p>
+
+        <div className="parent-highlight">
+          <HeartHandshake size={22} />
+          <span>Built to help kids build discipline, confidence, and consistency through basketball.</span>
+        </div>
       </div>
 
-      <div className="feature-grid">
+      <div className="parent-card-grid">
         {items.map(([title, copy, Icon]) => (
-          <article className="feature-card" key={title}>
-            <Icon size={24} />
+          <article className="parent-card" key={title}>
+            <Icon size={26} />
             <h3>{title}</h3>
             <p>{copy}</p>
           </article>

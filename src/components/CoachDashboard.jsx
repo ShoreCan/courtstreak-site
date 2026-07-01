@@ -25,7 +25,7 @@ export default function CoachDashboard() {
           <div className="coach-top">
             <div>
               <span>Team Overview</span>
-              <h3>Emporia Guards</h3>
+              <h3>Midwest Elite 2029</h3>
             </div>
             <Users size={28} />
           </div>
