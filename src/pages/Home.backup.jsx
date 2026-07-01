@@ -7,7 +7,6 @@ import ParentTrust from '../components/ParentTrust.jsx';
 import Testimonials from '../components/Testimonials.jsx';
 import FAQ from '../components/FAQ.jsx';
 import Pricing from '../components/Pricing.jsx';
-import DownloadCTA from '../components/DownloadCTA.jsx';
 import Footer from '../components/Footer.jsx';
 
 export default function Home() {
@@ -49,7 +48,6 @@ export default function Home() {
       <Testimonials />
       <FAQ />
       <Pricing />
-      <DownloadCTA />
       <Footer />
     </main>
   );
