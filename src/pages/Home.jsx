@@ -23,6 +23,25 @@ export default function Home() {
       <Navbar />
       <Hero email={email} setEmail={setEmail} joined={joined} handleSubmit={handleSubmit} />
       <AppPreview />
+
+      <section className="section visual-preview-section">
+        <div className="section-heading center">
+          <p className="eyebrow">CourtStreak App Preview</p>
+          <h2>See the full training experience in one glance.</h2>
+          <p>
+            Daily workouts, streaks, challenges, training circles, leaderboards,
+            badges, and coach tools all come together inside one clean player experience.
+          </p>
+        </div>
+
+        <div className="visual-preview-frame">
+          <img
+            src="/courtstreak-site/images/courtstreak-app-preview.png"
+            alt="CourtStreak app preview"
+          />
+        </div>
+      </section>
+
       <ChallengeHub />
       <ParentTrust />
       <Testimonials />
