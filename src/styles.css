@@ -968,3 +968,31 @@ footer strong { color: #0f172a; }
     grid-template-columns: 1fr;
   }
 }
+
+/* Larger section overhead labels */
+.eyebrow {
+  font-size: 15px !important;
+  letter-spacing: 0.12em;
+  margin-bottom: 10px;
+}
+
+.section-heading .eyebrow,
+.mission-section .eyebrow,
+.faq-section .eyebrow,
+.pricing-section .eyebrow,
+.parent-section .eyebrow,
+.challenge-section .eyebrow {
+  font-size: 16px !important;
+  font-weight: 950;
+  color: #ea580c;
+}
+
+/* Slightly stronger section headings */
+.section-heading h2,
+.mission-section h2,
+.faq-section h2,
+.pricing-section h2,
+.parent-section h2,
+.challenge-section h2 {
+  font-size: clamp(38px, 5vw, 62px);
+}
