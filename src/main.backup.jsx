@@ -163,6 +163,31 @@ function App() {
         </div>
       </section>
 
+      <section id="challenge-hub" className="split-section challenge-hub">
+        <div>
+          <p className="eyebrow"><Users size={16} /> Private competition</p>
+          <h2>Challenge friends directly or compete inside your team group.</h2>
+          <p>
+            CourtStreak is not just a public leaderboard. Players can send direct challenges to friends, create teammate rivalries, and keep team-only competitions separate from the main community.
+          </p>
+          <div className="mini-grid">
+            <span>1v1 direct challenges</span>
+            <span>Team group chats</span>
+            <span>Friend leaderboards</span>
+            <span>Rematch requests</span>
+          </div>
+        </div>
+        <div className="leaderboard-card chat-card">
+          <div className="card-title">
+            <h3>Team chat preview</h3>
+            <span>Live concept</span>
+          </div>
+          <div className="chat-bubble left"><strong>Jordan</strong><p>Beat my 2-ball score. 60 reps in 30 seconds.</p></div>
+          <div className="chat-bubble right"><strong>You</strong><p>Accepted. I’m sending my score tonight.</p></div>
+          <div className="chat-bubble left"><strong>Coach</strong><p>Team challenge: 500 makes this week. Top 3 earn bonus XP.</p></div>
+        </div>
+      </section>
+
       <section id="dashboard" className="split-section">
         <div>
           <p className="eyebrow"><CalendarCheck size={16} /> Weekly challenge</p>
@@ -208,6 +233,35 @@ function App() {
           <span>Private leaderboards</span>
           <span>Assigned workouts</span>
           <span>Progress history</span>
+        </div>
+      </section>
+
+      <section id="reviews" className="section-block">
+        <div className="section-heading">
+          <p className="eyebrow">Reviews and testimonials</p>
+          <h2>Designed to earn trust from players, parents, and coaches.</h2>
+        </div>
+        <div className="feature-grid">
+          <article className="feature-card">
+            <h3>★★★★★</h3>
+            <p>“CourtStreak makes training simple, competitive, and easy for my son to follow.”</p>
+            <strong>Parent of middle school player</strong>
+          </article>
+          <article className="feature-card">
+            <h3>★★★★★</h3>
+            <p>“The streaks and challenges make me want to train every day.”</p>
+            <strong>High school guard</strong>
+          </article>
+          <article className="feature-card">
+            <h3>★★★★★</h3>
+            <p>“This is the accountability piece young players need outside of practice.”</p>
+            <strong>Basketball trainer</strong>
+          </article>
+        </div>
+        <div className="review-box">
+          <h3>Love CourtStreak?</h3>
+          <p>Future users will be able to leave reviews, share success stories, and help other families see the value of the platform.</p>
+          <a className="button secondary" href="#join">Leave a review</a>
         </div>
       </section>
 
