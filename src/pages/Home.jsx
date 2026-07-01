@@ -4,6 +4,7 @@ import Hero from '../components/Hero.jsx';
 import AppPreview from '../components/AppPreview.jsx';
 import ChallengeHub from '../components/ChallengeHub.jsx';
 import ParentTrust from '../components/ParentTrust.jsx';
+import Mission from '../components/Mission.jsx';
 import Testimonials from '../components/Testimonials.jsx';
 import FAQ from '../components/FAQ.jsx';
 import Pricing from '../components/Pricing.jsx';
@@ -45,6 +46,7 @@ export default function Home() {
       </section>
 
       <ChallengeHub />
+      <Mission />
       <ParentTrust />
       <Testimonials />
       <FAQ />

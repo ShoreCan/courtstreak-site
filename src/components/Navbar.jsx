@@ -4,7 +4,7 @@ const menus = [
   { title: 'Membership', links: [['Pricing', '#pricing'], ['What’s Included', '#pricing'], ['Join Beta', '#join'], ['FAQ', '#faq']] },
   { title: 'For Groups', links: [['Players', '#parents'], ['Parents', '#parents'], ['Coaches', '#challenge'], ['AAU Teams', '#challenge'], ['Training Circles', '#challenge']] },
   { title: 'Support', links: [['FAQ', '#faq'], ['Reviews', '#reviews'], ['Contact', '#join']] },
-  { title: 'Company', links: [['Mission', '#parents'], ['Testimonials', '#reviews'], ['Founder Story', '#parents']] },
+  { title: 'Company', links: [['Mission', '#mission'], ['Testimonials', '#reviews'], ['Founder Story', '#parents']] },
   { title: 'Training', links: [['Daily Workouts', '#top'], ['Challenges', '#challenge'], ['Leaderboards', '#challenge'], ['XP & Badges', '#top']] },
 ];
 
