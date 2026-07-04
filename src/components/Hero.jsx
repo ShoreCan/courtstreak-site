@@ -18,7 +18,7 @@ export default function Hero({ email, setEmail, joined, handleSubmit }) {
             private challenges, Training Circles, streaks, XP, and visible progress.
           </p>
 
-          <form id="join" className="hero-signup" onSubmit={handleSubmit}>
+          <form id="join" className={`hero-signup ${joined ? "joined" : ""}`} onSubmit={handleSubmit}>
             <div className="hero-input">
               <Mail size={18} />
               <input
@@ -29,11 +29,20 @@ export default function Hero({ email, setEmail, joined, handleSubmit }) {
               />
             </div>
             <button type="submit">
-              Join Beta <ArrowRight size={18} />
+              {joined ? "You’re on the waitlist" : "Join Beta"} <ArrowRight size={18} />
             </button>
           </form>
 
-          {joined && <p className="success">You’re on the CourtStreak beta list.</p>}
+          {joined && (
+            <div className="waitlist-success-card">
+              <h3>You’re officially on the CourtStreak waitlist.</h3>
+              <p>
+                We’ll email <strong>{email}</strong> when beta access opens.
+                In the meantime, start thinking about the teammates, coaches,
+                and training circles you want to bring with you.
+              </p>
+            </div>
+          )}
 
           <div className="hero-trust">
             <span><CheckCircle2 size={16} /> Easy signup</span>

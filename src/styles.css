@@ -2232,3 +2232,35 @@ footer strong { color: #0f172a; }
     position: static;
   }
 }
+
+.waitlist-success-card {
+  margin-top: 24px;
+  max-width: 620px;
+  background: #0f172a;
+  color: white;
+  border-radius: 28px;
+  padding: 24px;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.22);
+  border: 1px solid rgba(255,255,255,0.12);
+}
+
+.waitlist-success-card h3 {
+  margin: 0 0 8px;
+  font-size: 26px;
+  letter-spacing: -0.04em;
+}
+
+.waitlist-success-card p {
+  color: #cbd5e1;
+  margin: 0;
+}
+
+.waitlist-success-card strong {
+  color: #fb923c;
+}
+
+.hero-signup.joined button,
+.premium-join-form.joined button,
+.premium-join-form-v2.joined button {
+  background: #16a34a !important;
+}
