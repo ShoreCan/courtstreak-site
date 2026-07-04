@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { supabase } from '../lib/supabaseClient.js';
 import Navbar from '../components/Navbar.jsx';
 import Hero from '../components/Hero.jsx';
 import AppPreview from '../components/AppPreview.jsx';
@@ -20,9 +21,27 @@ export default function Home() {
   const [email, setEmail] = useState('');
   const [joined, setJoined] = useState(false);
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
-    if (!email.trim()) return;
+
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail) return;
+
+    const { error } = await supabase
+      .from('waitlist')
+      .insert([{ email: cleanEmail, source: 'homepage' }]);
+
+    if (error) {
+      if (error.code === '23505') {
+        setJoined(true);
+        return;
+      }
+
+      alert('Something went wrong. Please try again.');
+      console.error(error);
+      return;
+    }
+
     setJoined(true);
   }
 
