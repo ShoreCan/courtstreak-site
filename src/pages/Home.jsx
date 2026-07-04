@@ -33,7 +33,11 @@ export default function Home() {
 
     if (error) {
       if (error.code === '23505') {
-        setJoined(true);
+        await supabase.functions.invoke('send-waitlist-email', {
+      body: { email: cleanEmail },
+    });
+
+    setJoined(true);
         return;
       }
 
