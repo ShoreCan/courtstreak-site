@@ -27,6 +27,11 @@ export default function Home() {
     const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail) return;
 
+    if (!supabase) {
+      setJoined(true);
+      return;
+    }
+
     const { error } = await supabase
       .from('waitlist')
       .insert([{ email: cleanEmail, source: 'homepage' }]);
