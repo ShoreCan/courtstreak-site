@@ -5,7 +5,7 @@ const menus = [
   { title: 'For Groups', links: [['Players', '#players'], ['Parents', '#parents'], ['Coaches', '#coach-dashboard'], ['AAU Teams', '#challenge'], ['Training Circles', '#challenge']] },
   { title: 'Support', links: [['FAQ', '#faq'], ['Reviews', '#reviews'], ['Contact', '#contact']] },
   { title: 'Company', links: [['Mission', '#mission'], ['Testimonials', '#reviews'], ['Founder Story', '#parents']] },
-  { title: 'Training', links: [['Ball Handling', '/courtstreak-site/training/ball-handling'], ['Beginner Path', '/courtstreak-site/training/ball-handling'], ['Intermediate Path', '/courtstreak-site/training/ball-handling'], ['Advanced Path', '/courtstreak-site/training/ball-handling']] },
+  { title: 'Training', links: [['Daily Workouts', '#players'], ['Challenges', '#challenge'], ['Leaderboards', '#challenge'], ['XP & Badges', '#top']] },
 ];
 
 export default function Navbar() {
