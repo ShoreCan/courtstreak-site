@@ -32,13 +32,18 @@ export default function Home() {
       return;
     }
 
+    if (!supabase) {
+      setJoined(true);
+      return;
+    }
+
     const { error } = await supabase
       .from('waitlist')
       .insert([{ email: cleanEmail, source: 'homepage' }]);
 
     if (error) {
       if (error.code === '23505') {
-        await supabase.functions.invoke('send-waitlist-email', {
+        await supabase?.functions.invoke('send-waitlist-email', {
       body: { email: cleanEmail },
     });
 
