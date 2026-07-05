@@ -2722,3 +2722,254 @@ footer strong { color: #0f172a; }
     border-bottom: 1px solid #e5e7eb;
   }
 }
+
+.bh-premium-page {
+  background: #fbfbfa;
+  padding: 28px max(22px, calc((100vw - 1180px) / 2)) 90px;
+}
+
+.bh-premium-hero {
+  min-height: 520px;
+  border-radius: 34px;
+  padding: 58px;
+  display: flex;
+  align-items: center;
+  color: white;
+  background:
+    radial-gradient(circle at 80% 40%, rgba(249,115,22,.28), transparent 30%),
+    linear-gradient(90deg, rgba(3,7,18,.96), rgba(3,7,18,.76), rgba(3,7,18,.35)),
+    linear-gradient(135deg, #020617, #111827);
+  box-shadow: 0 30px 90px rgba(15,23,42,.2);
+}
+
+.bh-kicker,
+.bh-section-head p {
+  color: #ea580c;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  font-size: 14px;
+  font-weight: 950;
+  margin: 0 0 12px;
+}
+
+.bh-premium-hero h1 {
+  font-size: clamp(66px, 9vw, 112px);
+  line-height: .88;
+  letter-spacing: -.07em;
+  text-transform: uppercase;
+  margin: 0 0 18px;
+}
+
+.bh-premium-hero p {
+  max-width: 600px;
+  color: #e2e8f0;
+  font-size: 20px;
+  line-height: 1.6;
+}
+
+.bh-hero-stats {
+  margin: 34px 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.bh-hero-stats span {
+  border-left: 1px solid rgba(255,255,255,.25);
+  padding-left: 18px;
+  color: #cbd5e1;
+  font-weight: 800;
+}
+
+.bh-hero-stats strong {
+  display: block;
+  color: white;
+  font-size: 28px;
+}
+
+.bh-premium-hero a,
+.bh-challenge a,
+.bh-final-cta a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #ea580c;
+  color: white;
+  padding: 15px 20px;
+  border-radius: 999px;
+  font-weight: 950;
+}
+
+.bh-method,
+.bh-two-col,
+.bh-curriculum-premium,
+.bh-coach-challenge,
+.bh-final-cta {
+  margin-top: 34px;
+}
+
+.bh-section-head {
+  text-align: center;
+  max-width: 780px;
+  margin: 0 auto 24px;
+}
+
+.bh-section-head h2,
+.bh-week h2,
+.bh-preview-card h2,
+.bh-final-cta h2 {
+  font-size: clamp(38px, 5vw, 58px);
+  line-height: 1;
+  letter-spacing: -.05em;
+  margin: 0;
+  color: #0f172a;
+}
+
+.bh-method-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+}
+
+.bh-method-grid article,
+.bh-week,
+.bh-preview-card,
+.bh-curriculum-grid article,
+.bh-coach,
+.bh-challenge,
+.bh-final-cta {
+  background: white;
+  border: 1px solid rgba(148,163,184,.24);
+  border-radius: 30px;
+  padding: 28px;
+  box-shadow: 0 20px 65px rgba(15,23,42,.07);
+}
+
+.bh-method-grid article span {
+  color: #ea580c;
+  font-weight: 950;
+}
+
+.bh-method-grid h3 {
+  font-size: 30px;
+  margin: 16px 0 8px;
+}
+
+.bh-two-col,
+.bh-coach-challenge {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px;
+}
+
+.bh-week-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 15px 0;
+}
+
+.bh-video-box {
+  height: 240px;
+  margin: 22px 0;
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(249,115,22,.28), transparent 30%),
+    linear-gradient(135deg, #0f172a, #020617);
+  color: white;
+  display: grid;
+  place-items: center;
+}
+
+.bh-preview-card h3 {
+  margin-bottom: 8px;
+}
+
+.bh-preview-card ul {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.bh-preview-card li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 850;
+}
+
+.bh-curriculum-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.bh-curriculum-grid h3 {
+  font-size: 30px;
+  margin: 0 0 16px;
+}
+
+.bh-lock-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f8fafc;
+  border-radius: 16px;
+  padding: 12px;
+  margin-top: 9px;
+}
+
+.bh-lock-row p {
+  margin: 0;
+  font-weight: 800;
+}
+
+.bh-coach {
+  background: #0f172a;
+  color: white;
+}
+
+.bh-coach h2,
+.bh-challenge h2 {
+  font-size: 40px;
+  line-height: 1;
+  margin: 14px 0;
+}
+
+.bh-coach p {
+  color: #e2e8f0;
+  font-size: 18px;
+  line-height: 1.7;
+}
+
+.bh-challenge span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 18px 0;
+  font-weight: 900;
+}
+
+.bh-final-cta {
+  text-align: center;
+}
+
+.bh-final-cta p {
+  color: #475569;
+  font-size: 18px;
+}
+
+@media (max-width: 900px) {
+  .bh-premium-hero {
+    padding: 36px 24px;
+  }
+
+  .bh-method-grid,
+  .bh-two-col,
+  .bh-curriculum-grid,
+  .bh-coach-challenge {
+    grid-template-columns: 1fr;
+  }
+}
