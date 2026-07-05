@@ -1,11 +1,52 @@
 import React, { useState } from 'react';
 
+const HOME = '/courtstreak-site/';
+
 const menus = [
-  { title: 'Membership', links: [['Pricing', '#pricing'], ['What’s Included', '#included'], ['Join Beta', '#join'], ['FAQ', '#faq']] },
-  { title: 'For Groups', links: [['Players', '#players'], ['Parents', '#parents'], ['Coaches', '#coach-dashboard'], ['AAU Teams', '#challenge'], ['Training Circles', '#challenge']] },
-  { title: 'Support', links: [['FAQ', '#faq'], ['Reviews', '#reviews'], ['Contact', '#contact']] },
-  { title: 'Company', links: [['Mission', '#mission'], ['Testimonials', '#reviews'], ['Founder Story', '#parents']] },
-  { title: 'Training', links: [['Ball Handling', '/courtstreak-site/training/ball-handling'], ['Beginner Path', '/courtstreak-site/training/ball-handling'], ['Intermediate Path', '/courtstreak-site/training/ball-handling'], ['Advanced Path', '/courtstreak-site/training/ball-handling']] },
+  {
+    title: 'Membership',
+    links: [
+      ['Pricing', `${HOME}#pricing`],
+      ['What’s Included', `${HOME}#included`],
+      ['Join Beta', `${HOME}#join`],
+      ['FAQ', `${HOME}#faq`],
+    ],
+  },
+  {
+    title: 'For Groups',
+    links: [
+      ['Players', `${HOME}#players`],
+      ['Parents', `${HOME}#parents`],
+      ['Coaches', `${HOME}#coach-dashboard`],
+      ['AAU Teams', `${HOME}#challenge`],
+      ['Training Circles', `${HOME}#challenge`],
+    ],
+  },
+  {
+    title: 'Training',
+    links: [
+      ['Ball Handling', '/courtstreak-site/training/ball-handling'],
+      ['Beginner Path', '/courtstreak-site/training/ball-handling'],
+      ['Intermediate Path', '/courtstreak-site/training/ball-handling'],
+      ['Advanced Path', '/courtstreak-site/training/ball-handling'],
+    ],
+  },
+  {
+    title: 'Support',
+    links: [
+      ['FAQ', `${HOME}#faq`],
+      ['Reviews', `${HOME}#reviews`],
+      ['Contact', `${HOME}#contact`],
+    ],
+  },
+  {
+    title: 'Company',
+    links: [
+      ['Mission', `${HOME}#mission`],
+      ['Testimonials', `${HOME}#reviews`],
+      ['Founder Story', `${HOME}#parents`],
+    ],
+  },
 ];
 
 export default function Navbar() {
@@ -13,7 +54,7 @@ export default function Navbar() {
 
   return (
     <nav className="nav premium-nav">
-      <a className="brand" href="#top">
+      <a className="brand" href={HOME}>
         <span className="brand-mark">CS</span>
         <span>CourtStreak</span>
       </a>
@@ -31,7 +72,7 @@ export default function Navbar() {
         ))}
       </div>
 
-      <a className="nav-cta desktop-cta" href="#join">Join Beta</a>
+      <a className="nav-cta desktop-cta" href={`${HOME}#join`}>Join Beta</a>
 
       <button className="hamburger" type="button" onClick={() => setOpen(!open)}>
         <span></span>
@@ -49,7 +90,7 @@ export default function Navbar() {
               ))}
             </details>
           ))}
-          <a className="mobile-join" href="#join" onClick={() => setOpen(false)}>Join Beta</a>
+          <a className="mobile-join" href={`${HOME}#join`} onClick={() => setOpen(false)}>Join Beta</a>
         </div>
       )}
     </nav>
