@@ -38,7 +38,7 @@ export default function BallHandling() {
             <p className="bh-kicker">Ball Handling Path</p>
             <h1>Master your handle.</h1>
             <p>
-              Follow a guided path from basic control to game-ready creation — no random drills, no guessing what to work on next.
+              Build control, confidence, change of pace, and game-ready separation through a structured CourtStreak progression.
             </p>
             <div className="bh-hero-stats">
               <span><strong>52</strong> Sessions</span>
