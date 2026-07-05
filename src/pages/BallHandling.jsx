@@ -135,6 +135,66 @@ export default function BallHandling() {
           </div>
         </section>
 
+        <section className="bh-dashboard-preview">
+          <div className="bh-section-head">
+            <p>Dashboard Preview</p>
+            <h2>Your daily training home.</h2>
+          </div>
+
+          <div className="bh-dashboard-shell">
+            <aside className="dash-side">
+              <strong>CS CourtStreak</strong>
+              <span className="active">Dashboard</span>
+              <span>Today's Session</span>
+              <span>CourtStreak Journey</span>
+              <span>Skill Lab</span>
+              <span>Weekly Challenge</span>
+              <span>Coach View</span>
+            </aside>
+
+            <div className="dash-main">
+              <div className="dash-top">
+                <div>
+                  <h3>Welcome back, Trey 👋</h3>
+                  <p>Let's keep building.</p>
+                </div>
+                <div className="dash-stats">
+                  <span>🔥 <strong>14</strong> Day Streak</span>
+                  <span><strong>320</strong> XP</span>
+                </div>
+              </div>
+
+              <div className="dash-grid">
+                <div className="dash-session">
+                  <p>Today's Session</p>
+                  <h3>Change of Pace</h3>
+                  <span>Week 2 • Day 4</span>
+                  <button>Start Session</button>
+                </div>
+
+                <div className="dash-card">
+                  <p>Your Progress</p>
+                  <h3>4 / 7 Sessions</h3>
+                  <div className="dash-bar"><div></div></div>
+                  <small>You're 3 sessions away from completing Week 2.</small>
+                </div>
+
+                <div className="dash-card">
+                  <p>CourtStreak Journey</p>
+                  <h3>Control → Movement → Creation → Mastery</h3>
+                  <small>Follow the path or explore skills anytime.</small>
+                </div>
+
+                <div className="dash-card">
+                  <p>Coach View</p>
+                  <h3>Central Illinois Elite</h3>
+                  <small>14 completed today • 4 not started • 78% team completion</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section className="bh-final-cta">
           <h2>Unlock the Ball Handling Path.</h2>
           <p>Start with control. Build confidence. Create separation.</p>
