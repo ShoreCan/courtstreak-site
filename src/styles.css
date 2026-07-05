@@ -3149,3 +3149,66 @@ footer strong { color: #0f172a; }
     width: 100%;
   }
 }
+
+/* Cleaner Ball Handling app preview */
+.bh-app-preview-clean {
+  margin-top: 42px;
+}
+
+.bh-preview-clean-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+
+.bh-preview-clean-grid article {
+  background: white;
+  border: 1px solid rgba(148,163,184,.24);
+  border-radius: 28px;
+  padding: 28px;
+  box-shadow: 0 20px 65px rgba(15,23,42,.07);
+}
+
+.bh-preview-clean-grid span {
+  display: block;
+  color: #ea580c;
+  text-transform: uppercase;
+  letter-spacing: .11em;
+  font-size: 13px;
+  font-weight: 950;
+  margin-bottom: 12px;
+}
+
+.bh-preview-clean-grid h3 {
+  font-size: 30px;
+  line-height: 1;
+  margin: 0 0 12px;
+  color: #0f172a;
+}
+
+.bh-preview-clean-grid p {
+  color: #64748b;
+  font-size: 16px;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.mini-progress {
+  height: 9px;
+  background: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 14px 0;
+}
+
+.mini-progress div {
+  width: 62%;
+  height: 100%;
+  background: #ea580c;
+}
+
+@media (max-width: 900px) {
+  .bh-preview-clean-grid {
+    grid-template-columns: 1fr;
+  }
+}
