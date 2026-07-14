@@ -3,9 +3,9 @@ import {
   ArrowRight,
   CheckCircle2,
   Flame,
-  Mail,
   Trophy,
   Users,
+  Mail,
 } from 'lucide-react';
 
 export default function Hero({
@@ -185,6 +185,7 @@ export default function Hero({
               <strong>›</strong>
             </div>
           </div>
+        </div>
         </div>
       </div>
     </section>
