@@ -38,12 +38,12 @@ export default function Home() {
     }
 
     const { error } = await supabase
-      .from('waitlist')
+      .from('membership')
       .insert([{ email: cleanEmail, source: 'homepage' }]);
 
     if (error) {
       if (error.code === '23505') {
-        await supabase?.functions.invoke('send-waitlist-email', {
+        await supabase?.functions.invoke('send-membership-email', {
       body: { email: cleanEmail },
     });
 

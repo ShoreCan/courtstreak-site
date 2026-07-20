@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 const menus = [
-  { title: 'Membership', links: [['Pricing', '#pricing'], ['What’s Included', '#included'], ['Join Beta', '#join'], ['FAQ', '#faq']] },
+  { title: 'Membership', links: [['Pricing', '#pricing'], ['What’s Included', '#included'], ['Create Account', '#join'], ['FAQ', '#faq']] },
   { title: 'For Groups', links: [['Players', '#players'], ['Parents', '#parents'], ['Coaches', '#coach-dashboard'], ['AAU Teams', '#challenge'], ['Training Circles', '#challenge']] },
   { title: 'Support', links: [['FAQ', '#faq'], ['Reviews', '#reviews'], ['Contact', '#contact']] },
   { title: 'Company', links: [['Mission', '#mission'], ['Testimonials', '#reviews'], ['Founder Story', '#parents']] },
@@ -31,7 +31,7 @@ export default function Navbar() {
         ))}
       </div>
 
-      <a className="nav-cta desktop-cta" href="#join">Join Beta</a>
+      <a className="nav-cta desktop-cta" href="#join">Create Account</a>
 
       <button className="hamburger" type="button" onClick={() => setOpen(!open)}>
         <span></span>
@@ -49,7 +49,7 @@ export default function Navbar() {
               ))}
             </details>
           ))}
-          <a className="mobile-join" href="#join" onClick={() => setOpen(false)}>Join Beta</a>
+          <a className="mobile-join" href="#join" onClick={() => setOpen(false)}>Create Account</a>
         </div>
       )}
     </nav>

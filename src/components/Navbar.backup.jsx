@@ -13,7 +13,7 @@ export default function Navbar() {
           <button>Membership</button>
           <div className="dropdown">
             <a href="#pricing">Pricing</a>
-            <a href="#join">Join Beta</a>
+            <a href="#join">Create Account</a>
           </div>
         </div>
 

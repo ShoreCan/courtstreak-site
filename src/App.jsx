@@ -2,11 +2,25 @@ import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Home from './pages/Home.jsx';
 import BallHandling from './pages/BallHandling.jsx';
+import Players from './pages/Players.jsx';
+import Parents from './pages/Parents.jsx';
+import Coaches from './pages/Coaches.jsx';
+import Reviews from './pages/Reviews.jsx';
+import FAQPage from './pages/FAQPage.jsx';
+import PricingPage from './pages/PricingPage.jsx';
+import About from './pages/About.jsx';
 
 export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Home />} />
+      <Route path="/players" element={<Players />} />
+      <Route path="/parents" element={<Parents />} />
+      <Route path="/coaches" element={<Coaches />} />
+      <Route path="/reviews" element={<Reviews />} />
+      <Route path="/faq" element={<FAQPage />} />
+      <Route path="/pricing" element={<PricingPage />} />
+      <Route path="/about" element={<About />} />
       <Route path="/training/ball-handling" element={<BallHandling />} />
     </Routes>
   );

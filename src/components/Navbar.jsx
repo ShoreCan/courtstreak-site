@@ -6,19 +6,19 @@ const menus = [
   {
     title: 'Membership',
     links: [
-      ['Pricing', `${HOME}#pricing`],
+      ['Pricing', '/courtstreak-site/pricing'],
       ['What’s Included', `${HOME}#included`],
-      ['Join Beta', `${HOME}#join`],
-      ['FAQ', `${HOME}#faq`],
+      ['Create Account', `${HOME}#join`],
+      ['FAQ', '/courtstreak-site/faq'],
     ],
   },
   {
     title: 'For Groups',
     links: [
-      ['Players', `${HOME}#players`],
-      ['Parents', `${HOME}#parents`],
-      ['Coaches', `${HOME}#coach-dashboard`],
-      ['AAU Teams', `${HOME}#challenge`],
+      ['Players', '/courtstreak-site/players'],
+      ['Parents', '/courtstreak-site/parents'],
+      ['Coaches', '/courtstreak-site/coaches'],
+      ['AAU Teams', '/courtstreak-site/coaches'],
       ['Training Circles', `${HOME}#challenge`],
     ],
   },
@@ -26,16 +26,16 @@ const menus = [
     title: 'Training',
     links: [
       ['Ball Handling', '/courtstreak-site/training/ball-handling'],
-      ['Beginner Path', '/courtstreak-site/training/ball-handling'],
-      ['Intermediate Path', '/courtstreak-site/training/ball-handling'],
-      ['Advanced Path', '/courtstreak-site/training/ball-handling'],
+      ['Player Development', '/courtstreak-site/players'],
+      ['Personalized Plans', '/courtstreak-site/players'],
+      ['Live Coaching Support', '/courtstreak-site/players'],
     ],
   },
   {
     title: 'Support',
     links: [
-      ['FAQ', `${HOME}#faq`],
-      ['Reviews', `${HOME}#reviews`],
+      ['FAQ', '/courtstreak-site/faq'],
+      ['Reviews', '/courtstreak-site/reviews'],
       ['Contact', `${HOME}#contact`],
     ],
   },
@@ -43,8 +43,8 @@ const menus = [
     title: 'Company',
     links: [
       ['Mission', `${HOME}#mission`],
-      ['Testimonials', `${HOME}#reviews`],
-      ['Founder Story', `${HOME}#parents`],
+      ['Reviews', '/courtstreak-site/reviews'],
+      ['Founder Story', '/courtstreak-site/about'],
     ],
   },
 ];
@@ -65,16 +65,22 @@ export default function Navbar() {
             <button type="button">{menu.title}</button>
             <div className="premium-dropdown">
               {menu.links.map(([label, href]) => (
-                <a href={href} key={label}>{label}</a>
+                <a href={href} key={`${menu.title}-${label}`}>{label}</a>
               ))}
             </div>
           </div>
         ))}
       </div>
 
-      <a className="nav-cta desktop-cta" href={`${HOME}#join`}>Join Beta</a>
+      <a className="nav-cta desktop-cta" href={`${HOME}#join`}>Create Account</a>
 
-      <button className="hamburger" type="button" onClick={() => setOpen(!open)}>
+      <button
+        className="hamburger"
+        type="button"
+        aria-label="Open navigation menu"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+      >
         <span></span>
         <span></span>
         <span></span>
@@ -86,11 +92,23 @@ export default function Navbar() {
             <details className="mobile-menu-group" key={menu.title}>
               <summary>{menu.title}</summary>
               {menu.links.map(([label, href]) => (
-                <a href={href} key={label} onClick={() => setOpen(false)}>{label}</a>
+                <a
+                  href={href}
+                  key={`${menu.title}-${label}`}
+                  onClick={() => setOpen(false)}
+                >
+                  {label}
+                </a>
               ))}
             </details>
           ))}
-          <a className="mobile-join" href={`${HOME}#join`} onClick={() => setOpen(false)}>Join Beta</a>
+          <a
+            className="mobile-join"
+            href={`${HOME}#join`}
+            onClick={() => setOpen(false)}
+          >
+            Create Account
+          </a>
         </div>
       )}
     </nav>

@@ -22,12 +22,12 @@ export default function Hero({ email, setEmail, joined, handleSubmit }) {
             <Mail size={18} />
             <input
               type="email"
-              placeholder="Enter email for beta access"
+              placeholder="Enter email for full access"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
-          <button type="submit">Join Beta <ArrowRight size={18} /></button>
+          <button type="submit">Create Account <ArrowRight size={18} /></button>
         </form>
 
         {joined && <p className="success">You’re on the CourtStreak beta list.</p>}

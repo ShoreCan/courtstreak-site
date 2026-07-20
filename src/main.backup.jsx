@@ -73,7 +73,7 @@ function App() {
           <a href="#teams">Teams</a>
           <a href="#pricing">Pricing</a>
         </div>
-        <a className="nav-cta" href="#join">Join Beta</a>
+        <a className="nav-cta" href="#join">Create Account</a>
       </nav>
 
       <section id="top" className="hero section-grid">

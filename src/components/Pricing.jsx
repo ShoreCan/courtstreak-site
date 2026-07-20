@@ -63,7 +63,7 @@ export default function Pricing() {
           ))}
         </ul>
 
-        <a href="#join">Start My Streak</a>
+        <a href="#join">Start Your Membership</a>
       </div>
     </section>
   );

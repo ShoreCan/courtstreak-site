@@ -23,21 +23,21 @@ export default function Hero({ email, setEmail, joined, handleSubmit }) {
               <Mail size={18} />
               <input
                 type="email"
-                placeholder="Enter email for beta access"
+                placeholder="Enter email for full access"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
             <button type="submit">
-              {joined ? "You’re on the waitlist" : "Join Beta"} <ArrowRight size={18} />
+              {joined ? "You’re on the membership" : "Create Account"} <ArrowRight size={18} />
             </button>
           </form>
 
           {joined && (
-            <div className="waitlist-success-card">
-              <h3>You’re officially on the CourtStreak waitlist.</h3>
+            <div className="membership-success-card">
+              <h3>You’re officially on the CourtStreak membership.</h3>
               <p>
-                We’ll email <strong>{email}</strong> when beta access opens.
+                We’ll email <strong>{email}</strong> when full access opens.
                 In the meantime, start thinking about the teammates, coaches,
                 and training circles you want to bring with you.
               </p>

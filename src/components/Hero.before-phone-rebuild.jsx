@@ -40,7 +40,7 @@ export default function Hero({
               <CheckCircle2 size={25} />
 
               <div>
-                <strong>You’re officially on the waitlist.</strong>
+                <strong>You’re officially on the membership.</strong>
                 <span>Check your inbox for your CourtStreak confirmation.</span>
               </div>
             </div>
@@ -57,14 +57,14 @@ export default function Hero({
                   type="email"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
-                  placeholder="Enter email for beta access"
+                  placeholder="Enter email for full access"
                   autoComplete="email"
                   required
                 />
               </label>
 
               <button type="submit">
-                Join Beta
+                Create Account
                 <ArrowRight size={19} />
               </button>
             </form>
