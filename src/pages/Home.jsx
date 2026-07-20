@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { supabase } from '../lib/supabaseClient.js';
+import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar.jsx';
 import Hero from '../components/Hero.jsx';
 import AppPreview from '../components/AppPreview.jsx';
@@ -18,51 +18,33 @@ import DownloadCTA from '../components/DownloadCTA.jsx';
 import Footer from '../components/Footer.jsx';
 
 export default function Home() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
-  const [joined, setJoined] = useState(false);
+  const [joined] = useState(false);
 
-  async function handleSubmit(e) {
+  function handleSubmit(e) {
     e.preventDefault();
 
     const cleanEmail = email.trim().toLowerCase();
-    if (!cleanEmail) return;
 
-    if (!supabase) {
-      setJoined(true);
+    if (!cleanEmail) {
       return;
     }
 
-    if (!supabase) {
-      setJoined(true);
-      return;
-    }
-
-    const { error } = await supabase
-      .from('membership')
-      .insert([{ email: cleanEmail, source: 'homepage' }]);
-
-    if (error) {
-      if (error.code === '23505') {
-        await supabase?.functions.invoke('send-membership-email', {
-      body: { email: cleanEmail },
-    });
-
-    setJoined(true);
-        return;
-      }
-
-      alert('Something went wrong. Please try again.');
-      console.error(error);
-      return;
-    }
-
-    setJoined(true);
+    navigate(`/create-account?email=${encodeURIComponent(cleanEmail)}`);
   }
 
   return (
     <main>
       <Navbar />
-      <Hero email={email} setEmail={setEmail} joined={joined} handleSubmit={handleSubmit} />
+
+      <Hero
+        email={email}
+        setEmail={setEmail}
+        joined={joined}
+        handleSubmit={handleSubmit}
+      />
+
       <AppPreview />
       <PlayersSection />
       <WhyItWorks />
@@ -73,7 +55,8 @@ export default function Home() {
           <h2>See the full training experience in one glance.</h2>
           <p>
             Daily workouts, streaks, challenges, training circles, leaderboards,
-            badges, and coach tools all come together inside one clean player experience.
+            badges, and coach tools all come together inside one clean player
+            experience.
           </p>
         </div>
 
