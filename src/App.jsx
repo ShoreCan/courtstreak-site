@@ -12,7 +12,7 @@ import About from './pages/About.jsx';
 import CreateAccount from './pages/CreateAccount.jsx';
 import Login from './pages/Login.jsx';
 import Dashboard from './pages/Dashboard.jsx';
-
+import Workout from './pages/Workout.jsx';
 export default function App() {
   return (
     <Routes>
@@ -28,6 +28,8 @@ export default function App() {
           <Route path="/create-account" element={<CreateAccount />} />
           <Route path="/login" element={<Login />} />
       <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/workout" element={<Workout />} />
+
     </Routes>
   );
 }
