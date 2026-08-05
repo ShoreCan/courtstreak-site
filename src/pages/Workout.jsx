@@ -61,7 +61,7 @@ export default function Workout() {
   const [currentDrill, setCurrentDrill] = useState(0);
   const [completedDrills, setCompletedDrills] = useState([]);
   const [workoutFinished, setWorkoutFinished] = useState(false);
-
+const [earnedStreak, setEarnedStreak] = useState(0);
   const drill = workoutDrills[currentDrill];
   const progress = Math.round(
     (completedDrills.length / workoutDrills.length) * 100
@@ -80,6 +80,7 @@ if (error) {
   console.error('Could not update training streak:', error);
 } else {
   console.log('Updated training streak:', data);
+  setEarnedStreak(data.training_streak ?? 0);
 }
     }
   }
@@ -136,7 +137,7 @@ if (error) {
             </article>
 
             <article>
-              <strong>8</strong>
+              <strong>{earnedStreak}</strong>
               <span>Day streak</span>
             </article>
           </div>
