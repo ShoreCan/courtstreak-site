@@ -125,14 +125,14 @@ useEffect(() => {
                 <span className="cs-card-label">CURRENT STREAK</span>
                 <div className="cs-streak-number">
                   <FaFire />
-                  <strong>7</strong>
+                  <strong>{profile?.current_streak || 0}</strong>
                 </div>
                 <p>days in a row</p>
               </div>
 
               <div className="cs-streak-best">
                 <span>Personal best</span>
-                <strong>12 days</strong>
+                <strong><strong>{profile?.best_streak ?? 0} days</strong></strong>
               </div>
             </div>
 
