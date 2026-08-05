@@ -3,13 +3,14 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient.js';
 
 export default function CreateAccount() {
-  const [form, setForm] = useState({
-    fullName: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    accountType: 'player',
-  });
+const [form, setForm] = useState({
+  firstName: '',
+  lastName: '',
+  email: '',
+  password: '',
+  confirmPassword: '',
+  accountType: 'player',
+});
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -51,9 +52,11 @@ export default function CreateAccount() {
       options: {
         emailRedirectTo: redirectTo,
         data: {
-          full_name: form.fullName.trim(),
-          account_type: form.accountType,
-        },
+  first_name: form.firstName.trim(),
+  last_name: form.lastName.trim(),
+  full_name: `${form.firstName.trim()} ${form.lastName.trim()}`,
+  account_type: form.accountType,
+},
       },
     });
 
@@ -95,17 +98,31 @@ export default function CreateAccount() {
         </p>
 
         <form onSubmit={handleSubmit}>
-          <label>
-            Full name
-            <input
-              name="fullName"
-              value={form.fullName}
-              onChange={update}
-              placeholder="Trey Redd"
-              autoComplete="name"
-              required
-            />
-          </label>
+          <div className="cs-auth-name-grid">
+  <label>
+    First name
+    <input
+      name="firstName"
+      value={form.firstName}
+      onChange={update}
+      placeholder="Trey"
+      autoComplete="given-name"
+      required
+    />
+  </label>
+
+  <label>
+    Last name
+    <input
+      name="lastName"
+      value={form.lastName}
+      onChange={update}
+      placeholder="Redd"
+      autoComplete="family-name"
+      required
+    />
+  </label>
+</div>
 
           <label>
             Email address

@@ -1,4 +1,4 @@
-import React from 'react';
+;import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   FiActivity,
@@ -17,7 +17,56 @@ import { supabase } from '../lib/supabaseClient.js';
 
 export default function Dashboard() {
   const navigate = useNavigate();
+const [profile, setProfile] = useState(null);
+const [profileLoading, setProfileLoading] = useState(true);
+const [profileError, setProfileError] = useState('');
 
+useEffect(() => {
+  let isMounted = true;
+
+  async function loadProfile() {
+    if (!supabase) {
+      setProfileError('CourtStreak could not connect to Supabase.');
+      setProfileLoading(false);
+      return;
+    }
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      navigate('/login');
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select(
+        'first_name, last_name, current_streak, best_streak, xp, level, workouts_completed, weekly_workouts, weekly_goal'
+      )
+      .eq('id', user.id)
+      .single();
+
+    if (!isMounted) return;
+
+    if (error) {
+      console.error(error);
+      setProfileError('CourtStreak could not load your profile.');
+    } else {
+      setProfile(data);
+    }
+
+    setProfileLoading(false);
+  }
+
+  loadProfile();
+
+  return () => {
+    isMounted = false;
+  };
+}, [navigate]);
   async function handleLogout() {
     if (supabase) {
       await supabase.auth.signOut();
@@ -52,7 +101,11 @@ export default function Dashboard() {
         <div className="cs-dashboard-welcome">
           <div>
             <p className="cs-auth-eyebrow">PLAYER DASHBOARD</p>
-            <h1>Welcome back, Trey.</h1>
+            <h1>
+  {profileLoading
+    ? 'Loading your dashboard...'
+    : `Welcome back, ${profile?.first_name || 'Player'}.`}
+</h1>
             <p>
               Keep your momentum going. Complete today&apos;s workout and build
               a streak you do not want to lose.
