@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../lib/supabaseClient.js';
 import {
   FiArrowLeft,
   FiCheck,
@@ -66,15 +67,30 @@ export default function Workout() {
     (completedDrills.length / workoutDrills.length) * 100
   );
 
-  function handleCompleteDrill() {
-    if (!completedDrills.includes(currentDrill)) {
-      setCompletedDrills([...completedDrills, currentDrill]);
-    }
+  async function handleCompleteDrill() {
+  if (!completedDrills.includes(currentDrill)) {
+    setCompletedDrills([...completedDrills, currentDrill]);
 
-    if (currentDrill < workoutDrills.length - 1) {
-      setCurrentDrill(currentDrill + 1);
+    if (supabase) {
+      const { data, error } = await supabase.rpc(
+  'record_daily_training_activity'
+);
+
+if (error) {
+  console.error('Could not update training streak:', error);
+} else {
+  console.log('Updated training streak:', data);
+}
     }
   }
+
+  if (currentDrill < workoutDrills.length - 1) {
+    setCurrentDrill(currentDrill + 1);
+  }
+}
+   
+
+    
 
   function handlePreviousDrill() {
     if (currentDrill > 0) {
