@@ -42,13 +42,12 @@ useEffect(() => {
     }
 
     const { data, error } = await supabase
-      .from('profiles')
-      .select(
-        'first_name, last_name, current_streak, best_streak, xp, level, workouts_completed, weekly_workouts, weekly_goal'
-      )
-      .eq('id', user.id)
-      .single();
-
+  .from('profiles')
+  .select(
+    'first_name, last_name, training_streak, best_training_streak, xp, level, workouts_completed, weekly_workouts, weekly_goal'
+  )
+  .eq('id', user.id)
+  .single();
     if (!isMounted) return;
 
     if (error) {
@@ -125,14 +124,14 @@ useEffect(() => {
                 <span className="cs-card-label">CURRENT STREAK</span>
                 <div className="cs-streak-number">
                   <FaFire />
-                  <strong>{profile?.current_streak || 0}</strong>
+                  <strong>{profile?.training_streak ?? 0}</strong>
                 </div>
                 <p>days in a row</p>
               </div>
 
               <div className="cs-streak-best">
                 <span>Personal best</span>
-                <strong><strong>{profile?.best_streak ?? 0} days</strong></strong>
+                <strong>{profile?.best_training_streak ?? 0} days</strong>
               </div>
             </div>
 
