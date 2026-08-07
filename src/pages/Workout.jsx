@@ -66,7 +66,9 @@ const [earnedStreak, setEarnedStreak] = useState(0);
   const progress = Math.round(
     (completedDrills.length / workoutDrills.length) * 100
   );
-
+const [earnedXp, setEarnedXp] = useState(0);
+const [totalXp, setTotalXp] = useState(0);
+const [playerLevel, setPlayerLevel] = useState(1);
   async function handleCompleteDrill() {
   if (!completedDrills.includes(currentDrill)) {
     setCompletedDrills([...completedDrills, currentDrill]);
@@ -85,10 +87,14 @@ const [earnedStreak, setEarnedStreak] = useState(0);
       } else {
         const reward = data?.[0];
 
-        if (reward) {
-          console.log('Saved drill reward:', reward);
-          setEarnedStreak(reward.training_streak ?? 0);
-        }
+      if (reward) {
+  console.log('Saved drill reward:', reward);
+
+  setEarnedStreak(reward.training_streak ?? 0);
+  setEarnedXp((previousXp) => previousXp + (reward.xp_awarded ?? 0));
+  setTotalXp(reward.xp ?? 0);
+  setPlayerLevel(reward.level ?? 1);
+}
       }
     }
   }
@@ -133,7 +139,12 @@ const [earnedStreak, setEarnedStreak] = useState(0);
             Great work. You completed the Guard Skill Builder and moved one
             step closer to your weekly goal.
           </p>
-
+<div className="cs-workout-xp-summary">
+  <strong>+{earnedXp} XP</strong>
+  <span>
+    Level {playerLevel} · {totalXp} total XP
+  </span>
+</div>
           <div className="cs-complete-results">
             <article>
               <strong>6</strong>

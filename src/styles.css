@@ -6852,3 +6852,25 @@ section {
     width: 100%;
   }
 }
+.cs-workout-xp-summary {
+  margin-top: 26px;
+  padding: 18px 22px;
+  display: grid;
+  gap: 6px;
+  border: 1px solid rgba(249, 115, 22, 0.25);
+  border-radius: 16px;
+  background: rgba(249, 115, 22, 0.08);
+  text-align: center;
+}
+
+.cs-workout-xp-summary strong {
+  color: #fb923c;
+  font-size: 34px;
+  line-height: 1;
+}
+
+.cs-workout-xp-summary span {
+  color: #a8b3c4;
+  font-size: 14px;
+  font-weight: 700;
+}
