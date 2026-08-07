@@ -73,21 +73,30 @@ const [earnedStreak, setEarnedStreak] = useState(0);
 
     if (supabase) {
       const { data, error } = await supabase.rpc(
-  'record_daily_training_activity'
-);
+        'complete_training_drill',
+        {
+          p_workout_key: 'guard-skill-builder',
+          p_drill_index: currentDrill,
+        }
+      );
 
-if (error) {
-  console.error('Could not update training streak:', error);
-} else {
-  console.log('Updated training streak:', data);
-  setEarnedStreak(data.training_streak ?? 0);
-}
+      if (error) {
+        console.error('Could not save drill reward:', error);
+      } else {
+        const reward = data?.[0];
+
+        if (reward) {
+          console.log('Saved drill reward:', reward);
+          setEarnedStreak(reward.training_streak ?? 0);
+        }
+      }
     }
   }
 
   if (currentDrill < workoutDrills.length - 1) {
     setCurrentDrill(currentDrill + 1);
   }
+
 }
    
 
