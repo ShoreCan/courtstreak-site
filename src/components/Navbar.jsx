@@ -72,7 +72,15 @@ export default function Navbar() {
         ))}
       </div>
 
-      <a className="nav-cta desktop-cta" href={`${HOME}#join`}>Create Account</a>
+      <div className="nav-auth desktop-auth">
+  <a className="nav-login" href="/courtstreak-site/login">
+    Log In
+  </a>
+
+  <a className="nav-cta desktop-cta" href="/courtstreak-site/create-account">
+    Create Account
+  </a>
+</div>
 
       <button
         className="hamburger"
@@ -102,13 +110,23 @@ export default function Navbar() {
               ))}
             </details>
           ))}
-          <a
-            className="mobile-join"
-            href={`${HOME}#join`}
-            onClick={() => setOpen(false)}
-          >
-            Create Account
-          </a>
+         <div className="mobile-auth">
+  <a
+    className="mobile-login"
+    href="/courtstreak-site/login"
+    onClick={() => setOpen(false)}
+  >
+    Log In
+  </a>
+
+  <a
+    className="mobile-join"
+    href="/courtstreak-site/create-account"
+    onClick={() => setOpen(false)}
+  >
+    Create Account
+  </a>
+</div>
         </div>
       )}
     </nav>
