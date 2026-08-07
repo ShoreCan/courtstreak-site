@@ -199,55 +199,8 @@ const [playerLevel, setPlayerLevel] = useState(1);
       </section>
     </main>
   );
-}{
-    return (
-      <main className="cs-workout-page">
-        <section className="cs-workout-complete">
-          <div className="cs-complete-icon">
-            <FiCheck />
-          </div>
+}
 
-          <p className="cs-card-label">WORKOUT COMPLETE</p>
-          <h1>You protected your streak.</h1>
-
-          <p>
-            Great work. You completed the Guard Skill Builder and moved one
-            step closer to your weekly goal.
-          </p>
-<div className="cs-workout-xp-summary">
-  <strong>+{earnedXp} XP</strong>
-  <span>
-    Level {playerLevel} · {totalXp} total XP
-  </span>
-</div>
-          <div className="cs-complete-results">
-            <article>
-              <strong>6</strong>
-              <span>Drills completed</span>
-            </article>
-
-            <article>
-              <strong>35</strong>
-              <span>Minutes trained</span>
-            </article>
-
-            <article>
-              <strong>{earnedStreak}</strong>
-              <span>Day streak</span>
-            </article>
-          </div>
-
-          <button
-            type="button"
-            className="cs-return-dashboard"
-            onClick={() => navigate('/dashboard')}
-          >
-            Return to Dashboard
-          </button>
-        </section>
-      </main>
-    );
-  }
 
   return (
     <main className="cs-workout-page">
