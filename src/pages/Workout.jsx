@@ -125,6 +125,81 @@ const [playerLevel, setPlayerLevel] = useState(1);
   }
 
   if (workoutFinished) {
+  const xpIntoLevel = totalXp % 100;
+  const xpProgress = `${xpIntoLevel}%`;
+
+  return (
+    <main className="cs-celebration-page">
+      <section className="cs-celebration-card">
+        <div className="cs-celebration-stage">
+          <div className="cs-celebration-ring" />
+          <div className="cs-celebration-sparks" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+            <span />
+          </div>
+
+          <div className="cs-celebration-flame" aria-hidden="true">
+            🔥
+          </div>
+
+          <strong className="cs-celebration-streak">
+            {earnedStreak}
+          </strong>
+        </div>
+
+        <p className="cs-card-label">TRAINING STREAK</p>
+        <h1>Streak protected.</h1>
+
+        <p className="cs-celebration-message">
+          You showed up today. Keep the fire alive.
+        </p>
+
+        <div className="cs-celebration-xp">
+          <strong>+{earnedXp} XP</strong>
+          <span>Level {playerLevel}</span>
+        </div>
+
+        <div className="cs-celebration-progress">
+          <div className="cs-celebration-progress-heading">
+            <span>Level {playerLevel}</span>
+            <span>{xpIntoLevel} / 100 XP</span>
+          </div>
+
+          <div className="cs-celebration-progress-track">
+            <div style={{ width: xpProgress }} />
+          </div>
+        </div>
+
+        <div className="cs-celebration-stats">
+          <article>
+            <strong>{workoutDrills.length}</strong>
+            <span>Drills</span>
+          </article>
+
+          <article>
+            <strong>35</strong>
+            <span>Minutes</span>
+          </article>
+
+          <article>
+            <strong>{earnedStreak}</strong>
+            <span>Day streak</span>
+          </article>
+        </div>
+
+        <button
+          type="button"
+          className="cs-celebration-button"
+          onClick={() => navigate('/dashboard')}
+        >
+          Continue to Dashboard
+        </button>
+      </section>
+    </main>
+  );
+}{
     return (
       <main className="cs-workout-page">
         <section className="cs-workout-complete">
