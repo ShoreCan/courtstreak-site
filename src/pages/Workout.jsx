@@ -120,11 +120,34 @@ const [playerLevel, setPlayerLevel] = useState(1);
     }
   }
 
-  function handleFinishWorkout() {
+ async function handleFinishWorkout() {
+  if (!supabase) {
     setWorkoutFinished(true);
+    return;
   }
 
-  if (workoutFinished) {
+  const { data, error } = await supabase.rpc(
+    'record_workout_completion',
+    {
+      p_workout_key: 'guard-skill-builder',
+      p_workout_name: 'Guard Skill Builder',
+      p_workout_focus: 'Ball Handling',
+      p_drills_completed: workoutDrills.length,
+      p_minutes_trained: 35,
+      p_xp_earned: earnedXp,
+    }
+  );
+
+  if (error) {
+    console.error('Could not save workout completion:', error);
+    return;
+  }
+
+  console.log('Workout completion saved:', data);
+setWorkoutFinished(true);
+}
+
+if (workoutFinished) {
   const xpIntoLevel = totalXp % 100;
   const xpProgress = `${xpIntoLevel}%`;
 
