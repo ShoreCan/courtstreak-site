@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   FiActivity,
+  FiArrowRight,
   FiAward,
   FiBarChart2,
   FiClock,
@@ -59,6 +60,8 @@ export default function Dashboard() {
   const [profile, setProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileError, setProfileError] = useState('');
+  const [trainingCircles, setTrainingCircles] = useState([]);
+const [circlesLoading, setCirclesLoading] = useState(true);
 const [todayXp, setTodayXp] = useState(0);
 const [todayTrainingXp, setTodayTrainingXp] = useState(0);
 const [todayChallengeXp, setTodayChallengeXp] = useState(0);
@@ -69,6 +72,7 @@ const [todayAchievementXp, setTodayAchievementXp] = useState(0);
     async function loadProfile() {
       if (!supabase) {
         setProfileError('CourtStreak could not connect to Supabase.');
+        setCirclesLoading(false);
         setProfileLoading(false);
         return;
       }
@@ -146,6 +150,46 @@ if (todayXpError) {
   setTodayXp(todayReward?.total_today_xp ?? 0);
 }
 
+const {
+  data: circleMemberships,
+  error: circlesError,
+} = await supabase
+  .from('training_circle_members')
+  .select(`
+    role,
+    joined_at,
+    training_circles (
+      id,
+      name,
+      circle_type,
+      owner_id,
+      is_private,
+      weekly_workout_goal
+    )
+  `)
+  .eq('user_id', user.id)
+  .order('joined_at', { ascending: false });
+
+if (!isMounted) return;
+
+if (circlesError) {
+  console.error(
+    'Could not load dashboard Training Circles:',
+    circlesError
+  );
+} else {
+  const loadedCircles = (circleMemberships ?? [])
+    .map((membership) => ({
+      ...membership.training_circles,
+      membershipRole: membership.role,
+    }))
+    .filter((circle) => circle?.id);
+
+  setTrainingCircles(loadedCircles);
+}
+
+setCirclesLoading(false);
+
 setProfileLoading(false);
     }
 
@@ -176,7 +220,8 @@ setProfileLoading(false);
   const weeklyGoal = Math.max(profile?.weekly_goal ?? 4, 1);
   const weeklyProgress = Math.min((weeklyWorkouts / weeklyGoal) * 100, 100);
   const workoutsRemaining = Math.max(weeklyGoal - weeklyWorkouts, 0);
-  const trainingCirclesCount = 0;
+  const trainingCirclesCount = trainingCircles.length;
+const featuredCircle = trainingCircles[0] || null;
 const totalXp = profile?.xp ?? 0;
 const playerLevel = profile?.level ?? 1;
 
@@ -257,8 +302,8 @@ const xpProgress = Math.min(
 },
 ];
 
-  return (
-    <main className="cs-pro-dashboard-page">
+    return (
+    <main className="cs-pro-dashboard-page cs-dashboard-redesign">
       <aside className="cs-pro-sidebar">
         <Link to="/" className="cs-pro-sidebar-logo">
           <span className="cs-pro-logo-ball">◉</span>
@@ -267,7 +312,10 @@ const xpProgress = Math.min(
           </span>
         </Link>
 
-        <nav className="cs-pro-sidebar-nav" aria-label="Dashboard navigation">
+        <nav
+          className="cs-pro-sidebar-nav"
+          aria-label="Dashboard navigation"
+        >
           {navigationItems.map((item) => (
             <button
               key={item.label}
@@ -277,7 +325,7 @@ const xpProgress = Math.min(
             >
               {item.icon}
               <span>{item.label}</span>
-             {item.soon ? <small>Soon</small> : null}
+              {item.soon ? <small>Soon</small> : null}
             </button>
           ))}
         </nav>
@@ -289,259 +337,359 @@ const xpProgress = Math.min(
           <p>Consistency today. Confidence tomorrow.</p>
         </div>
 
-        <button type="button" className="cs-pro-sidebar-logout" onClick={handleLogout}>
+        <button
+          type="button"
+          className="cs-pro-sidebar-logout"
+          onClick={handleLogout}
+        >
           <FiLogOut />
           Log Out
         </button>
       </aside>
 
-      <section className="cs-pro-dashboard-main">
-        <header className="cs-pro-dashboard-topbar">
+      <section className="cs-pro-dashboard-main cs-dashboard-main-redesign">
+        <header className="cs-dashboard-welcome">
           <div>
             <p className="cs-card-label">PLAYER DASHBOARD</p>
+
             <h1>
               {profileLoading
-                ? 'Loading your dashboard...'
+                ? 'Loading...'
                 : `Welcome back, ${profile?.first_name || 'Player'}.`}
             </h1>
-            <p>
-  What do you want to get better at today? Choose a skill,
-  put in the reps, and keep building your game.
-</p>
+
+            <p>What are we getting better at today?</p>
           </div>
 
-          <div className="cs-pro-topbar-actions">
-            <span>
-              <FiClock /> Today&apos;s Training
-            </span>
-            <button type="button" onClick={() => navigate('/workout')}>
-  <FiPlay /> Explore Drills
-</button>
-          </div>
+          <button type="button" onClick={() => navigate('/workout')}>
+            <FiPlay />
+            Start Training
+          </button>
         </header>
 
-        {profileError ? <div className="cs-pro-dashboard-error">{profileError}</div> : null}
+        {profileError ? (
+          <div className="cs-pro-dashboard-error">{profileError}</div>
+        ) : null}
 
-        <section className="cs-pro-highlight-grid">
-          <article className="cs-pro-streak-card">
-            <div>
-              <span className="cs-card-label">CURRENT STREAK</span>
-              <div className="cs-pro-streak-value">
-                <FaFire />
-                <strong>{profile?.training_streak ?? 0}</strong>
+        <section className="cs-dashboard-primary-grid">
+          <article className="cs-dashboard-momentum-card">
+            <div className="cs-dashboard-momentum-top">
+              <div>
+                <span className="cs-card-label">YOUR MOMENTUM</span>
+                <h2>Keep showing up.</h2>
               </div>
-              <p>days in a row</p>
+
+              <div className="cs-dashboard-level-pill">
+                <FiZap />
+                Level {playerLevel}
+              </div>
             </div>
-            <div>
-              <span>Personal best</span>
-              <strong>{profile?.best_training_streak ?? 0} days</strong>
+
+            <div className="cs-dashboard-momentum-numbers">
+              <div className="cs-dashboard-streak-summary">
+                <span className="cs-dashboard-streak-icon">
+                  <FaFire />
+                </span>
+
+                <div>
+                  <strong>{profile?.training_streak ?? 0}</strong>
+                  <span>day streak</span>
+                </div>
+              </div>
+
+              <div className="cs-dashboard-best-summary">
+                <small>PERSONAL BEST</small>
+                <strong>
+                  {profile?.best_training_streak ?? 0} days
+                </strong>
+              </div>
+            </div>
+
+            <div className="cs-dashboard-weekly-compact">
+              <div>
+                <span>This week</span>
+
+                <strong>
+                  {weeklyWorkouts} of {weeklyGoal} sessions
+                </strong>
+              </div>
+
+              <div className="cs-dashboard-weekly-track">
+                <span style={{ width: `${weeklyProgress}%` }} />
+              </div>
+
+              <small>
+                {workoutsRemaining === 0
+                  ? 'Weekly goal complete. Keep the momentum going.'
+                  : `${workoutsRemaining} more to reach your weekly goal.`}
+              </small>
             </div>
           </article>
 
-          <article className="cs-pro-workout-card cs-pro-choose-training-card">
-  <div>
-    <span className="cs-card-label">CHOOSE YOUR TRAINING</span>
+          <article className="cs-dashboard-training-card">
+            <div className="cs-dashboard-training-icon">
+              <FiActivity />
+            </div>
 
-    <h2>What do you want to get better at today?</h2>
+            <div>
+              <span className="cs-card-label">AVAILABLE NOW</span>
+              <h2>Ball Handling</h2>
+              <p>
+                Choose your focus, follow the drill, and put in the
+                reps.
+              </p>
+            </div>
 
-    <p>
-      Pick a ball-handling drill that matches what you want to
-      work on. Every legitimate session moves your game forward.
-    </p>
-  </div>
+            <div className="cs-dashboard-training-tags">
+              <span>
+                <FiTarget /> Multiple levels
+              </span>
 
-  <div className="cs-pro-workout-meta">
-    <span><FiActivity /> Ball Handling</span>
-    <span><FiTarget /> Multiple Levels</span>
-    <span><FiZap /> Earn XP</span>
-  </div>
+              <span>
+                <FiZap /> Earn XP
+              </span>
+            </div>
 
-  <button type="button" onClick={() => navigate('/workout')}>
-    <FiPlay /> Explore Ball-Handling Drills
-  </button>
+            <button type="button" onClick={() => navigate('/workout')}>
+              Explore Drills
+              <FiPlay />
+            </button>
 
-  <div className="cs-pro-training-coming-soon">
-    <span>COMING NEXT</span>
-    <strong>Shooting + Finishing</strong>
-  </div>
-</article>
+            <small>Shooting and finishing coming next</small>
+          </article>
         </section>
-<section className="cs-pro-xp-card">
-  <div className="cs-pro-xp-header">
-    <div>
-      <span className="cs-card-label">PLAYER XP</span>
-      <h2>Level {playerLevel}</h2>
-      <p>Every legitimate rep moves you forward.</p>
-    </div>
 
-    <div className="cs-pro-xp-total">
-      <span>TOTAL XP</span>
-      <strong>{totalXp.toLocaleString()}</strong>
-    </div>
-  </div>
+        <section className="cs-dashboard-progress-card">
+          <div className="cs-dashboard-progress-heading">
+            <div>
+              <span className="cs-card-label">YOUR PROGRESS</span>
+              <h2>Level {playerLevel}</h2>
+            </div>
 
-  <div className="cs-pro-xp-progress-heading">
-    <span>
-      {xpIntoLevel} / {xpPerLevel} XP
-    </span>
+            <div>
+              <strong>{totalXp.toLocaleString()}</strong>
+              <span>Total XP</span>
+            </div>
+          </div>
 
-    <strong>
-      {xpToNextLevel} XP to Level {playerLevel + 1}
-    </strong>
-  </div>
+          <div className="cs-dashboard-xp-row">
+            <div className="cs-dashboard-xp-copy">
+              <span>
+                {xpIntoLevel} / {xpPerLevel} XP
+              </span>
 
-  <div className="cs-pro-xp-progress-track">
-    <div style={{ width: `${xpProgress}%` }} />
-  </div>
-  <div className="cs-pro-today-xp">
-  <div className="cs-pro-today-xp-main">
-    <span>TODAY&apos;S XP</span>
-    <strong>+{todayXp}</strong>
-  </div>
+              <strong>
+                {xpToNextLevel} XP to Level {playerLevel + 1}
+              </strong>
+            </div>
 
-  <div className="cs-pro-today-xp-breakdown">
-    <div className="cs-pro-today-xp-breakdown">
-  <span>
-    Training
-    <strong>+{todayTrainingXp}</strong>
-  </span>
+            <div className="cs-dashboard-xp-track">
+              <span style={{ width: `${xpProgress}%` }} />
+            </div>
+          </div>
 
-  <span>
-    Bonus Challenge
-    <strong>+{todayChallengeXp}</strong>
-  </span>
-</div>
+          <div className="cs-dashboard-today-row">
+            <span>Today</span>
 
-    <span>
-      Achievements
-      <strong>+{todayAchievementXp}</strong>
-    </span>
-  </div>
-</div>
-</section>
-        <section className="cs-pro-stat-grid">
+            <strong>+{todayXp} XP</strong>
+
+            <small>
+              Training +{todayTrainingXp}
+              <i>•</i>
+              Challenge +{todayChallengeXp}
+              <i>•</i>
+              Achievements +{todayAchievementXp}
+            </small>
+          </div>
+        </section>
+
+        <section className="cs-dashboard-quick-stats">
           <article>
             <FiActivity />
-            <div>
+            <span>
               <strong>{workoutsCompleted}</strong>
-              <span>Workouts completed</span>
-            </div>
+              Training sessions
+            </span>
           </article>
+
           <article>
             <FiTrendingUp />
-            <div>
+            <span>
               <strong>{weeklyWorkouts}</strong>
-              <span>Workouts this week</span>
-            </div>
+              This week
+            </span>
           </article>
+
           <article>
             <FiAward />
-            <div>
+            <span>
               <strong>{badgesEarned}</strong>
-              <span>Achievements earned</span>
-            </div>
+              Achievements
+            </span>
           </article>
+
           <article>
             <FiUsers />
-            <div>
+            <span>
               <strong>{trainingCirclesCount}</strong>
-              <span>Training Circles</span>
-            </div>
+              Training Circles
+            </span>
           </article>
         </section>
 
-        <section className="cs-pro-dashboard-grid">
-          <article className="cs-pro-panel cs-pro-weekly-panel">
-            <div className="cs-pro-panel-heading">
-              <div>
-                <span className="cs-card-label">WEEKLY PROGRESS</span>
-                <h2>Your consistency</h2>
-              </div>
-              <FiBarChart2 />
-            </div>
-
-            <div className="cs-pro-progress-summary">
-              <strong>{weeklyWorkouts} of {weeklyGoal}</strong>
-              <span>weekly workouts completed</span>
-            </div>
-
-            <div className="cs-pro-progress-track">
-              <div style={{ width: `${weeklyProgress}%` }} />
-            </div>
-
-            <p>
-              {workoutsRemaining === 0
-                ? 'Weekly goal complete. Keep building momentum.'
-                : `${workoutsRemaining} workout${workoutsRemaining === 1 ? '' : 's'} remaining to reach your weekly goal.`}
-            </p>
-          </article>
-
-          <article className="cs-pro-panel cs-pro-circles-panel">
-            <div className="cs-pro-panel-heading">
+        <section className="cs-dashboard-lower-grid">
+          <article className="cs-dashboard-community-card">
+            <div className="cs-dashboard-section-heading">
               <div>
                 <span className="cs-card-label">TRAINING CIRCLES</span>
-                <h2>Train together. Get better.</h2>
+                <h2>Better together.</h2>
               </div>
+
               <FiUsers />
             </div>
 
-            <div className="cs-pro-empty-state">
-              <FiUsers />
-              <h3>You&apos;re not in any circles yet</h3>
-              <p>Create a circle or join with an invite code to train with friends, teammates, or family.</p>
-              <button type="button" onClick={() => navigate('/training-circles')}>
-                Create or Join a Circle
-              </button>
-            </div>
+            {circlesLoading ? (
+  <div className="cs-dashboard-circle-loading">
+    Loading your Training Circles...
+  </div>
+) : featuredCircle ? (
+  <div className="cs-dashboard-circle-preview">
+    <button
+      type="button"
+      className="cs-dashboard-circle-preview-main"
+      onClick={() =>
+        navigate(`/training-circles/${featuredCircle.id}`)
+      }
+    >
+      <div className="cs-dashboard-circle-avatar">
+        <FiUsers />
+      </div>
+
+      <div className="cs-dashboard-circle-details">
+        <span>
+          {(featuredCircle.circle_type || 'Training Circle').toUpperCase()}
+          {featuredCircle.is_private ? ' • PRIVATE' : ' • OPEN'}
+        </span>
+
+        <strong>{featuredCircle.name}</strong>
+
+        <small>
+          {featuredCircle.membershipRole === 'owner'
+            ? 'You created this Circle'
+            : 'You are a member'}
+        </small>
+      </div>
+
+      <div className="cs-dashboard-circle-enter">
+        <span>ENTER</span>
+        <FiArrowRight />
+      </div>
+    </button>
+
+    <div className="cs-dashboard-circle-preview-footer">
+      <span>
+        <FiTarget />
+        Weekly goal: {featuredCircle.weekly_workout_goal ?? 20}
+      </span>
+
+      <span>
+        <FiUsers />
+        {trainingCirclesCount}{' '}
+        {trainingCirclesCount === 1 ? 'Circle' : 'Circles'}
+      </span>
+    </div>
+
+    {trainingCirclesCount > 1 ? (
+      <button
+        type="button"
+        className="cs-dashboard-view-all-circles"
+        onClick={() => navigate('/training-circles')}
+      >
+        View all {trainingCirclesCount} Training Circles
+      </button>
+    ) : null}
+  </div>
+) : (
+  <div className="cs-dashboard-community-empty">
+    <div>
+      <strong>Build your circle</strong>
+
+      <p>
+        Train with friends, teammates, coaches, or family.
+      </p>
+    </div>
+
+    <button
+      type="button"
+      onClick={() => navigate('/training-circles')}
+    >
+      Create or Join
+      <FiUsers />
+    </button>
+  </div>
+)}
           </article>
 
-          <article className="cs-pro-panel cs-pro-achievements-panel">
-            <div className="cs-pro-panel-heading">
+          <article className="cs-dashboard-achievement-card">
+            <div className="cs-dashboard-section-heading">
               <div>
                 <span className="cs-card-label">ACHIEVEMENTS</span>
-                <h2>Earn. Improve. Unlock.</h2>
+                <h2>Your next milestone.</h2>
               </div>
-              <button type="button" onClick={() => handleComingSoon('Achievements')}>View all</button>
+
+              <button
+                type="button"
+                onClick={() => navigate('/trophies')}
+              >
+                View all
+              </button>
             </div>
 
-            <div className="cs-pro-achievement-grid">
-              {achievements.map((achievement) => (
+            <div className="cs-dashboard-featured-achievements">
+              {[
+                ...achievements
+                  .filter((achievement) => !achievement.unlocked)
+                  .slice(0, 1),
+                ...achievements
+                  .filter((achievement) => achievement.unlocked)
+                  .slice(-1),
+              ].map((achievement) => (
                 <article
                   key={achievement.key}
-                  className={achievement.unlocked ? 'unlocked' : 'locked'}
+                  className={
+                    achievement.unlocked ? 'unlocked' : 'in-progress'
+                  }
                 >
-                  <div className="cs-pro-achievement-icon">{achievement.icon}</div>
-                  <div>
-                    <strong>{achievement.name}</strong>
-                    <p>{achievement.description}</p>
+                  <div className="cs-dashboard-achievement-icon">
+                    {achievement.icon}
                   </div>
-                  <div className="cs-pro-achievement-progress-row">
-                    <span>{Math.min(achievement.currentValue, achievement.target)} / {achievement.target}</span>
-                    <div className="cs-pro-mini-progress">
-                      <div style={{ width: `${achievement.progress}%` }} />
+
+                  <div className="cs-dashboard-achievement-copy">
+                    <span>
+                      {achievement.unlocked
+                        ? 'UNLOCKED'
+                        : 'IN PROGRESS'}
+                    </span>
+
+                    <strong>{achievement.name}</strong>
+                    <small>{achievement.description}</small>
+
+                    <div>
+                      <span
+                        style={{ width: `${achievement.progress}%` }}
+                      />
                     </div>
                   </div>
+
+                  <strong>
+                    {Math.min(
+                      achievement.currentValue,
+                      achievement.target
+                    )}{' '}
+                    / {achievement.target}
+                  </strong>
                 </article>
               ))}
-            </div>
-          </article>
-
-          <article className="cs-pro-panel cs-pro-leaderboard-panel">
-            <div className="cs-pro-panel-heading">
-              <div>
-                <span className="cs-card-label">FRIENDS LEADERBOARD</span>
-                <h2>This week</h2>
-              </div>
-              <FiTrendingUp />
-            </div>
-
-            <div className="cs-pro-empty-state">
-              <FiAward />
-              <h3>Leaderboard coming soon</h3>
-              <p>Join a Training Circle to compare weekly progress with friends and teammates.</p>
-              <button type="button" onClick={() => navigate('/training-circles')}>
-                Join or Create a Circle
-              </button>
             </div>
           </article>
         </section>
