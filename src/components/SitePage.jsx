@@ -8,8 +8,13 @@ export default function SitePage({
   intro,
   primaryLabel = 'Create Account',
   primaryHref = '/courtstreak-site/#join',
-  secondaryLabel,
+    secondaryLabel,
   secondaryHref,
+  finalEyebrow = 'Start Your Development Plan',
+  finalTitle = 'More structure. More accountability. More purposeful training.',
+  finalText = 'Create your CourtStreak account and begin building a development plan designed around your goals.',
+  finalButtonLabel = 'Create Account',
+  finalButtonHref = '/courtstreak-site/#join',
   children,
 }) {
   return (
@@ -34,18 +39,16 @@ export default function SitePage({
       {children}
 
       <section className="site-page-final">
-        <div>
-          <p className="eyebrow">Start Your Development Plan</p>
-          <h2>More structure. More accountability. More purposeful training.</h2>
-          <p>
-            Create your CourtStreak account and begin building a development plan
-            designed around your goals.
-          </p>
-        </div>
-        <a className="site-primary-button" href="/courtstreak-site/#join">
-          Create Account
-        </a>
-      </section>
+  <div>
+    <p className="eyebrow">{finalEyebrow}</p>
+    <h2>{finalTitle}</h2>
+    <p>{finalText}</p>
+  </div>
+
+  <a className="site-primary-button" href={finalButtonHref}>
+    {finalButtonLabel}
+  </a>
+</section>
 
       <Footer />
     </main>

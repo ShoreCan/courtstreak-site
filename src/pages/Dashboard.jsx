@@ -59,7 +59,10 @@ export default function Dashboard() {
   const [profile, setProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileError, setProfileError] = useState('');
-
+const [todayXp, setTodayXp] = useState(0);
+const [todayTrainingXp, setTodayTrainingXp] = useState(0);
+const [todayChallengeXp, setTodayChallengeXp] = useState(0);
+const [todayAchievementXp, setTodayAchievementXp] = useState(0);
   useEffect(() => {
     let isMounted = true;
 
@@ -79,7 +82,36 @@ export default function Dashboard() {
         navigate('/login');
         return;
       }
+      const {
+  data: hasActiveMembership,
+  error: membershipError,
+} = await supabase.rpc('has_active_courtstreak_membership');
 
+if (membershipError) {
+  console.error('Could not verify CourtStreak membership:', membershipError);
+
+  if (isMounted) {
+    setProfileError('CourtStreak could not verify your membership.');
+    setProfileLoading(false);
+  }
+
+  return;
+}
+
+if (!hasActiveMembership) {
+  navigate('/pricing?checkout=membership', { replace: true });
+  return;
+}
+const { error: streakRefreshError } = await supabase.rpc(
+  'refresh_training_streak'
+);
+
+if (streakRefreshError) {
+  console.error(
+    'Could not refresh training streak:',
+    streakRefreshError
+  );
+}
       const { data, error } = await supabase
         .from('profiles')
         .select(
@@ -91,13 +123,30 @@ export default function Dashboard() {
       if (!isMounted) return;
 
       if (error) {
-        console.error(error);
-        setProfileError('CourtStreak could not load your profile.');
-      } else {
-        setProfile(data);
-      }
+  console.error(error);
+  setProfileError('CourtStreak could not load your profile.');
+} else {
+  setProfile(data);
+}
 
-      setProfileLoading(false);
+/* Load the player's legitimate XP earned today */
+const {
+  data: todayXpData,
+  error: todayXpError,
+} = await supabase.rpc('get_today_xp');
+
+if (todayXpError) {
+  console.error('Could not load today XP:', todayXpError);
+} else {
+  const todayReward = todayXpData?.[0];
+
+  setTodayTrainingXp(todayReward?.training_xp ?? 0);
+  setTodayChallengeXp(todayReward?.challenge_xp ?? 0);
+  setTodayAchievementXp(todayReward?.achievement_xp ?? 0);
+  setTodayXp(todayReward?.total_today_xp ?? 0);
+}
+
+setProfileLoading(false);
     }
 
     loadProfile();
@@ -128,7 +177,16 @@ export default function Dashboard() {
   const weeklyProgress = Math.min((weeklyWorkouts / weeklyGoal) * 100, 100);
   const workoutsRemaining = Math.max(weeklyGoal - weeklyWorkouts, 0);
   const trainingCirclesCount = 0;
+const totalXp = profile?.xp ?? 0;
+const playerLevel = profile?.level ?? 1;
 
+const xpPerLevel = 100;
+const xpIntoLevel = totalXp % xpPerLevel;
+const xpToNextLevel = xpPerLevel - xpIntoLevel;
+const xpProgress = Math.min(
+  (xpIntoLevel / xpPerLevel) * 100,
+  100
+);
   async function handleLogout() {
     if (supabase) {
       await supabase.auth.signOut();
@@ -142,16 +200,63 @@ export default function Dashboard() {
   }
 
   const navigationItems = [
-    { label: 'Dashboard', icon: <FiHome />, active: true, action: () => {} },
-    { label: 'Workouts', icon: <FiPlay />, action: () => navigate('/workout') },
-    { label: 'Drills', icon: <FiGrid />, action: () => handleComingSoon('Drills') },
-    { label: 'Challenges', icon: <FiTarget />, action: () => handleComingSoon('Challenges') },
-    { label: 'Progress', icon: <FiBarChart2 />, action: () => handleComingSoon('Progress') },
-    { label: 'Achievements', icon: <FiAward />, action: () => handleComingSoon('Achievements') },
-    { label: 'Training Circles', icon: <FiUsers />, action: () => handleComingSoon('Training Circles') },
-    { label: 'Profile', icon: <FiUser />, action: () => handleComingSoon('Profile') },
-    { label: 'Settings', icon: <FiSettings />, action: () => handleComingSoon('Settings') },
-  ];
+  {
+    label: 'Dashboard',
+    icon: <FiHome />,
+    active: true,
+    action: () => {},
+  },
+  {
+    label: 'Training',
+    icon: <FiPlay />,
+    soon: true,
+    action: () => handleComingSoon('Training'),
+  },
+  {
+    label: 'Drill Library',
+    icon: <FiGrid />,
+    soon: true,
+    action: () => handleComingSoon('Drill Library'),
+  },
+  {
+    label: 'Challenges',
+    icon: <FiTarget />,
+    soon: true,
+    action: () => handleComingSoon('Challenges'),
+  },
+  {
+    label: 'Progress',
+    icon: <FiBarChart2 />,
+    action: () => navigate('/progress'),
+  },
+  {
+    label: 'Achievements',
+    icon: <FiAward />,
+    soon: true,
+    action: () => handleComingSoon('Achievements'),
+  },
+  {
+  label: 'Training Circles',
+  icon: <FiUsers />,
+  action: () => navigate('/training-circles'),
+},
+    {
+    label: 'Profile',
+    icon: <FiUser />,
+    action: () => navigate('/profile'),
+  },
+  {
+  label: 'Membership',
+  icon: <FiSettings />,
+  action: () => navigate('/membership'),
+},
+  {
+    label: 'Settings',
+    icon: <FiSettings />,
+    soon: true,
+    action: () => handleComingSoon('Settings'),
+  },
+];
 
   return (
     <main className="cs-pro-dashboard-page">
@@ -173,7 +278,7 @@ export default function Dashboard() {
             >
               {item.icon}
               <span>{item.label}</span>
-              {!item.active && item.label !== 'Workouts' ? <small>Soon</small> : null}
+             {item.soon ? <small>Soon</small> : null}
             </button>
           ))}
         </nav>
@@ -200,7 +305,10 @@ export default function Dashboard() {
                 ? 'Loading your dashboard...'
                 : `Welcome back, ${profile?.first_name || 'Player'}.`}
             </h1>
-            <p>Build your handle one focused session at a time.</p>
+            <p>
+  What do you want to get better at today? Choose a skill,
+  put in the reps, and keep building your game.
+</p>
           </div>
 
           <div className="cs-pro-topbar-actions">
@@ -208,8 +316,8 @@ export default function Dashboard() {
               <FiClock /> Today&apos;s Training
             </span>
             <button type="button" onClick={() => navigate('/workout')}>
-              <FiPlay /> Start Workout
-            </button>
+  <FiPlay /> Explore Drills
+</button>
           </div>
         </header>
 
@@ -231,23 +339,87 @@ export default function Dashboard() {
             </div>
           </article>
 
-          <article className="cs-pro-workout-card">
-            <div>
-              <span className="cs-card-label">TODAY&apos;S WORKOUT</span>
-              <h2>Guard Skill Builder</h2>
-              <p>Ball handling, control, rhythm, and footwork.</p>
-            </div>
-            <div className="cs-pro-workout-meta">
-              <span><FiClock /> 35 min</span>
-              <span><FiActivity /> 6 drills</span>
-              <span><FiTarget /> Intermediate</span>
-            </div>
-            <button type="button" onClick={() => navigate('/workout')}>
-              <FiPlay /> Start Today&apos;s Workout
-            </button>
-          </article>
-        </section>
+          <article className="cs-pro-workout-card cs-pro-choose-training-card">
+  <div>
+    <span className="cs-card-label">CHOOSE YOUR TRAINING</span>
 
+    <h2>What do you want to get better at today?</h2>
+
+    <p>
+      Pick a ball-handling drill that matches what you want to
+      work on. Every legitimate session moves your game forward.
+    </p>
+  </div>
+
+  <div className="cs-pro-workout-meta">
+    <span><FiActivity /> Ball Handling</span>
+    <span><FiTarget /> Multiple Levels</span>
+    <span><FiZap /> Earn XP</span>
+  </div>
+
+  <button type="button" onClick={() => navigate('/workout')}>
+    <FiPlay /> Explore Ball-Handling Drills
+  </button>
+
+  <div className="cs-pro-training-coming-soon">
+    <span>COMING NEXT</span>
+    <strong>Shooting + Finishing</strong>
+  </div>
+</article>
+        </section>
+<section className="cs-pro-xp-card">
+  <div className="cs-pro-xp-header">
+    <div>
+      <span className="cs-card-label">PLAYER XP</span>
+      <h2>Level {playerLevel}</h2>
+      <p>Every legitimate rep moves you forward.</p>
+    </div>
+
+    <div className="cs-pro-xp-total">
+      <span>TOTAL XP</span>
+      <strong>{totalXp.toLocaleString()}</strong>
+    </div>
+  </div>
+
+  <div className="cs-pro-xp-progress-heading">
+    <span>
+      {xpIntoLevel} / {xpPerLevel} XP
+    </span>
+
+    <strong>
+      {xpToNextLevel} XP to Level {playerLevel + 1}
+    </strong>
+  </div>
+
+  <div className="cs-pro-xp-progress-track">
+    <div style={{ width: `${xpProgress}%` }} />
+  </div>
+  <div className="cs-pro-today-xp">
+  <div className="cs-pro-today-xp-main">
+    <span>TODAY&apos;S XP</span>
+    <strong>+{todayXp}</strong>
+  </div>
+
+  <div className="cs-pro-today-xp-breakdown">
+    <div className="cs-pro-today-xp-breakdown">
+  <span>
+    Training
+    <strong>+{todayTrainingXp}</strong>
+  </span>
+
+  <span>
+    Bonus Challenge
+    <strong>+{todayChallengeXp}</strong>
+  </span>
+</div>
+
+    <span>
+      Achievements
+      <strong>+{todayAchievementXp}</strong>
+    </span>
+  </div>
+</div>
+</section>
         <section className="cs-pro-stat-grid">
           <article>
             <FiActivity />
@@ -318,7 +490,7 @@ export default function Dashboard() {
               <FiUsers />
               <h3>You&apos;re not in any circles yet</h3>
               <p>Create a circle or join with an invite code to train with friends, teammates, or family.</p>
-              <button type="button" onClick={() => handleComingSoon('Training Circles')}>
+              <button type="button" onClick={() => navigate('/training-circles')}>
                 Create or Join a Circle
               </button>
             </div>
@@ -368,7 +540,7 @@ export default function Dashboard() {
               <FiAward />
               <h3>Leaderboard coming soon</h3>
               <p>Join a Training Circle to compare weekly progress with friends and teammates.</p>
-              <button type="button" onClick={() => handleComingSoon('Training Circles')}>
+              <button type="button" onClick={() => navigate('/training-circles')}>
                 Join or Create a Circle
               </button>
             </div>

@@ -7,7 +7,10 @@ const faqs = [
   ['What are Training Circles?', 'Training Circles are private groups like Friends, Family, Trainer, AAU Team, or High School Team. Players can choose who sees their workouts and challenges.'],
   ['Can parents follow progress?', 'Yes. Parents can be invited into a player’s circle to see consistency, completed workouts, streaks, and progress without everything being public.'],
   ['Is CourtStreak a mobile app?', 'CourtStreak starts as a mobile-friendly website, so players can access it from any phone with a link. A dedicated app can come later.'],
-  ['How much does it cost?', 'The planned membership is $49.99 per month and includes daily workouts, challenges, streaks, leaderboards, and future updates.'],
+  [
+  'How much does CourtStreak cost?',
+  'CourtStreak membership is $29.99 per month and includes access to the training library, guided drills, XP progression, streaks, challenges, progress tracking, and future training updates.',
+],
 ];
 
 export default function FAQ() {

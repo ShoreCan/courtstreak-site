@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient.js';
 
 export default function Login() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+const inviteCode = searchParams.get('invite');
+const checkoutType = searchParams.get('checkout');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -32,7 +35,27 @@ export default function Login() {
       return;
     }
 
-    navigate('/dashboard');
+   if (inviteCode) {
+  navigate(`/training-circles/join/${encodeURIComponent(inviteCode)}`);
+  return;
+}
+
+const {
+  data: hasActiveMembership,
+  error: membershipError,
+} = await supabase.rpc('has_active_courtstreak_membership');
+
+if (membershipError) {
+  console.error('Could not verify CourtStreak membership:', membershipError);
+  setError('Could not verify your CourtStreak membership. Please try again.');
+  return;
+}
+
+if (hasActiveMembership) {
+  navigate('/dashboard');
+} else {
+  navigate('/pricing?checkout=membership');
+}
   }
 
   return (
@@ -93,7 +116,18 @@ export default function Login() {
         </form>
 
         <p className="cs-auth-login">
-          Need an account? <Link to="/create-account">Create one</Link>
+         Need an account?{' '}
+<Link
+  to={
+    inviteCode
+      ? `/create-account?invite=${encodeURIComponent(inviteCode)}`
+      : checkoutType === 'membership'
+        ? '/create-account?checkout=membership'
+        : '/create-account'
+  }
+>
+  Create one
+</Link>
         </p>
       </section>
     </main>
