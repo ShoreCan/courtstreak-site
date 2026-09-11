@@ -13,7 +13,10 @@ import {
 
 export default function ProgressCommunity() {
   return (
-    <section className="section cs-progress-community">
+ <section
+  id="community"
+  className="section cs-progress-community"
+>
       <div className="cs-progress-community-glow" />
 
       <div className="cs-progress-community-heading">

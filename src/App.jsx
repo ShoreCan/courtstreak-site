@@ -7,6 +7,8 @@ import Parents from './pages/Parents.jsx';
 import Coaches from './pages/Coaches.jsx';
 import Reviews from './pages/Reviews.jsx';
 import FAQPage from './pages/FAQPage.jsx';
+import WhatsIncludedPage from './pages/WhatsIncludedPage.jsx';
+import ContactPage from './pages/ContactPage.jsx';
 import PricingPage from './pages/PricingPage.jsx';
 import About from './pages/About.jsx';
 import CreateAccount from './pages/CreateAccount.jsx';
@@ -17,6 +19,7 @@ import Workout from './pages/Workout.jsx';
 import Profile from './pages/Profile.jsx';
 import Membership from './pages/Membership.jsx';
 import TrophyCase from './pages/TrophyCase.jsx';
+import Settings from './pages/Settings.jsx';
 import Progress from './pages/Progress.jsx';
 import TrainingCircles from './pages/TrainingCircles.jsx';
 import TrainingCircleDetail from './pages/TrainingCircleDetail.jsx';
@@ -32,6 +35,15 @@ export default function App() {
       <Route path="/coaches" element={<Coaches />} />
       <Route path="/reviews" element={<Reviews />} />
       <Route path="/faq" element={<FAQPage />} />
+      <Route
+  path="/whats-included"
+  element={<WhatsIncludedPage />}
+/>
+
+<Route
+  path="/contact"
+  element={<ContactPage />}
+/>
       <Route path="/pricing" element={<PricingPage />} />
       <Route path="/about" element={<About />} />
       <Route path="/create-account" element={<CreateAccount />} />
@@ -43,6 +55,14 @@ export default function App() {
   element={
     <RequireMembership>
       <Dashboard />
+    </RequireMembership>
+  }
+/>
+<Route
+  path="/settings"
+  element={
+    <RequireMembership>
+      <Settings />
     </RequireMembership>
   }
 />

@@ -7,7 +7,7 @@ const menus = [
     title: 'Membership',
     links: [
       ['Pricing', '/courtstreak-site/pricing'],
-      ['What’s Included', `${HOME}#included`],
+     ['What’s Included', '/courtstreak-site/whats-included'],
       ['Create Account', `${HOME}#join`],
       ['FAQ', '/courtstreak-site/faq'],
     ],
@@ -19,7 +19,7 @@ const menus = [
       ['Parents', '/courtstreak-site/parents'],
       ['Coaches', '/courtstreak-site/coaches'],
       ['AAU Teams', '/courtstreak-site/coaches'],
-      ['Training Circles', `${HOME}#challenge`],
+      ['Training Circles', `${HOME}#community`],
     ],
   },
   {
@@ -36,13 +36,13 @@ const menus = [
     links: [
       ['FAQ', '/courtstreak-site/faq'],
       ['Reviews', '/courtstreak-site/reviews'],
-      ['Contact', `${HOME}#contact`],
+     ['Contact', '/courtstreak-site/contact'],
     ],
   },
   {
     title: 'Company',
     links: [
-      ['Mission', `${HOME}#mission`],
+      ['Mission', '/courtstreak-site/about'],
       ['Reviews', '/courtstreak-site/reviews'],
       ['Founder Story', '/courtstreak-site/about'],
     ],

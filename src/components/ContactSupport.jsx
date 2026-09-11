@@ -37,7 +37,7 @@ export default function ContactSupport() {
           <p>
             Send questions, report bugs, or explain what you need help with.
           </p>
-          <a href="mailto:tredd2@g.emporia.edu?subject=CourtStreak Support Request">
+          <a href="mailto:courtstreaksupport@gmail.com?subject=CourtStreak Support Request">
             Email Support
           </a>
         </div>
@@ -49,7 +49,7 @@ export default function ContactSupport() {
             Parents, coaches, or trainers can request a time to talk through bigger questions,
             team setup, or feedback.
           </p>
-          <a href="mailto:tredd2@g.emporia.edu?subject=CourtStreak Meeting Request">
+          <a href="mailto:courtstreaksupport@gmail.com?subject=CourtStreak Meeting Request">
             Schedule a Meeting
           </a>
         </div>

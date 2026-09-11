@@ -19138,4 +19138,1083 @@ section {
   .court-phone-challenge {
     padding: 10px;
   }
+}/* =========================================================
+   COURTSTREAK — PREMIUM PUBLIC INFORMATION PAGES
+   ========================================================= */
+
+/* ---------- WHAT'S INCLUDED ---------- */
+
+main > .included-section {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 650px;
+  margin-top: 34px;
+  margin-bottom: 70px;
+  padding: 86px 56px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 38px;
+  color: #ffffff;
+  background:
+    radial-gradient(
+      circle at 10% 15%,
+      rgba(249, 115, 22, 0.2),
+      transparent 30%
+    ),
+    radial-gradient(
+      circle at 90% 90%,
+      rgba(249, 115, 22, 0.1),
+      transparent 28%
+    ),
+    linear-gradient(
+      145deg,
+      #020617 0%,
+      #0f172a 52%,
+      #111827 100%
+    );
+  box-shadow: 0 35px 90px rgba(15, 23, 42, 0.22);
+}
+
+main > .included-section::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.2;
+  background-image:
+    linear-gradient(
+      rgba(255, 255, 255, 0.04) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.04) 1px,
+      transparent 1px
+    );
+  background-size: 55px 55px;
+}
+
+.included-section > div:first-child {
+  position: relative;
+  z-index: 2;
+}
+
+.included-section > div:first-child .eyebrow {
+  color: #fb923c;
+  letter-spacing: 0.14em;
+}
+
+.included-section > div:first-child h2 {
+  max-width: 500px;
+  color: #ffffff;
+  font-size: clamp(42px, 5vw, 65px);
+}
+
+.included-section > div:first-child > p:last-child {
+  max-width: 510px;
+  color: #94a3b8;
+  font-size: 16px;
+}
+
+.included-grid {
+  position: relative;
+  z-index: 2;
+}
+
+.included-item {
+  min-height: 66px;
+  color: #ffffff;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.075),
+      rgba(255, 255, 255, 0.03)
+    );
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 18px 45px rgba(0, 0, 0, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+
+.included-item:hover {
+  transform: translateY(-3px);
+  border-color: rgba(249, 115, 22, 0.35);
+  background: rgba(249, 115, 22, 0.09);
+}
+
+.included-item svg {
+  color: #fb923c;
+}
+
+
+/* ---------- CONTACT + SUPPORT ---------- */
+
+main > .contact-section {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  margin-top: 34px;
+  margin-bottom: 70px;
+  padding: 86px 56px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 38px;
+  background:
+    radial-gradient(
+      circle at 85% 10%,
+      rgba(249, 115, 22, 0.18),
+      transparent 27%
+    ),
+    radial-gradient(
+      circle at 5% 90%,
+      rgba(15, 23, 42, 0.08),
+      transparent 30%
+    ),
+    linear-gradient(
+      145deg,
+      #f8fafc 0%,
+      #fff7ed 48%,
+      #ffffff 100%
+    );
+  box-shadow: 0 35px 90px rgba(15, 23, 42, 0.13);
+}
+
+main > .contact-section::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: 520px;
+  height: 520px;
+  top: -270px;
+  right: -180px;
+  border-radius: 50%;
+  border: 1px solid rgba(249, 115, 22, 0.14);
+  box-shadow:
+    0 0 0 65px rgba(249, 115, 22, 0.035),
+    0 0 0 130px rgba(249, 115, 22, 0.02);
+}
+
+.contact-section .section-heading {
+  max-width: 760px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.contact-section .section-heading .eyebrow {
+  color: #ea580c;
+  letter-spacing: 0.14em;
+}
+
+.contact-section .section-heading h2 {
+  color: #0f172a;
+  font-size: clamp(42px, 5vw, 65px);
+}
+
+.contact-section .section-heading > p:last-child {
+  color: #64748b;
+  font-size: 16px;
+}
+
+.contact-section .support-card-grid {
+  margin-top: 46px;
+  gap: 18px;
+}
+
+.contact-section .support-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 195px;
+  padding: 27px;
+  border-color: rgba(148, 163, 184, 0.18);
+  box-shadow: 0 22px 55px rgba(15, 23, 42, 0.08);
+  transition:
+    transform 0.22s ease,
+    border-color 0.22s ease,
+    box-shadow 0.22s ease;
+}
+
+.contact-section .support-card::after {
+  content: "";
+  position: absolute;
+  width: 115px;
+  height: 115px;
+  right: -50px;
+  bottom: -65px;
+  border-radius: 50%;
+  background: rgba(249, 115, 22, 0.07);
+}
+
+.contact-section .support-card:hover {
+  transform: translateY(-5px);
+  border-color: rgba(249, 115, 22, 0.3);
+  box-shadow: 0 28px 65px rgba(15, 23, 42, 0.12);
+}
+
+.contact-section .support-card svg {
+  padding: 11px;
+  width: 49px;
+  height: 49px;
+  border-radius: 15px;
+  color: #ea580c;
+  background: rgba(249, 115, 22, 0.09);
+  border: 1px solid rgba(249, 115, 22, 0.15);
+}
+
+.contact-section .support-card h3 {
+  color: #0f172a;
+  font-size: 22px;
+}
+
+.contact-section .support-card p {
+  color: #64748b;
+}
+
+.contact-section .contact-action-grid {
+  margin-top: 22px;
+  gap: 18px;
+}
+
+.contact-section .contact-action-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 285px;
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+}
+
+.contact-section .contact-action-card.dark {
+  background:
+    radial-gradient(
+      circle at 90% 15%,
+      rgba(249, 115, 22, 0.18),
+      transparent 32%
+    ),
+    linear-gradient(145deg, #0f172a, #020617);
+}
+
+.contact-section .contact-action-card.light {
+  background: rgba(255, 255, 255, 0.88);
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+.contact-section .contact-action-card a {
+  margin-top: auto;
+  border-radius: 13px;
+  box-shadow: 0 14px 30px rgba(234, 88, 12, 0.2);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.contact-section .contact-action-card a:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 19px 38px rgba(234, 88, 12, 0.27);
+}
+
+
+/* ---------- INFORMATION PAGE MOBILE ---------- */
+
+@media (max-width: 860px) {
+  main > .included-section,
+  main > .contact-section {
+    width: calc(100% - 28px);
+    margin-top: 18px;
+    margin-bottom: 45px;
+    padding: 65px 24px;
+    border-radius: 28px;
+  }
+
+  .included-section {
+    grid-template-columns: 1fr;
+  }
+
+  .included-grid,
+  .contact-section .support-card-grid,
+  .contact-section .contact-action-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 520px) {
+  main > .included-section,
+  main > .contact-section {
+    padding: 52px 18px;
+    border-radius: 24px;
+  }
+
+  .included-section > div:first-child h2,
+  .contact-section .section-heading h2 {
+    font-size: clamp(36px, 11vw, 48px);
+  }
+
+  .included-item {
+    min-height: 60px;
+    padding: 14px;
+  }
+
+  .contact-section .support-card,
+  .contact-section .contact-action-card {
+    padding: 22px;
+    border-radius: 23px;
+  }
+}/* =========================================================
+   COURTSTREAK SETTINGS
+   ========================================================= */
+
+.cs-settings-page {
+  min-height: 100vh;
+  color: #f8fafc;
+  background:
+    radial-gradient(circle at 85% 5%, rgba(249, 115, 22, 0.12), transparent 28rem),
+    linear-gradient(135deg, #020817 0%, #080d1b 52%, #0b0c15 100%);
+}
+
+.cs-settings-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  min-height: 82px;
+  padding: 0 4%;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+  background: rgba(3, 8, 22, 0.88);
+  backdrop-filter: blur(18px);
+}
+
+.cs-settings-topbar > button {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 9px;
+  border: 0;
+  color: #aebbd1;
+  background: transparent;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.cs-settings-topbar > button:hover {
+  color: #ffffff;
+}
+
+.cs-settings-brand {
+  color: #ffffff;
+  font-size: 1.15rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+}
+
+.cs-settings-brand strong {
+  color: #ff6b0b;
+}
+
+.cs-settings-topbar-label {
+  display: inline-flex;
+  align-items: center;
+  justify-self: end;
+  gap: 8px;
+  color: #9daac0;
+  font-size: 0.84rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.cs-settings-layout {
+  display: grid;
+  grid-template-columns: 270px minmax(0, 850px);
+  gap: 54px;
+  width: min(1180px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 64px 0 90px;
+}
+
+.cs-settings-sidebar {
+  position: sticky;
+  top: 115px;
+  align-self: start;
+  padding: 25px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 24px;
+  background: rgba(12, 19, 35, 0.8);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.2);
+}
+
+.cs-settings-sidebar-heading {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.cs-settings-sidebar-heading > span,
+.cs-settings-card-icon {
+  display: grid;
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid rgba(249, 115, 22, 0.35);
+  border-radius: 13px;
+  color: #ff7a1a;
+  background: rgba(249, 115, 22, 0.1);
+}
+
+.cs-settings-sidebar-heading small,
+.cs-settings-card-heading small {
+  display: block;
+  margin-bottom: 4px;
+  color: #ff7a1a;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+}
+
+.cs-settings-sidebar-heading strong {
+  color: #ffffff;
+  font-size: 0.98rem;
+}
+
+.cs-settings-sidebar nav {
+  display: grid;
+  gap: 6px;
+  margin: 19px 0;
+}
+
+.cs-settings-sidebar nav a {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 12px;
+  border-radius: 11px;
+  color: #aebbd1;
+  font-size: 0.9rem;
+  font-weight: 750;
+  text-decoration: none;
+  transition: 160ms ease;
+}
+
+.cs-settings-sidebar nav a:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.06);
+  transform: translateX(3px);
+}
+
+.cs-settings-sidebar > p {
+  margin: 0;
+  color: #718098;
+  font-size: 0.78rem;
+  line-height: 1.65;
+}
+
+.cs-settings-content {
+  min-width: 0;
+}
+
+.cs-settings-heading {
+  margin-bottom: 34px;
+}
+
+.cs-settings-heading > p {
+  margin: 0 0 10px;
+  color: #ff7417;
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+}
+
+.cs-settings-heading h1 {
+  max-width: 650px;
+  margin: 0;
+  color: #ffffff;
+  font-size: clamp(2.2rem, 5vw, 4.3rem);
+  line-height: 0.98;
+  letter-spacing: -0.055em;
+}
+
+.cs-settings-heading > span {
+  display: block;
+  max-width: 670px;
+  margin-top: 17px;
+  color: #8f9cb2;
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.cs-settings-message {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 22px;
+  padding: 15px 17px;
+  border-radius: 13px;
+  font-size: 0.88rem;
+  font-weight: 750;
+}
+
+.cs-settings-message.success {
+  border: 1px solid rgba(34, 197, 94, 0.28);
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.cs-settings-message.error {
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.cs-settings-loading {
+  padding: 60px 20px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 22px;
+  color: #94a3b8;
+  text-align: center;
+  background: rgba(12, 19, 35, 0.72);
+}
+
+.cs-settings-card {
+  scroll-margin-top: 115px;
+  margin-bottom: 22px;
+  padding: 29px;
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 23px;
+  background:
+    linear-gradient(145deg, rgba(17, 26, 46, 0.94), rgba(10, 15, 29, 0.94));
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.19);
+}
+
+.cs-settings-card-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  margin-bottom: 25px;
+}
+
+.cs-settings-card-heading h2 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 1.3rem;
+  letter-spacing: -0.025em;
+}
+
+.cs-settings-card-heading p {
+  margin: 7px 0 0;
+  color: #7f8da4;
+  font-size: 0.87rem;
+  line-height: 1.55;
+}
+
+.cs-settings-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 17px;
+}
+
+.cs-settings-field-grid label,
+.cs-settings-password-form label {
+  display: grid;
+  gap: 8px;
+}
+
+.cs-settings-field-grid label > span,
+.cs-settings-password-form label > span {
+  color: #c6d0df;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.cs-settings-field-grid select {
+  width: 100%;
+  min-height: 49px;
+  padding: 0 40px 0 14px;
+  border: 1px solid rgba(148, 163, 184, 0.17);
+  border-radius: 12px;
+  outline: none;
+  color: #ffffff;
+  background: #0b1222;
+  font: inherit;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.cs-settings-field-grid select:focus,
+.cs-settings-password-form label > div:focus-within {
+  border-color: rgba(249, 115, 22, 0.75);
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+}
+
+.cs-settings-toggle-row {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  min-height: 73px;
+  padding: 14px 16px;
+  border: 1px solid rgba(148, 163, 184, 0.13);
+  border-radius: 13px;
+  background: rgba(4, 10, 23, 0.52);
+}
+
+.cs-settings-toggle-row > span {
+  display: grid;
+  gap: 4px;
+}
+
+.cs-settings-toggle-row strong {
+  color: #f8fafc;
+  font-size: 0.88rem;
+}
+
+.cs-settings-toggle-row small {
+  color: #77869d;
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.cs-settings-toggle-row > button {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 76px;
+  padding: 6px 10px 6px 7px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 999px;
+  color: #94a3b8;
+  background: #141b2a;
+  cursor: pointer;
+}
+
+.cs-settings-toggle-row > button i {
+  display: block;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #68758a;
+  transition: 170ms ease;
+}
+
+.cs-settings-toggle-row > button span {
+  font-size: 0.71rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.cs-settings-toggle-row > button.active {
+  border-color: rgba(249, 115, 22, 0.42);
+  color: #ff8a34;
+  background: rgba(249, 115, 22, 0.12);
+}
+
+.cs-settings-toggle-row > button.active i {
+  background: #ff6b0b;
+  box-shadow: 0 0 15px rgba(249, 115, 22, 0.42);
+}
+
+.cs-settings-privacy-note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 17px;
+  padding: 13px 15px;
+  border-radius: 12px;
+  color: #8da0ba;
+  background: rgba(37, 99, 235, 0.08);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.cs-settings-privacy-note svg {
+  flex: 0 0 auto;
+  color: #60a5fa;
+}
+
+.cs-settings-save-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 25px;
+  margin: -4px 0 31px;
+}
+
+.cs-settings-save-row > span {
+  max-width: 390px;
+  color: #6f7d93;
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.cs-settings-save-row button,
+.cs-settings-password-form > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 47px;
+  padding: 0 19px;
+  border: 0;
+  border-radius: 12px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #ff7a16, #f25500);
+  box-shadow: 0 12px 30px rgba(242, 85, 0, 0.22);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.cs-settings-save-row button:hover,
+.cs-settings-password-form > button:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.06);
+}
+
+.cs-settings-save-row button:disabled,
+.cs-settings-password-form > button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.cs-settings-account-email {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin-bottom: 19px;
+  padding: 15px 16px;
+  border: 1px solid rgba(148, 163, 184, 0.13);
+  border-radius: 13px;
+  background: rgba(4, 10, 23, 0.52);
+}
+
+.cs-settings-account-email > svg {
+  color: #ff7a1a;
+}
+
+.cs-settings-account-email > span {
+  display: grid;
+  gap: 3px;
+}
+
+.cs-settings-account-email small {
+  color: #6f7d94;
+  font-size: 0.65rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.cs-settings-account-email strong {
+  color: #f8fafc;
+  font-size: 0.88rem;
+  overflow-wrap: anywhere;
+}
+
+.cs-settings-password-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 13px;
+  margin-bottom: 23px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.cs-settings-password-form label > div {
+  display: flex;
+  align-items: center;
+  min-height: 49px;
+  padding: 0 13px;
+  border: 1px solid rgba(148, 163, 184, 0.17);
+  border-radius: 12px;
+  color: #77869d;
+  background: #0b1222;
+}
+
+.cs-settings-password-form input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  padding: 0 11px;
+  color: #ffffff;
+  background: transparent;
+  font: inherit;
+  font-size: 0.88rem;
+}
+
+.cs-settings-password-form input::placeholder {
+  color: #59677c;
+}
+
+.cs-settings-password-form label button {
+  display: grid;
+  border: 0;
+  padding: 3px;
+  place-items: center;
+  color: #8190a7;
+  background: transparent;
+  cursor: pointer;
+}
+
+.cs-settings-link-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 17px 4px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+  color: inherit;
+  text-decoration: none;
+}
+
+.cs-settings-link-row:last-child {
+  border-bottom: 0;
+}
+
+.cs-settings-link-row > span {
+  display: grid;
+  gap: 5px;
+}
+
+.cs-settings-link-row strong {
+  color: #f2f5fa;
+  font-size: 0.88rem;
+}
+
+.cs-settings-link-row small {
+  color: #718097;
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.cs-settings-link-row > svg {
+  flex: 0 0 auto;
+  color: #68778e;
+  transition: 160ms ease;
+}
+
+.cs-settings-link-row:hover > svg {
+  color: #ff7a1a;
+  transform: translateX(3px);
+}
+
+.cs-settings-link-row.danger strong {
+  color: #fca5a5;
+}
+
+.cs-settings-logout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 49px;
+  border: 1px solid rgba(248, 113, 113, 0.22);
+  border-radius: 13px;
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.07);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.cs-settings-logout:hover {
+  border-color: rgba(248, 113, 113, 0.38);
+  background: rgba(239, 68, 68, 0.12);
+}
+
+@media (max-width: 900px) {
+  .cs-settings-layout {
+    grid-template-columns: 1fr;
+    gap: 29px;
+    width: min(720px, calc(100% - 32px));
+    padding-top: 38px;
+  }
+
+  .cs-settings-sidebar {
+    position: static;
+  }
+
+  .cs-settings-sidebar nav {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .cs-settings-sidebar nav a {
+    justify-content: center;
+    padding: 10px 6px;
+    font-size: 0.75rem;
+  }
+
+  .cs-settings-sidebar > p {
+    display: none;
+  }
+}
+
+@media (max-width: 620px) {
+  .cs-settings-topbar {
+    grid-template-columns: 1fr auto;
+    min-height: 70px;
+    padding: 0 16px;
+  }
+
+  .cs-settings-brand {
+    justify-self: end;
+    font-size: 0.98rem;
+  }
+
+  .cs-settings-topbar-label {
+    display: none;
+  }
+
+  .cs-settings-layout {
+    width: min(100% - 24px, 560px);
+    padding: 26px 0 60px;
+  }
+
+  .cs-settings-sidebar {
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .cs-settings-sidebar-heading {
+    padding-bottom: 15px;
+  }
+
+  .cs-settings-sidebar nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-bottom: 0;
+  }
+
+  .cs-settings-heading {
+    margin-bottom: 25px;
+  }
+
+  .cs-settings-heading h1 {
+    font-size: clamp(2.15rem, 12vw, 3.15rem);
+  }
+
+  .cs-settings-heading > span {
+    font-size: 0.9rem;
+  }
+
+  .cs-settings-card {
+    padding: 20px 16px;
+    border-radius: 18px;
+  }
+
+  .cs-settings-card-heading {
+    gap: 12px;
+  }
+
+  .cs-settings-field-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cs-settings-toggle-row {
+    grid-column: auto;
+  }
+
+  .cs-settings-save-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .cs-settings-save-row button {
+    width: 100%;
+  }
+
+  .cs-settings-password-form {
+    grid-template-columns: 1fr;
+  }
+
+  .cs-settings-password-form > button {
+    width: 100%;
+  }
+
+  .cs-settings-link-row {
+    padding: 16px 1px;
+  }
+}/* SETTINGS SAVE CONFIRMATION */
+
+.cs-settings-message {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  right: auto;
+  z-index: 100;
+  width: min(520px, calc(100% - 32px));
+  min-height: 100px;
+  margin: 0;
+  padding: 24px 28px;
+  justify-content: center;
+  border-radius: 20px;
+  font-size: 1rem;
+  line-height: 1.5;
+  text-align: center;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(18px);
+  transform: translate(-50%, -50%);
+  animation: csSettingsMessageCentered 260ms ease both;
+}
+
+.cs-settings-message svg {
+  flex: 0 0 auto;
+  width: 25px;
+  height: 25px;
+}
+
+.cs-settings-message.success {
+  border: 1px solid rgba(74, 222, 128, 0.48);
+  color: #bbf7d0;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(8, 55, 35, 0.98),
+      rgba(5, 37, 27, 0.98)
+    );
+}
+
+.cs-settings-message.error {
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  color: #fecaca;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(70, 18, 25, 0.98),
+      rgba(45, 12, 19, 0.98)
+    );
+}
+
+@keyframes csSettingsMessageCentered {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -46%) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@media (max-width: 620px) {
+  .cs-settings-message {
+    top: 50%;
+    left: 50%;
+    right: auto;
+    width: calc(100% - 32px);
+    min-height: 92px;
+    padding: 21px 18px;
+    font-size: 0.92rem;
+  }
 }

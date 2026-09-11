@@ -251,11 +251,10 @@ const xpProgress = Math.min(
   action: () => navigate('/membership'),
 },
   {
-    label: 'Settings',
-    icon: <FiSettings />,
-    soon: true,
-    action: () => handleComingSoon('Settings'),
-  },
+  label: 'Settings',
+  icon: <FiSettings />,
+  action: () => navigate('/settings'),
+},
 ];
 
   return (
