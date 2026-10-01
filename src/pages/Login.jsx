@@ -108,6 +108,10 @@ if (hasActiveMembership) {
             />
           </label>
 
+          <div style={{ textAlign: 'right', marginTop: '-6px', marginBottom: '16px' }}>
+            <Link to="/forgot-password">Forgot password?</Link>
+          </div>
+
           {error && <div className="cs-auth-message cs-auth-error">{error}</div>}
 
           <button type="submit" disabled={loading}>

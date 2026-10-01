@@ -13,12 +13,15 @@ import PricingPage from './pages/PricingPage.jsx';
 import About from './pages/About.jsx';
 import CreateAccount from './pages/CreateAccount.jsx';
 import Login from './pages/Login.jsx';
+import ForgotPassword from './pages/ForgotPassword.jsx';
+import ResetPassword from './pages/ResetPassword.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Welcome from './pages/Welcome.jsx';
 import Workout from './pages/Workout.jsx';
 import Profile from './pages/Profile.jsx';
 import Membership from './pages/Membership.jsx';
 import TrophyCase from './pages/TrophyCase.jsx';
+import TrophyCollection from './pages/TrophyCollection.jsx';
 import Settings from './pages/Settings.jsx';
 import Progress from './pages/Progress.jsx';
 import TrainingCircles from './pages/TrainingCircles.jsx';
@@ -48,6 +51,8 @@ export default function App() {
       <Route path="/about" element={<About />} />
       <Route path="/create-account" element={<CreateAccount />} />
 <Route path="/login" element={<Login />} />
+<Route path="/forgot-password" element={<ForgotPassword />} />
+<Route path="/reset-password" element={<ResetPassword />} />
 <Route path="/welcome" element={<Welcome />} />
 
 <Route
@@ -116,6 +121,14 @@ export default function App() {
   element={
     <RequireMembership>
       <TrophyCase />
+    </RequireMembership>
+  }
+/>
+<Route
+  path="/trophies/collection"
+  element={
+    <RequireMembership>
+      <TrophyCollection />
     </RequireMembership>
   }
 />

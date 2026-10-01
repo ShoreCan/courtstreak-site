@@ -4,8 +4,22 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App.jsx';
 import './styles.css';
 
+const courtstreakRedirect = sessionStorage.getItem('courtstreakRedirect');
+
+if (courtstreakRedirect) {
+  sessionStorage.removeItem('courtstreakRedirect');
+
+  window.history.replaceState(
+    null,
+    '',
+    '/courtstreak-site' + courtstreakRedirect
+  );
+}
+
 createRoot(document.getElementById('root')).render(
-  <BrowserRouter basename="/courtstreak-site">
-    <App />
-  </BrowserRouter>
+  <React.StrictMode>
+    <BrowserRouter basename="/courtstreak-site">
+      <App />
+    </BrowserRouter>
+  </React.StrictMode>
 );
