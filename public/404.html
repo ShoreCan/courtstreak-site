@@ -4,15 +4,17 @@
   <meta charset="utf-8">
   <title>CourtStreak</title>
   <script>
-    var path = window.location.pathname;
     var base = '/courtstreak-site';
+    var path = window.location.pathname;
 
     if (path.indexOf(base) === 0) {
-      var route = path.substring(base.length) || '/';
+      var route = path.slice(base.length);
+
       sessionStorage.setItem(
         'courtstreakRedirect',
         route + window.location.search + window.location.hash
       );
+
       window.location.replace(base + '/');
     }
   </script>
