@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient.js';
 
@@ -11,14 +11,66 @@ export default function ResetPassword() {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // checking | recovery | invalid
+  const [recoveryStatus, setRecoveryStatus] = useState('checking');
+
+  useEffect(() => {
+    if (!supabase) {
+      setRecoveryStatus('invalid');
+      return;
+    }
+
+    let active = true;
+    let recoveryDetected = false;
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!active) return;
+
+      if (event === 'PASSWORD_RECOVERY' && session) {
+        recoveryDetected = true;
+        setRecoveryStatus('recovery');
+      }
+    });
+
+    // Give Supabase time to process the recovery credentials
+    // contained in the URL before deciding the link is invalid.
+    const timer = window.setTimeout(async () => {
+      if (!active || recoveryDetected) return;
+
+      const { data, error: sessionError } =
+        await supabase.auth.getSession();
+
+      if (!active || recoveryDetected) return;
+
+      if (sessionError || !data.session) {
+        setRecoveryStatus('invalid');
+        return;
+      }
+
+      // A normal signed-in session is not enough to expose this page.
+      // The PASSWORD_RECOVERY event above is what unlocks the form.
+      setRecoveryStatus('invalid');
+    }, 1500);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+      subscription.unsubscribe();
+    };
+  }, []);
+
   async function handleSubmit(event) {
     event.preventDefault();
 
     setError('');
     setMessage('');
 
-    if (!supabase) {
-      setError('Supabase is not connected.');
+    if (!supabase || recoveryStatus !== 'recovery') {
+      setError(
+        'This password reset link is invalid or has expired. Please request a new one.'
+      );
       return;
     }
 
@@ -38,9 +90,8 @@ export default function ResetPassword() {
       password,
     });
 
-    setLoading(false);
-
     if (updateError) {
+      setLoading(false);
       setError(updateError.message);
       return;
     }
@@ -49,9 +100,71 @@ export default function ResetPassword() {
 
     await supabase.auth.signOut();
 
-    setTimeout(() => {
+    window.setTimeout(() => {
       navigate('/login', { replace: true });
     }, 1500);
+  }
+
+  if (recoveryStatus === 'checking') {
+    return (
+      <main className="cs-auth-page">
+        <section className="cs-auth-brand">
+          <Link className="cs-auth-logo" to="/">CourtStreak</Link>
+          <p className="cs-auth-eyebrow">ACCOUNT RECOVERY</p>
+          <h1>Checking your reset link.</h1>
+          <p className="cs-auth-intro">
+            One moment while CourtStreak verifies your password reset request.
+          </p>
+        </section>
+
+        <section className="cs-auth-card">
+          <p className="cs-auth-eyebrow">SECURE RESET</p>
+          <h2>Verifying link...</h2>
+          <p className="cs-auth-muted">
+            This should only take a moment.
+          </p>
+        </section>
+      </main>
+    );
+  }
+
+  if (recoveryStatus === 'invalid') {
+    return (
+      <main className="cs-auth-page">
+        <section className="cs-auth-brand">
+          <Link className="cs-auth-logo" to="/">CourtStreak</Link>
+          <p className="cs-auth-eyebrow">ACCOUNT RECOVERY</p>
+          <h1>Let's get you a new reset link.</h1>
+          <p className="cs-auth-intro">
+            For your security, password changes can only be made through
+            a valid CourtStreak recovery email.
+          </p>
+        </section>
+
+        <section className="cs-auth-card">
+          <p className="cs-auth-eyebrow">RESET LINK</p>
+          <h2>This link is invalid or expired.</h2>
+
+          <p className="cs-auth-muted">
+            Request a new password reset email and use the secure link
+            inside it.
+          </p>
+
+          <Link
+            to="/forgot-password"
+            style={{ textDecoration: 'none' }}
+          >
+            <button type="button">
+              Request New Reset Link
+            </button>
+          </Link>
+
+          <p className="cs-auth-login">
+            Remember your password? <Link to="/login">Back to Log In</Link>
+          </p>
+        </section>
+      </main>
+    );
   }
 
   return (
