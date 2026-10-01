@@ -134,8 +134,22 @@ export default function ResetPassword() {
         <section className="cs-auth-brand">
           <Link className="cs-auth-logo" to="/">CourtStreak</Link>
           <p className="cs-auth-eyebrow">ACCOUNT RECOVERY</p>
-          <h1>Let's get you a new reset link.</h1>
-          <p className="cs-auth-intro">
+          <h1 style={{
+            fontSize: 'clamp(42px, 5vw, 68px)',
+            lineHeight: '0.98',
+            maxWidth: '620px',
+            letterSpacing: '-0.04em'
+          }}>
+            Reset your password securely.
+          </h1>
+
+          <p
+            className="cs-auth-intro"
+            style={{
+              maxWidth: '540px',
+              lineHeight: '1.65'
+            }}
+          >
             For your security, password changes can only be made through
             a valid CourtStreak recovery email.
           </p>
@@ -143,9 +157,22 @@ export default function ResetPassword() {
 
         <section className="cs-auth-card">
           <p className="cs-auth-eyebrow">RESET LINK</p>
-          <h2>This link is invalid or expired.</h2>
+          <h2 style={{
+            fontSize: 'clamp(30px, 3vw, 42px)',
+            lineHeight: '1.05',
+            letterSpacing: '-0.03em',
+            maxWidth: '520px'
+          }}>
+            This link is invalid or expired.
+          </h2>
 
-          <p className="cs-auth-muted">
+          <p
+            className="cs-auth-muted"
+            style={{
+              maxWidth: '520px',
+              lineHeight: '1.6'
+            }}
+          >
             Request a new password reset email and use the secure link
             inside it.
           </p>
