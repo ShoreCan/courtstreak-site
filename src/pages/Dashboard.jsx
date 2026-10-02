@@ -5,7 +5,6 @@ import {
   FiArrowRight,
   FiAward,
   FiBarChart2,
-  FiClock,
   FiGrid,
   FiHome,
   FiLogOut,
@@ -57,19 +56,18 @@ const achievementDefinitions = [
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const [verifiedWeeklyWorkouts, setVerifiedWeeklyWorkouts] = useState(0);
   const [profile, setProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileError, setProfileError] = useState('');
   const [trainingCircles, setTrainingCircles] = useState([]);
-const [circlesLoading, setCirclesLoading] = useState(true);
-const [todayXp, setTodayXp] = useState(0);
-const [todayTrainingXp, setTodayTrainingXp] = useState(0);
-const [todayChallengeXp, setTodayChallengeXp] = useState(0);
-const [todayAchievementXp, setTodayAchievementXp] = useState(0);
+  const [circlesLoading, setCirclesLoading] = useState(true);
+  const [todayXp, setTodayXp] = useState(0);
+
   useEffect(() => {
     let isMounted = true;
 
-    async function loadProfile() {
+    async function loadDashboard() {
       if (!supabase) {
         setProfileError('CourtStreak could not connect to Supabase.');
         setCirclesLoading(false);
@@ -86,236 +84,215 @@ const [todayAchievementXp, setTodayAchievementXp] = useState(0);
         navigate('/login');
         return;
       }
-      const {
-  data: hasActiveMembership,
-  error: membershipError,
-} = await supabase.rpc('has_active_courtstreak_membership');
 
-if (membershipError) {
-  console.error('Could not verify CourtStreak membership:', membershipError);
+      const { data: hasMembership, error: membershipError } =
+        await supabase.rpc('has_active_courtstreak_membership');
 
-  if (isMounted) {
-    setProfileError('CourtStreak could not verify your membership.');
-    setProfileLoading(false);
-  }
+      if (membershipError) {
+        console.error('Could not verify membership:', membershipError);
+        if (isMounted) {
+          setProfileError('CourtStreak could not verify your membership.');
+          setProfileLoading(false);
+        }
+        return;
+      }
 
-  return;
-}
+      if (!hasMembership) {
+        navigate('/pricing?checkout=membership', { replace: true });
+        return;
+      }
 
-if (!hasActiveMembership) {
-  navigate('/pricing?checkout=membership', { replace: true });
-  return;
-}
-const { error: streakRefreshError } = await supabase.rpc(
-  'refresh_training_streak'
-);
+      const { error: streakError } = await supabase.rpc(
+        'refresh_training_streak'
+      );
 
-if (streakRefreshError) {
-  console.error(
-    'Could not refresh training streak:',
-    streakRefreshError
-  );
-}
-      const { data, error } = await supabase
-        .from('profiles')
-        .select(
-          'first_name, last_name, training_streak, best_training_streak, xp, level, workouts_completed, weekly_workouts, weekly_goal'
-        )
-        .eq('id', user.id)
-        .single();
+      if (streakError) {
+        console.error('Could not refresh training streak:', streakError);
+      }
+
+      const [profileResult, todayXpResult, weeklyResult, circlesResult] =
+        await Promise.all([
+          supabase
+            .from('profiles')
+            .select(
+              'first_name, last_name, training_streak, best_training_streak, xp, level, workouts_completed, weekly_workouts, weekly_goal'
+            )
+            .eq('id', user.id)
+            .single(),
+          supabase.rpc('get_today_xp'),
+          supabase
+            .from('workout_completions')
+            .select('id, completed_at')
+            .eq('user_id', user.id)
+            .gte(
+              'completed_at',
+              (() => {
+                const now = new Date();
+                const start = new Date(now);
+                const day = start.getDay();
+                const daysSinceMonday = (day + 6) % 7;
+                start.setDate(start.getDate() - daysSinceMonday);
+                start.setHours(0, 0, 0, 0);
+                return start.toISOString();
+              })()
+            ),
+          supabase
+            .from('training_circle_members')
+            .select(`
+              role,
+              joined_at,
+              training_circles (
+                id,
+                name,
+                circle_type,
+                owner_id,
+                is_private,
+                weekly_workout_goal
+              )
+            `)
+            .eq('user_id', user.id)
+            .order('joined_at', { ascending: false }),
+        ]);
 
       if (!isMounted) return;
 
-      if (error) {
-  console.error(error);
-  setProfileError('CourtStreak could not load your profile.');
-} else {
-  setProfile(data);
-}
+      if (profileResult.error) {
+        console.error(profileResult.error);
+        setProfileError('CourtStreak could not load your profile.');
+      } else {
+        setProfile(profileResult.data);
+      }
 
-/* Load the player's legitimate XP earned today */
-const {
-  data: todayXpData,
-  error: todayXpError,
-} = await supabase.rpc('get_today_xp');
+      if (todayXpResult.error) {
+        console.error('Could not load today XP:', todayXpResult.error);
+      } else {
+        setTodayXp(todayXpResult.data?.[0]?.total_today_xp ?? 0);
+      }
 
-if (todayXpError) {
-  console.error('Could not load today XP:', todayXpError);
-} else {
-  const todayReward = todayXpData?.[0];
+      if (weeklyResult.error) {
+        console.error(
+          'Could not load verified weekly workouts:',
+          weeklyResult.error
+        );
+        setVerifiedWeeklyWorkouts(0);
+      } else {
+        setVerifiedWeeklyWorkouts(weeklyResult.data?.length ?? 0);
+      }
 
-  setTodayTrainingXp(todayReward?.training_xp ?? 0);
-  setTodayChallengeXp(todayReward?.challenge_xp ?? 0);
-  setTodayAchievementXp(todayReward?.achievement_xp ?? 0);
-  setTodayXp(todayReward?.total_today_xp ?? 0);
-}
+      if (circlesResult.error) {
+        console.error(
+          'Could not load dashboard Training Circles:',
+          circlesResult.error
+        );
+      } else {
+        const circles = (circlesResult.data ?? [])
+          .map((membership) => ({
+            ...membership.training_circles,
+            membershipRole: membership.role,
+          }))
+          .filter((circle) => circle?.id);
 
-const {
-  data: circleMemberships,
-  error: circlesError,
-} = await supabase
-  .from('training_circle_members')
-  .select(`
-    role,
-    joined_at,
-    training_circles (
-      id,
-      name,
-      circle_type,
-      owner_id,
-      is_private,
-      weekly_workout_goal
-    )
-  `)
-  .eq('user_id', user.id)
-  .order('joined_at', { ascending: false });
+        setTrainingCircles(circles);
+      }
 
-if (!isMounted) return;
-
-if (circlesError) {
-  console.error(
-    'Could not load dashboard Training Circles:',
-    circlesError
-  );
-} else {
-  const loadedCircles = (circleMemberships ?? [])
-    .map((membership) => ({
-      ...membership.training_circles,
-      membershipRole: membership.role,
-    }))
-    .filter((circle) => circle?.id);
-
-  setTrainingCircles(loadedCircles);
-}
-
-setCirclesLoading(false);
-
-setProfileLoading(false);
+      setCirclesLoading(false);
+      setProfileLoading(false);
     }
 
-    loadProfile();
+    loadDashboard();
 
     return () => {
       isMounted = false;
     };
   }, [navigate]);
 
-  const achievements = useMemo(() => {
-    return achievementDefinitions.map((achievement) => {
-      const currentValue = achievement.current(profile);
-      const clampedValue = Math.min(currentValue, achievement.target);
+  const achievements = useMemo(
+    () =>
+      achievementDefinitions.map((achievement) => {
+        const currentValue = achievement.current(profile);
+        const completedValue = Math.min(currentValue, achievement.target);
 
-      return {
-        ...achievement,
-        currentValue,
-        progress: Math.round((clampedValue / achievement.target) * 100),
-        unlocked: currentValue >= achievement.target,
-      };
-    });
-  }, [profile]);
+        return {
+          ...achievement,
+          currentValue,
+          unlocked: currentValue >= achievement.target,
+          progress: Math.round(
+            (completedValue / achievement.target) * 100
+          ),
+        };
+      }),
+    [profile]
+  );
 
-  const badgesEarned = achievements.filter((achievement) => achievement.unlocked).length;
-  const workoutsCompleted = profile?.workouts_completed ?? 0;
-  const weeklyWorkouts = profile?.weekly_workouts ?? 0;
+  const nextAchievement =
+    achievements.find((achievement) => !achievement.unlocked) ||
+    achievements[achievements.length - 1];
+  const featuredCircle = trainingCircles[0] || null;
+  const totalXp = profile?.xp ?? 0;
+  const playerLevel = profile?.level ?? 1;
+  const weeklyWorkouts = verifiedWeeklyWorkouts;
   const weeklyGoal = Math.max(profile?.weekly_goal ?? 4, 1);
-  const weeklyProgress = Math.min((weeklyWorkouts / weeklyGoal) * 100, 100);
+  const weeklyProgress = Math.min(
+    (weeklyWorkouts / weeklyGoal) * 100,
+    100
+  );
   const workoutsRemaining = Math.max(weeklyGoal - weeklyWorkouts, 0);
-  const trainingCirclesCount = trainingCircles.length;
-const featuredCircle = trainingCircles[0] || null;
-const totalXp = profile?.xp ?? 0;
-const playerLevel = profile?.level ?? 1;
+  const xpIntoLevel = totalXp % 100;
+  const xpToNextLevel = xpIntoLevel === 0 ? 100 : 100 - xpIntoLevel;
 
-const xpPerLevel = 100;
-const xpIntoLevel = totalXp % xpPerLevel;
-const xpToNextLevel = xpPerLevel - xpIntoLevel;
-const xpProgress = Math.min(
-  (xpIntoLevel / xpPerLevel) * 100,
-  100
-);
+  const navigationItems = [
+    { label: 'Dashboard', icon: <FiHome />, active: true },
+    {
+      label: 'Start Training',
+      icon: <FiPlay />,
+      action: () => navigate('/workout'),
+    },
+    {
+      label: 'Progress',
+      icon: <FiBarChart2 />,
+      action: () => navigate('/progress'),
+    },
+    {
+      label: 'Achievements',
+      icon: <FiAward />,
+      action: () => navigate('/trophies'),
+    },
+    {
+      label: 'Training Circles',
+      icon: <FiUsers />,
+      action: () => navigate('/training-circles'),
+    },
+    {
+      label: 'Profile',
+      icon: <FiUser />,
+      action: () => navigate('/profile'),
+    },
+    {
+      label: 'Membership',
+      icon: <FiGrid />,
+      action: () => navigate('/membership'),
+    },
+    {
+      label: 'Settings',
+      icon: <FiSettings />,
+      action: () => navigate('/settings'),
+    },
+  ];
+
   async function handleLogout() {
-    if (supabase) {
-      await supabase.auth.signOut();
-    }
-
+    if (supabase) await supabase.auth.signOut();
     navigate('/login');
   }
 
-  function handleComingSoon(featureName) {
-    window.alert(`${featureName} is coming soon to CourtStreak.`);
-  }
-
-  const navigationItems = [
-  {
-    label: 'Dashboard',
-    icon: <FiHome />,
-    active: true,
-    action: () => {},
-  },
-  {
-    label: 'Training',
-    icon: <FiPlay />,
-    soon: true,
-    action: () => handleComingSoon('Training'),
-  },
-  {
-    label: 'Drill Library',
-    icon: <FiGrid />,
-    soon: true,
-    action: () => handleComingSoon('Drill Library'),
-  },
-  {
-    label: 'Challenges',
-    icon: <FiTarget />,
-    soon: true,
-    action: () => handleComingSoon('Challenges'),
-  },
-  {
-    label: 'Progress',
-    icon: <FiBarChart2 />,
-    action: () => navigate('/progress'),
-  },
-  {
-    label: 'Achievements',
-    icon: <FiAward />,
-    soon: true,
-    action: () => handleComingSoon('Achievements'),
-  },
-  {
-  label: 'Training Circles',
-  icon: <FiUsers />,
-  action: () => navigate('/training-circles'),
-},
-    {
-    label: 'Profile',
-    icon: <FiUser />,
-    action: () => navigate('/profile'),
-  },
-  {
-  label: 'Membership',
-  icon: <FiSettings />,
-  action: () => navigate('/membership'),
-},
-  {
-  label: 'Settings',
-  icon: <FiSettings />,
-  action: () => navigate('/settings'),
-},
-];
-
-    return (
-    <main className="cs-pro-dashboard-page cs-dashboard-redesign">
-      <aside className="cs-pro-sidebar">
-        <Link to="/" className="cs-pro-sidebar-logo">
-          <span className="cs-pro-logo-ball">◉</span>
-          <span>
-            COURT<strong>STREAK</strong>
-          </span>
+  return (
+    <main className="cs-dash-v3">
+      <aside className="cs-dash-v3-sidebar">
+        <Link to="/" className="cs-dash-v3-logo">
+          <span>CS</span>
+          <strong>CourtStreak</strong>
         </Link>
 
-        <nav
-          className="cs-pro-sidebar-nav"
-          aria-label="Dashboard navigation"
-        >
+        <nav aria-label="Player navigation">
           {navigationItems.map((item) => (
             <button
               key={item.label}
@@ -325,373 +302,207 @@ const xpProgress = Math.min(
             >
               {item.icon}
               <span>{item.label}</span>
-              {item.soon ? <small>Soon</small> : null}
             </button>
           ))}
         </nav>
 
-        <div className="cs-pro-sidebar-motivation">
-          <strong>
-            <FaFire /> Build your streak
-          </strong>
-          <p>Consistency today. Confidence tomorrow.</p>
-        </div>
-
         <button
           type="button"
-          className="cs-pro-sidebar-logout"
+          className="cs-dash-v3-logout"
           onClick={handleLogout}
         >
           <FiLogOut />
-          Log Out
+          <span>Log Out</span>
         </button>
       </aside>
 
-      <section className="cs-pro-dashboard-main cs-dashboard-main-redesign">
-        <header className="cs-dashboard-welcome">
+      <section className="cs-dash-v3-main">
+        <header className="cs-dash-v3-header">
           <div>
-            <p className="cs-card-label">PLAYER DASHBOARD</p>
-
+            <span className="cs-dash-v3-label">PLAYER DASHBOARD</span>
             <h1>
               {profileLoading
-                ? 'Loading...'
-                : `Welcome back, ${profile?.first_name || 'Player'}.`}
+                ? 'Loading your dashboard…'
+                : `Ready to work, ${profile?.first_name || 'Player'}?`}
             </h1>
-
-            <p>What are we getting better at today?</p>
           </div>
 
-          <button type="button" onClick={() => navigate('/workout')}>
-            <FiPlay />
-            Start Training
-          </button>
+          <div className="cs-dash-v3-header-stats">
+            <span><FaFire /> {profile?.training_streak ?? 0} days</span>
+            <span><FiZap /> Level {playerLevel}</span>
+          </div>
         </header>
 
         {profileError ? (
-          <div className="cs-pro-dashboard-error">{profileError}</div>
+          <div className="cs-dash-v3-error">{profileError}</div>
         ) : null}
 
-        <section className="cs-dashboard-primary-grid">
-          <article className="cs-dashboard-momentum-card">
-            <div className="cs-dashboard-momentum-top">
-              <div>
-                <span className="cs-card-label">YOUR MOMENTUM</span>
-                <h2>Keep showing up.</h2>
-              </div>
+        <section className="cs-dash-v3-layout">
+          <div className="cs-dash-v3-primary">
+            <article className="cs-dash-v3-training">
+              <div className="cs-dash-v3-training-copy">
+                <span className="cs-dash-v3-label">TODAY'S TRAINING</span>
+                <h2>Build your handle.</h2>
+                <p>
+                  Choose a ball-handling workout that matches your level
+                  and turn today's reps into progress.
+                </p>
 
-              <div className="cs-dashboard-level-pill">
-                <FiZap />
-                Level {playerLevel}
-              </div>
-            </div>
-
-            <div className="cs-dashboard-momentum-numbers">
-              <div className="cs-dashboard-streak-summary">
-                <span className="cs-dashboard-streak-icon">
-                  <FaFire />
-                </span>
-
-                <div>
-                  <strong>{profile?.training_streak ?? 0}</strong>
-                  <span>day streak</span>
+                <div className="cs-dash-v3-tags">
+                  <span><FiActivity /> Ball Handling</span>
+                  <span><FiTarget /> Multiple Levels</span>
+                  <span><FiZap /> Earn XP</span>
                 </div>
               </div>
 
-              <div className="cs-dashboard-best-summary">
-                <small>PERSONAL BEST</small>
-                <strong>
-                  {profile?.best_training_streak ?? 0} days
-                </strong>
-              </div>
-            </div>
-
-            <div className="cs-dashboard-weekly-compact">
-              <div>
-                <span>This week</span>
-
-                <strong>
-                  {weeklyWorkouts} of {weeklyGoal} sessions
-                </strong>
-              </div>
-
-              <div className="cs-dashboard-weekly-track">
-                <span style={{ width: `${weeklyProgress}%` }} />
-              </div>
-
-              <small>
-                {workoutsRemaining === 0
-                  ? 'Weekly goal complete. Keep the momentum going.'
-                  : `${workoutsRemaining} more to reach your weekly goal.`}
-              </small>
-            </div>
-          </article>
-
-          <article className="cs-dashboard-training-card">
-            <div className="cs-dashboard-training-icon">
-              <FiActivity />
-            </div>
-
-            <div>
-              <span className="cs-card-label">AVAILABLE NOW</span>
-              <h2>Ball Handling</h2>
-              <p>
-                Choose your focus, follow the drill, and put in the
-                reps.
-              </p>
-            </div>
-
-            <div className="cs-dashboard-training-tags">
-              <span>
-                <FiTarget /> Multiple levels
-              </span>
-
-              <span>
-                <FiZap /> Earn XP
-              </span>
-            </div>
-
-            <button type="button" onClick={() => navigate('/workout')}>
-              Explore Drills
-              <FiPlay />
-            </button>
-
-            <small>Shooting and finishing coming next</small>
-          </article>
-        </section>
-
-        <section className="cs-dashboard-progress-card">
-          <div className="cs-dashboard-progress-heading">
-            <div>
-              <span className="cs-card-label">YOUR PROGRESS</span>
-              <h2>Level {playerLevel}</h2>
-            </div>
-
-            <div>
-              <strong>{totalXp.toLocaleString()}</strong>
-              <span>Total XP</span>
-            </div>
-          </div>
-
-          <div className="cs-dashboard-xp-row">
-            <div className="cs-dashboard-xp-copy">
-              <span>
-                {xpIntoLevel} / {xpPerLevel} XP
-              </span>
-
-              <strong>
-                {xpToNextLevel} XP to Level {playerLevel + 1}
-              </strong>
-            </div>
-
-            <div className="cs-dashboard-xp-track">
-              <span style={{ width: `${xpProgress}%` }} />
-            </div>
-          </div>
-
-          <div className="cs-dashboard-today-row">
-            <span>Today</span>
-
-            <strong>+{todayXp} XP</strong>
-
-            <small>
-              Training +{todayTrainingXp}
-              <i>•</i>
-              Challenge +{todayChallengeXp}
-              <i>•</i>
-              Achievements +{todayAchievementXp}
-            </small>
-          </div>
-        </section>
-
-        <section className="cs-dashboard-quick-stats">
-          <article>
-            <FiActivity />
-            <span>
-              <strong>{workoutsCompleted}</strong>
-              Training sessions
-            </span>
-          </article>
-
-          <article>
-            <FiTrendingUp />
-            <span>
-              <strong>{weeklyWorkouts}</strong>
-              This week
-            </span>
-          </article>
-
-          <article>
-            <FiAward />
-            <span>
-              <strong>{badgesEarned}</strong>
-              Achievements
-            </span>
-          </article>
-
-          <article>
-            <FiUsers />
-            <span>
-              <strong>{trainingCirclesCount}</strong>
-              Training Circles
-            </span>
-          </article>
-        </section>
-
-        <section className="cs-dashboard-lower-grid">
-          <article className="cs-dashboard-community-card">
-            <div className="cs-dashboard-section-heading">
-              <div>
-                <span className="cs-card-label">TRAINING CIRCLES</span>
-                <h2>Better together.</h2>
-              </div>
-
-              <FiUsers />
-            </div>
-
-            {circlesLoading ? (
-  <div className="cs-dashboard-circle-loading">
-    Loading your Training Circles...
-  </div>
-) : featuredCircle ? (
-  <div className="cs-dashboard-circle-preview">
-    <button
-      type="button"
-      className="cs-dashboard-circle-preview-main"
-      onClick={() =>
-        navigate(`/training-circles/${featuredCircle.id}`)
-      }
-    >
-      <div className="cs-dashboard-circle-avatar">
-        <FiUsers />
-      </div>
-
-      <div className="cs-dashboard-circle-details">
-        <span>
-          {(featuredCircle.circle_type || 'Training Circle').toUpperCase()}
-          {featuredCircle.is_private ? ' • PRIVATE' : ' • OPEN'}
-        </span>
-
-        <strong>{featuredCircle.name}</strong>
-
-        <small>
-          {featuredCircle.membershipRole === 'owner'
-            ? 'You created this Circle'
-            : 'You are a member'}
-        </small>
-      </div>
-
-      <div className="cs-dashboard-circle-enter">
-        <span>ENTER</span>
-        <FiArrowRight />
-      </div>
-    </button>
-
-    <div className="cs-dashboard-circle-preview-footer">
-      <span>
-        <FiTarget />
-        Weekly goal: {featuredCircle.weekly_workout_goal ?? 20}
-      </span>
-
-      <span>
-        <FiUsers />
-        {trainingCirclesCount}{' '}
-        {trainingCirclesCount === 1 ? 'Circle' : 'Circles'}
-      </span>
-    </div>
-
-    {trainingCirclesCount > 1 ? (
-      <button
-        type="button"
-        className="cs-dashboard-view-all-circles"
-        onClick={() => navigate('/training-circles')}
-      >
-        View all {trainingCirclesCount} Training Circles
-      </button>
-    ) : null}
-  </div>
-) : (
-  <div className="cs-dashboard-community-empty">
-    <div>
-      <strong>Build your circle</strong>
-
-      <p>
-        Train with friends, teammates, coaches, or family.
-      </p>
-    </div>
-
-    <button
-      type="button"
-      onClick={() => navigate('/training-circles')}
-    >
-      Create or Join
-      <FiUsers />
-    </button>
-  </div>
-)}
-          </article>
-
-          <article className="cs-dashboard-achievement-card">
-            <div className="cs-dashboard-section-heading">
-              <div>
-                <span className="cs-card-label">ACHIEVEMENTS</span>
-                <h2>Your next milestone.</h2>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => navigate('/trophies')}
-              >
-                View all
+              <button type="button" onClick={() => navigate('/workout')}>
+                <span><FiPlay /> Start Workout</span>
+                <FiArrowRight />
               </button>
-            </div>
+            </article>
 
-            <div className="cs-dashboard-featured-achievements">
-              {[
-                ...achievements
-                  .filter((achievement) => !achievement.unlocked)
-                  .slice(0, 1),
-                ...achievements
-                  .filter((achievement) => achievement.unlocked)
-                  .slice(-1),
-              ].map((achievement) => (
-                <article
-                  key={achievement.key}
-                  className={
-                    achievement.unlocked ? 'unlocked' : 'in-progress'
+            <article className="cs-dash-v3-week">
+              <div className="cs-dash-v3-section-head">
+                <div>
+                  <span className="cs-dash-v3-label">WEEKLY MOMENTUM</span>
+                  <h2>Your consistency</h2>
+                </div>
+                <button type="button" onClick={() => navigate('/progress')}>
+                  Full progress <FiArrowRight />
+                </button>
+              </div>
+
+              <div className="cs-dash-v3-week-content">
+                <div className="cs-dash-v3-week-score">
+                  <strong>{weeklyWorkouts}</strong>
+                  <span>of {weeklyGoal} workouts</span>
+                </div>
+
+                <div className="cs-dash-v3-week-progress">
+                  <div>
+                    <span style={{ width: `${weeklyProgress}%` }} />
+                  </div>
+                  <p>
+                    {workoutsRemaining === 0
+                      ? 'Weekly goal complete. Keep the streak alive.'
+                      : `${workoutsRemaining} workout${
+                          workoutsRemaining === 1 ? '' : 's'
+                        } left this week.`}
+                  </p>
+                </div>
+
+                <div className="cs-dash-v3-today-xp">
+                  <span>TODAY</span>
+                  <strong>+{todayXp} XP</strong>
+                </div>
+              </div>
+            </article>
+          </div>
+
+          <div className="cs-dash-v3-secondary">
+            <article className="cs-dash-v3-player-card">
+              <div className="cs-dash-v3-player-top">
+                <div className="cs-dash-v3-level-ring">
+                  <span>LEVEL</span>
+                  <strong>{playerLevel}</strong>
+                </div>
+                <div>
+                  <span className="cs-dash-v3-label">PLAYER PROGRESS</span>
+                  <strong>{totalXp.toLocaleString()} XP</strong>
+                  <small>{xpToNextLevel} XP to Level {playerLevel + 1}</small>
+                </div>
+              </div>
+
+              <div className="cs-dash-v3-xp-track">
+                <span style={{ width: `${xpIntoLevel}%` }} />
+              </div>
+
+              <div className="cs-dash-v3-player-meta">
+                <span>
+                  <strong>{profile?.workouts_completed ?? 0}</strong>
+                  Workouts
+                </span>
+                <span>
+                  <strong>{profile?.best_training_streak ?? 0}</strong>
+                  Best streak
+                </span>
+              </div>
+            </article>
+
+            <article className="cs-dash-v3-circle-card">
+              <div className="cs-dash-v3-section-head">
+                <div>
+                  <span className="cs-dash-v3-label">TRAINING CIRCLE</span>
+                  <h2>Your crew</h2>
+                </div>
+                <FiUsers />
+              </div>
+
+              {circlesLoading ? (
+                <p className="cs-dash-v3-muted">Loading your Circle…</p>
+              ) : featuredCircle ? (
+                <button
+                  type="button"
+                  className="cs-dash-v3-circle-preview"
+                  onClick={() =>
+                    navigate(`/training-circles/${featuredCircle.id}`)
                   }
                 >
-                  <div className="cs-dashboard-achievement-icon">
-                    {achievement.icon}
-                  </div>
+                  <span className="cs-dash-v3-circle-icon"><FiUsers /></span>
+                  <span>
+                    <small>
+                      {(featuredCircle.circle_type || 'Circle').toUpperCase()}
+                      {featuredCircle.is_private ? ' · PRIVATE' : ' · OPEN'}
+                    </small>
+                    <strong>{featuredCircle.name}</strong>
+                    <em>
+                      Weekly goal: {featuredCircle.weekly_workout_goal ?? 20}
+                    </em>
+                  </span>
+                  <FiArrowRight />
+                </button>
+              ) : (
+                <div className="cs-dash-v3-circle-empty">
+                  <p>Train with the people who push you.</p>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/training-circles')}
+                  >
+                    Create or Join <FiArrowRight />
+                  </button>
+                </div>
+              )}
 
-                  <div className="cs-dashboard-achievement-copy">
-                    <span>
-                      {achievement.unlocked
-                        ? 'UNLOCKED'
-                        : 'IN PROGRESS'}
-                    </span>
+              {trainingCircles.length > 1 ? (
+                <button
+                  type="button"
+                  className="cs-dash-v3-text-button"
+                  onClick={() => navigate('/training-circles')}
+                >
+                  View all {trainingCircles.length} Circles
+                </button>
+              ) : null}
+            </article>
 
-                    <strong>{achievement.name}</strong>
-                    <small>{achievement.description}</small>
-
-                    <div>
-                      <span
-                        style={{ width: `${achievement.progress}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  <strong>
-                    {Math.min(
-                      achievement.currentValue,
-                      achievement.target
-                    )}{' '}
-                    / {achievement.target}
-                  </strong>
-                </article>
-              ))}
-            </div>
-          </article>
+            <article className="cs-dash-v3-achievement">
+              <div className="cs-dash-v3-achievement-icon">
+                {nextAchievement.icon}
+              </div>
+              <div>
+                <span className="cs-dash-v3-label">
+                  {nextAchievement.unlocked ? 'LATEST WIN' : 'NEXT MILESTONE'}
+                </span>
+                <strong>{nextAchievement.name}</strong>
+                <small>{nextAchievement.description}</small>
+                <div className="cs-dash-v3-achievement-track">
+                  <span style={{ width: `${nextAchievement.progress}%` }} />
+                </div>
+              </div>
+              <button type="button" onClick={() => navigate('/trophies')}>
+                <FiArrowRight />
+              </button>
+            </article>
+          </div>
         </section>
       </section>
     </main>
