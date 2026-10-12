@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient.js';
+import CircleCompetitionHub from '../components/CircleCompetitionHub.jsx';
 import {
   ArrowLeft,
   Check,
@@ -12,7 +13,6 @@ import {
   Flame,
   LogOut,
   Mail,
-  Medal,
   MessageCircle,
   Palette,
   Save,
@@ -86,16 +86,15 @@ function getLocalDateKey(value) {
 
 export default function TrainingCircleDetail() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { circleId } = useParams();
+  const challengeDraft = location.state?.challengeDraft ?? null;
 
   const [currentUserId, setCurrentUserId] = useState('');
   const [circle, setCircle] = useState(null);
   const [members, setMembers] = useState([]);
   const [activity, setActivity] = useState([]);
-  const [weeklyXpByUser, setWeeklyXpByUser] = useState({});
   const [weeklyStats, setWeeklyStats] = useState({ workouts: 0, xp: 0 });
-  const [circleStreak, setCircleStreak] = useState(0);
-  const [leaderboardType, setLeaderboardType] = useState('weekly');
   const [loading, setLoading] = useState(true);
   const [pageError, setPageError] = useState('');
 
@@ -140,19 +139,6 @@ export default function TrainingCircleDetail() {
   const SelectedBadge =
     badgeOptions.find((badge) => badge.key === circle?.badge_key)?.Icon ||
     CircleDot;
-
-  const rankedMembers = useMemo(() => {
-    return members
-      .map((member) => ({
-        ...member,
-        displayXp:
-          leaderboardType === 'weekly'
-            ? weeklyXpByUser[member.userId] ?? 0
-            : member.xp,
-      }))
-      .sort((a, b) => b.displayXp - a.displayXp)
-      .map((member, index) => ({ ...member, rank: index + 1 }));
-  }, [members, leaderboardType, weeklyXpByUser]);
 
   const weeklyActivityChart = useMemo(() => {
     const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -306,12 +292,49 @@ export default function TrainingCircleDetail() {
 
     if (userIds.length === 0) {
       setWeeklyStats({ workouts: 0, xp: 0 });
-      setWeeklyXpByUser({});
       setActivity([]);
-      setCircleStreak(0);
       setLoading(false);
       return;
     }
+
+    const {
+      data: verifiedWeeklyRows,
+      error: verifiedWeeklyError,
+    } = await supabase.rpc(
+      'get_training_circle_weekly_stats',
+      { p_circle_id: circleId }
+    );
+
+    if (verifiedWeeklyError) {
+      console.error(
+        'Could not load verified Circle weekly stats:',
+        verifiedWeeklyError
+      );
+      setPageError(
+        'CourtStreak could not verify this Circle\'s weekly activity.'
+      );
+      setLoading(false);
+      return;
+    }
+
+    const verifiedRows = verifiedWeeklyRows ?? [];
+
+    const verifiedWeeklyWorkouts = verifiedRows.reduce(
+      (total, member) =>
+        total + Number(member.weekly_workouts ?? 0),
+      0
+    );
+
+    const verifiedWeeklyTrainingXp = verifiedRows.reduce(
+      (total, member) =>
+        total + Number(member.weekly_training_xp ?? 0),
+      0
+    );
+
+    setWeeklyStats({
+      workouts: verifiedWeeklyWorkouts,
+      xp: verifiedWeeklyTrainingXp,
+    });
 
     const startOfWeek = getStartOfWeek().toISOString();
 
@@ -332,41 +355,16 @@ export default function TrainingCircleDetail() {
 
     if (weeklyError) {
       console.error('Could not load weekly Circle activity:', weeklyError);
+      setPageError(
+        'CourtStreak could not load this Circle\'s weekly training activity.'
+      );
+      setLoading(false);
+      return;
     }
 
-    const xpMap = {};
-    for (const workout of weeklyWorkouts ?? []) {
-      xpMap[workout.user_id] =
-        (xpMap[workout.user_id] ?? 0) + (workout.xp_earned ?? 0);
-    }
-
-    setWeeklyXpByUser(xpMap);
-    setWeeklyStats({
-      workouts: weeklyWorkouts?.length ?? 0,
-      xp: (weeklyWorkouts ?? []).reduce(
-        (total, workout) => total + (workout.xp_earned ?? 0),
-        0
-      ),
-    });
-
-    const { data: recentWorkouts, error: activityError } = await supabase
-      .from('workout_completions')
-      .select(`
-        id,
-        user_id,
-        workout_name,
-        workout_focus,
-        minutes_trained,
-        xp_earned,
-        completed_at
-      `)
-      .in('user_id', userIds)
-      .order('completed_at', { ascending: false })
-      .limit(8);
-
-    if (activityError) {
-      console.error('Could not load recent Circle activity:', activityError);
-    }
+    // Aggregate weekly totals and leaderboard XP come from
+    // get_training_circle_weekly_stats(). These workout rows remain
+    // here only for the Training Rhythm and activity displays.
 
     const memberMap = new Map(
       realMembers.map((member) => [member.userId, member])
@@ -387,37 +385,6 @@ export default function TrainingCircleDetail() {
       }))
     );
 
-    const uniqueDays = [
-      ...new Set(
-        (recentWorkouts ?? []).map((workout) =>
-          getLocalDateKey(workout.completed_at)
-        )
-      ),
-    ];
-
-    let calculatedStreak = 0;
-    if (uniqueDays.length > 0) {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
-      const mostRecent = new Date(`${uniqueDays[0]}T00:00:00`);
-
-      if (
-        mostRecent.getTime() === today.getTime() ||
-        mostRecent.getTime() === yesterday.getTime()
-      ) {
-        const expected = new Date(mostRecent);
-        for (const dateString of uniqueDays) {
-          const activityDay = new Date(`${dateString}T00:00:00`);
-          if (activityDay.getTime() !== expected.getTime()) break;
-          calculatedStreak += 1;
-          expected.setDate(expected.getDate() - 1);
-        }
-      }
-    }
-
-    setCircleStreak(calculatedStreak);
     setLoading(false);
   }
 
@@ -448,9 +415,12 @@ export default function TrainingCircleDetail() {
     setInviteOpen(true);
   }
 
+
   function getInviteUrl() {
-    const basePath = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
-    return `${window.location.origin}${basePath}/training-circles/join/${inviteCode}`;
+    const origin = 'https:' + '//' + 'shorecan.github.io';
+    const base = '/courtstreak-site';
+
+    return origin + base + '/training-circles/join/' + encodeURIComponent(inviteCode);
   }
 
   function getInviteMessage() {
@@ -704,11 +674,19 @@ export default function TrainingCircleDetail() {
         </section>
 
         <section className="cs-circle-rebuild-stats">
-          <article><Flame /><span><strong>{circleStreak}</strong>Circle streak</span></article>
           <article><Target /><span><strong>{weeklyStats.workouts}</strong>This week</span></article>
-          <article><Zap /><span><strong>{weeklyStats.xp.toLocaleString()}</strong>Weekly XP</span></article>
+          <article><Zap /><span><strong>{weeklyStats.xp.toLocaleString()}</strong>Weekly Training XP</span></article>
+          <article><Flame /><span><strong>{activeMembersThisWeek}</strong>Active this week</span></article>
           <article><Users /><span><strong>{members.length}</strong>Members</span></article>
         </section>
+
+        <CircleCompetitionHub
+          circle={circle}
+          members={members}
+          currentUserId={currentUserId}
+          initialDraft={challengeDraft}
+          showFeedback={showFeedback}
+        />
 
         <section className="cs-circle-rebuild-grid">
           <article className="cs-circle-rebuild-card cs-circle-rebuild-goal">
@@ -720,26 +698,6 @@ export default function TrainingCircleDetail() {
             <div className="cs-circle-rebuild-goal-footer">
               <span>{Math.max(weeklyGoal - weeklyStats.workouts, 0)} sessions remaining</span>
               <strong>{Math.round(goalPercentage)}%</strong>
-            </div>
-          </article>
-
-          <article className="cs-circle-rebuild-card cs-circle-rebuild-leaderboard">
-            <div className="cs-circle-rebuild-card-heading">
-              <div><span>FRIENDLY COMPETITION</span><h2>Circle standings</h2></div>
-              <div className="cs-circle-rebuild-tabs">
-                <button className={leaderboardType === 'weekly' ? 'active' : ''} onClick={() => setLeaderboardType('weekly')}>Week</button>
-                <button className={leaderboardType === 'all' ? 'active' : ''} onClick={() => setLeaderboardType('all')}>All time</button>
-              </div>
-            </div>
-            <div className="cs-circle-rebuild-member-list">
-              {rankedMembers.length ? rankedMembers.slice(0, 5).map((member) => (
-                <div key={member.id} className="cs-circle-rebuild-member">
-                  <span className="rank">{member.rank <= 3 ? <Medal /> : member.rank}</span>
-                  <span className="avatar">{member.initials}</span>
-                  <span className="name"><strong>{member.name}</strong><small><Flame /> {member.streak} day streak</small></span>
-                  <span className="xp"><strong>{member.displayXp.toLocaleString()}</strong><small>XP</small></span>
-                </div>
-              )) : <div className="cs-circle-rebuild-empty">Invite players to start your standings.</div>}
             </div>
           </article>
 

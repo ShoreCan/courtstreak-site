@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient.js';
 
 export default function CreateAccount() {
+  const [searchParams] = useSearchParams();
+  const inviteCode = searchParams.get('invite');
 const [form, setForm] = useState({
   firstName: '',
   lastName: '',
@@ -41,10 +43,16 @@ const [form, setForm] = useState({
 
     setLoading(true);
 
-    const redirectTo =
-      window.location.origin +
-      import.meta.env.BASE_URL +
-      'login';
+    const loginUrl = new URL(
+      import.meta.env.BASE_URL + 'login',
+      window.location.origin
+    );
+
+    if (inviteCode) {
+      loginUrl.searchParams.set('invite', inviteCode);
+    }
+
+    const redirectTo = loginUrl.toString();
 
     const { error: signupError } = await supabase.auth.signUp({
       email: form.email.trim().toLowerCase(),
