@@ -15,3 +15,11 @@
 @keyframes cs-ci-swish{0%,65%{opacity:0}78%,100%{opacity:1}}
 @media(max-width:540px){.cs-circle-invite{padding:82px 14px 24px}.cs-ci-card{padding:25px 22px 22px;border-radius:22px}.cs-ci-scene{margin-inline:-10px}.cs-ci-benefits{gap:15px}.cs-ci-benefits span{font-size:11px}}
 @media(prefers-reduced-motion:reduce){.cs-ci-ball{animation:none;transform:translate(500px,177px)}.cs-ci-net{animation:none}.cs-ci-swish{animation:none;opacity:1}.cs-ci-primary{transition:none}}
+
+/* CourtStreak looping invite welcome */
+@media (prefers-reduced-motion: no-preference) {
+  .cs-ci-ball, .cs-ci-net, .cs-ci-swish {
+    animation-iteration-count: infinite;
+    animation-duration: 4.8s;
+  }
+}
