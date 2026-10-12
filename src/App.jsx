@@ -38,7 +38,7 @@ import PlayerAppNav from './components/PlayerAppNav.jsx';
 export default function App() {
   const location = useLocation();
   return (
-    <AppErrorBoundary key={location.pathname}>
+    <AppErrorBoundary key={location.pathname === "/preview" || location.pathname.startsWith("/preview/") ? "customer-preview" : location.pathname}>
       <Suspense fallback={<main className="cs-welcome-page"><section className="cs-welcome-card"><h1>Opening CourtStreak…</h1></section></main>}>
       <Routes>
       <Route path="/" element={<Home />} />

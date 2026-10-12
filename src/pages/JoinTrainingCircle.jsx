@@ -95,6 +95,10 @@ export default function JoinTrainingCircle() {
         {circle && <p className="cs-ci-members"><Users size={15}/>{circle.member_count} {Number(circle.member_count) === 1 ? 'member' : 'members'} · Invite only</p>}
         <div className="cs-ci-benefits"><span><Flame size={17}/> Build streaks</span><span><Trophy size={17}/> Compete together</span></div>
         {error && <p className="cs-ci-error" role="alert">{error}</p>}
+        {!invalid && <div className="cs-ci-preview-entry">
+          <Link className="cs-ci-preview-link" to={`/preview?invite=${encodeURIComponent(inviteCode || '')}`}>Preview CourtStreak <ArrowRight size={18}/></Link>
+          <p>No account needed. Explore before you join.</p>
+        </div>}
         {!invalid && <div className="cs-ci-actions">
           {auth === 'guest' ? <>
             <p className="cs-ci-status">Create an account or log in to accept your invitation.</p>

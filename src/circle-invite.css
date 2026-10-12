@@ -23,3 +23,8 @@
     animation-duration: 4.8s;
   }
 }
+
+.cs-ci-preview-entry { margin:0 0 22px; }
+.cs-ci-preview-link { display:flex; align-items:center; justify-content:center; gap:10px; width:100%; min-height:50px; padding:13px 16px; border:1px solid rgba(255,154,83,.4); border-radius:12px; color:#f5f7fb; background:#172a42; text-decoration:none; font-size:14px; font-weight:750; }
+.cs-ci-preview-link:hover { background:#203751; border-color:#ff9a53; }
+.cs-ci-preview-entry p { margin:9px 0 0; color:#b3c0d1; font-size:12px; line-height:1.5; }
