@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import usePreviewNavigate from '../lib/usePreviewNavigate.js';
+import { PREVIEW_ACHIEVEMENTS } from '../lib/previewData.js';
 import {
   Activity,
   ArrowLeft,
@@ -30,30 +31,37 @@ import {
 import { supabase } from '../lib/supabaseClient.js';
 
 const CATEGORY_ORDER = [
+  'Training',
   'Ball Handling',
   'Consistency',
+  'XP',
   'Levels',
+  'Challenge',
   'Training Circles',
 ];
 
 const CATEGORY_LABELS = {
+  Training: 'TRAINING',
   'Ball Handling': 'BALL HANDLING',
   Consistency: 'STREAKS',
+  XP: 'PROGRESS',
   Levels: 'PLAYER LEVELS',
+  Challenge: 'CHALLENGES',
   'Training Circles': 'TRAINING CIRCLES',
 };
 
 const CATEGORY_ICONS = {
+  Training: Dumbbell,
   'Ball Handling': Target,
   Consistency: Flame,
+  XP: Zap,
   Levels: Award,
+  Challenge: Trophy,
   'Training Circles': Users,
 };
 
 const LEGACY_CATEGORIES = {
-  Training: 'Ball Handling',
   Milestone: 'Levels',
-  XP: 'Levels',
 };
 
 const ACHIEVEMENT_ICONS = {
@@ -99,14 +107,15 @@ function formatDate(value) {
   }).format(new Date(value));
 }
 
-export default function TrophyCollection() {
-  const navigate = useNavigate();
+export default function TrophyCollection({ previewOnly = false }) {
+  const navigate = usePreviewNavigate(previewOnly);
   const [achievements, setAchievements] = useState([]);
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
+    if (previewOnly) { setAchievements(PREVIEW_ACHIEVEMENTS); setLoading(false); return undefined; }
     let isMounted = true;
 
     async function loadCollection() {
@@ -120,13 +129,6 @@ export default function TrophyCollection() {
         return;
       }
 
-      const { error: unlockError } = await supabase.rpc(
-        'check_and_unlock_achievements'
-      );
-
-      if (unlockError) {
-        console.error('Could not check achievements:', unlockError);
-      }
 
       const { data, error } = await supabase.rpc(
         'get_my_achievement_progress'
@@ -159,7 +161,7 @@ export default function TrophyCollection() {
     return () => {
       isMounted = false;
     };
-  }, [navigate]);
+  }, [navigate, previewOnly]);
 
   useEffect(() => {
     if (!selected) return undefined;
@@ -226,9 +228,9 @@ export default function TrophyCollection() {
   return (
     <main className="cs-cabinet-page">
       <header className="cs-cabinet-topbar">
-        <button type="button" onClick={() => navigate('/trophies')}>
+        <button type="button" onClick={() => navigate('/profile')}>
           <ArrowLeft />
-          <span>Trophy Case</span>
+          <span>Profile</span>
         </button>
         <strong>THE COLLECTION</strong>
         <span>{earnedCount} / {achievements.length} EARNED</span>
@@ -242,6 +244,8 @@ export default function TrophyCollection() {
           and the people who push you forward.
         </p>
       </section>
+
+      {previewOnly && <p className="cs-cabinet-help">Representative trophy examples with fictional progress. Your earned collection appears here when you subscribe and train.</p>}
 
       <section className="cs-cabinet-frame">
         <div className="cs-cabinet-crown">
@@ -271,14 +275,15 @@ export default function TrophyCollection() {
                       aria-label={`View ${achievement.achievement_name}`}
                       key={achievement.achievement_id}
                     >
-                      <span className="cs-cabinet-trophy-cup">
+                      <span className="cs-cabinet-badge-face">
                         <DisplayIcon />
                         <CategoryIcon className="cs-cabinet-trophy-mark" />
+                        {!achievement.unlocked && <Lock className="cs-cabinet-badge-lock" />}
                       </span>
-                      <span className="cs-cabinet-trophy-base">
-                        <small>{achievement.unlocked ? achievement.achievement_name : 'LOCKED'}</small>
+                      <span className="cs-cabinet-badge-copy">
+                        <strong>{achievement.unlocked ? achievement.achievement_name : 'Locked achievement'}</strong>
+                        <small>{achievement.unlocked ? `EARNED • ${achievement.achievement_tier || 'bronze'}` : `${achievement.progress_percent}% COMPLETE`}</small>
                       </span>
-                      {!achievement.unlocked && <Lock className="cs-cabinet-lock" />}
                     </button>;
                     })()
                   ))}

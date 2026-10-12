@@ -1,4 +1,6 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
+import '../public-preview-entry.css';
 import {
   ArrowRight,
   CheckCircle2,
@@ -29,6 +31,11 @@ export default function AppPreview() {
           skill you want to work on, follow the drill, earn XP for the
           work you put in, and keep building your streak.
         </p>
+
+        <div className="cs-public-preview-entry">
+          <Link className="cs-public-preview-button" to="/preview">Explore the App <ArrowRight size={19} aria-hidden="true" /></Link>
+          <p>Browse the real layout with sample data. Training and saving unlock with membership.</p>
+        </div>
 
         <div className="cs-app-preview-flow">
           <div>

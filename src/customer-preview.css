@@ -1,0 +1,81 @@
+.cs-training-start { max-width:1100px; padding:36px clamp(20px,4vw,56px) 90px; margin:auto; color:#e9eef5; }
+.cs-training-start h1 { font-size:clamp(30px,4vw,54px); line-height:1.1; margin:20px 0; }
+.cs-training-start > p { color:#b2bccb; max-width:760px; line-height:1.7; }
+.cs-preview-eyebrow,.cs-preview-card > span { color:#ff964a!important; font-size:12px; font-weight:800; letter-spacing:1.5px; }
+.cs-preview-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:22px; margin:30px 0; }
+.cs-preview-card { display:block; border:1px solid #293447; border-radius:22px; padding:28px; background:linear-gradient(135deg,#162235,#0c1320); color:#e9eef5; text-decoration:none; }
+.cs-preview-card h2 { font-size:26px; margin:14px 0; }
+.cs-preview-card p { color:#b5c0d1; line-height:1.7; }
+.cs-preview-card > strong { color:#ff964a; }
+.cs-preview-card a,.cs-training-start > a { color:#ffab70; }
+.cs-preview-primary { display:inline-flex; align-items:center; justify-content:center; padding:13px 20px; background:#ff7919; color:#09111d!important; border-radius:12px; font-weight:800; text-decoration:none; margin:12px 12px 12px 0; }
+.cs-explore-link { color:#ffab70; font-weight:800; display:inline-block; padding:18px 0 6px; }
+.cs-preview-price { font-size:13px; color:#b5c0d1; margin:4px 0 16px; }
+.cs-preview-shell { min-height:100vh; display:block; background:var(--cs-app-navy); }
+.cs-preview-sidebar { padding:30px 18px; border-right:1px solid #263045; position:sticky; top:0; height:100vh; }
+.cs-preview-brand { color:white; font-size:24px; font-weight:800; text-decoration:none; }
+.cs-preview-sidebar nav { display:flex; flex-direction:column; gap:8px; margin:35px 0; }
+.cs-preview-sidebar nav a { color:#b5c0d1; text-decoration:none; padding:13px; border-radius:10px; font-weight:700; }
+.cs-preview-sidebar nav a.active { background:#281c17; color:#ff964a; }
+.cs-preview-content { min-width:0; }
+.cs-preview-banner { display:flex; gap:20px; justify-content:space-between; align-items:center; border-bottom:1px solid #293447; padding:18px 28px; background:#152034; color:white; }
+.cs-preview-banner strong { font-size:12px; color:#ffab70; letter-spacing:1px; display:block; }
+.cs-preview-banner span { font-size:13px; color:#b5c0d1; display:block; margin-top:5px; }
+.cs-preview-banner a { color:#ffab70; white-space:nowrap; font-weight:700; }
+.cs-customer-preview .cs-dash-v3 { display:block; }
+.cs-customer-preview .cs-program-library-page,.cs-customer-preview .cs-lab-page { min-height:auto; }
+.cs-drill-guide { text-align:left; padding:22px; margin:20px 0; background:#101b2a; border:1px solid #2b3748; border-radius:16px; color:#e9eef5; line-height:1.7; }
+.cs-drill-guide h3 { font-size:16px; color:#ffab70; margin:18px 0 8px; }
+.cs-drill-guide h3:first-child { margin-top:0; }
+.cs-drill-guide ul,.cs-drill-guide ol { padding-left:24px; }
+.cs-drill-guide li { margin:8px 0; }
+.cs-drill-guide video { width:100%; max-height:440px; background:#080e19; border-radius:12px; }
+.cs-guide-note { color:#b5c0d1; font-size:14px; line-height:1.6; }
+.cs-preview-card progress { width:100%; accent-color:#ff7919; }
+@media(max-width:760px) {
+  .cs-preview-shell { grid-template-columns:1fr; }
+  .cs-preview-sidebar { position:static; height:auto; padding:18px; border-right:0; border-bottom:1px solid #293447; }
+  .cs-preview-sidebar nav { flex-direction:row; overflow-x:auto; margin:18px 0 0; gap:4px; }
+  .cs-preview-sidebar nav a { white-space:nowrap; font-size:13px; padding:10px; }
+  .cs-preview-sidebar > .cs-preview-primary { display:none; }
+  .cs-preview-grid { grid-template-columns:1fr; }
+  .cs-preview-banner { padding:16px; flex-wrap:wrap; gap:12px; }
+  .cs-training-start { padding:26px 18px 60px; }
+  .cs-preview-card { padding:22px; }
+}
+
+.cs-training-visibility { border:1px solid #334159; border-radius:12px; padding:16px; margin:20px 0; color:#e9eef5; }
+.cs-training-visibility legend { font-weight:800; color:#ffab70; }
+.cs-training-visibility p,.cs-training-visibility small { color:#b5c0d1; font-size:13px; line-height:1.5; }
+.cs-training-visibility label { display:flex; align-items:center; gap:10px; margin:10px 0; }
+.cs-training-visibility input { width:18px; height:18px; accent-color:#ff7919; }
+
+.cs-preview-shell > .cs-preview-content > .cs-preview-banner {
+  position:relative; inset:auto; width:100%; height:auto; min-height:64px;
+  display:flex; flex-direction:row; align-items:center; justify-content:space-between;
+  margin:0; padding:14px clamp(20px,4vw,56px); gap:16px; box-sizing:border-box;
+  z-index:auto; transform:none;
+}
+.cs-preview-banner > div { min-width:0; }
+.cs-preview-banner a { font-size:14px; }
+@media(max-width:600px) {
+  .cs-preview-shell > .cs-preview-content > .cs-preview-banner { flex-wrap:wrap; padding:12px 18px; gap:8px; }
+  .cs-preview-banner span { font-size:12px; }
+}
+
+/* App entry pages must not inherit the public marketing main background. */
+main.cs-training-start {
+  box-sizing:border-box;
+  width:100%; max-width:1320px;
+  min-height:calc(100vh - 64px);
+  background:radial-gradient(circle at 80% 0%,rgba(255,107,25,.08),transparent 32rem),#07101f;
+  color:#f8fafc;
+}
+main.cs-training-start h1 { color:#f8fafc; }
+main.cs-training-start > p { color:#b5c0d1; }
+main.cs-training-start .cs-preview-card { min-width:0; }
+main.cs-training-start .cs-preview-card h2 { color:#f8fafc; }
+main.cs-training-start a:focus-visible { outline:3px solid #ff964a; outline-offset:5px; }
+.cs-settings-preview-note { margin:0 0 24px; padding:16px 18px; border:1px solid #34415b; border-radius:14px; color:#c6d1e2; background:#101b2e; line-height:1.6; }
+.cs-settings-page select:disabled,.cs-settings-page input:disabled { opacity:1; cursor:default; }
+.cs-settings-page button:disabled { cursor:not-allowed; }

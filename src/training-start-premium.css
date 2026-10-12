@@ -1,0 +1,285 @@
+/* CourtStreak premium training selection */
+
+.cs-training-premium {
+  position: relative;
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 34px 40px 64px;
+  color: #f5f7fc;
+  isolation: isolate;
+}
+
+.cs-training-premium .cs-training-back {
+  display: inline-flex;
+  color: #ff9a4d;
+  text-decoration: none;
+  font-weight: 600;
+  margin-bottom: 28px;
+}
+
+.cs-training-heading {
+  margin-bottom: 34px;
+  max-width: 860px;
+}
+
+.cs-training-heading h1 {
+  max-width: 950px;
+  margin: 12px 0 16px;
+  font-size: clamp(40px, 5.2vw, 70px);
+  line-height: 1.05;
+  letter-spacing: -0.055em;
+  font-weight: 850;
+}
+
+.cs-training-subtitle {
+  color: #b4c0d2;
+  font-size: clamp(16px, 1.55vw, 19px);
+  line-height: 1.55;
+  max-width: 760px;
+}
+
+.cs-training-premium-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+}
+
+.cs-training-premium .cs-training-choice {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 390px;
+  padding: 30px;
+  overflow: hidden;
+  border-radius: 24px;
+  border: 1px solid rgba(88, 111, 145, 0.38);
+  background: linear-gradient(155deg, rgba(21, 35, 58, 0.96), rgba(7, 18, 34, 0.98) 86%);
+  color: #fff;
+  text-decoration: none;
+  box-shadow: 0 14px 30px rgba(0,0,0,.14);
+  transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease;
+  backdrop-filter: blur(4px);
+}
+
+.cs-training-premium .cs-training-choice::before {
+  content: "";
+  position: absolute;
+  width: 260px;
+  height: 260px;
+  top: -140px;
+  right: -120px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,125,25,.16), transparent 70%);
+  pointer-events: none;
+}
+
+.cs-training-premium .cs-training-drills::before {
+  background: radial-gradient(circle, rgba(112, 146, 201, .18), transparent 70%);
+}
+
+.cs-training-premium .cs-training-choice:hover {
+  transform: translateY(-5px);
+  border-color: rgba(255, 139, 49, 0.72);
+  box-shadow: 0 22px 44px rgba(0,0,0,.24);
+}
+
+.cs-training-premium .cs-training-choice:focus-visible {
+  outline: 3px solid #ff983d;
+  outline-offset: 4px;
+}
+
+.cs-training-choice-top,
+.cs-training-choice-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cs-training-choice-label {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  color: #ff994e;
+}
+
+.cs-training-choice-icon {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 66px;
+  height: 66px;
+  border-radius: 18px;
+  background: rgba(255,255,255,.055);
+  border: 1px solid rgba(255,255,255,.10);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
+}
+
+.cs-training-choice-icon svg {
+  width: 38px;
+  height: 38px;
+  display: block;
+}
+
+.cs-training-choice-icon--workout {
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+}
+
+.cs-training-choice-icon--skill {
+  background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+}
+
+.cs-training-choice-content {
+  flex: 1;
+  padding: 42px 0 28px;
+}
+
+.cs-training-choice-kicker {
+  display: block;
+  margin-bottom: 12px;
+  color: #ff9b4c;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .16em;
+}
+
+.cs-training-premium .cs-training-choice h2 {
+  margin: 0 0 14px;
+  font-size: clamp(30px, 3vw, 42px);
+  line-height: 1.08;
+  font-weight: 800;
+  letter-spacing: -.05em;
+  color: #fff;
+}
+
+.cs-training-premium .cs-training-choice p {
+  margin: 0;
+  max-width: 450px;
+  font-size: 15.5px;
+  line-height: 1.72;
+  color: #b7c3d4;
+}
+
+.cs-training-choice-footer {
+  padding-top: 18px;
+  border-top: 1px solid rgba(255,255,255,.10);
+  color: #ff994e;
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: .065em;
+}
+
+.cs-training-choice-arrow {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #ff8325;
+  color: #07101f;
+  font-size: 24px;
+  transition: transform .25s ease;
+  box-shadow: 0 8px 16px rgba(245, 128, 32, 0.18);
+}
+
+.cs-training-choice:hover .cs-training-choice-arrow {
+  transform: translate(3px,-3px);
+}
+
+.cs-training-bottom-note {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 28px;
+  padding: 18px 22px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(255,255,255,.022);
+}
+
+.cs-training-bottom-mark {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #f57520;
+  color: white;
+  font-weight: 900;
+}
+
+.cs-training-bottom-note strong {
+  font-size: 15px;
+}
+
+.cs-training-bottom-note p {
+  margin: 4px 0 0;
+  color: #9baac1;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.cs-training-premium .cs-guide-note {
+  margin-top: 25px;
+  color: #aebbd0;
+  line-height: 1.6;
+}
+
+.cs-training-animation {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.cs-training-animation-ball {
+  position: absolute;
+  top: 49%;
+  left: 0;
+  width: 86px;
+  height: 86px;
+  filter: drop-shadow(0 14px 12px rgba(0,0,0,.35));
+  animation: cs-ball-cross 1.8s linear both;
+}
+
+@keyframes cs-ball-cross {
+  0%   { transform: translate(-110px, 35px) rotate(0deg) scale(.8); }
+  20%  { transform: translate(calc(20vw - 110px), -95px) rotate(110deg) scale(1); }
+  40%  { transform: translate(calc(40vw - 110px), 35px) rotate(220deg) scale(.9); }
+  60%  { transform: translate(calc(60vw - 110px), -100px) rotate(330deg) scale(1); }
+  80%  { transform: translate(calc(80vw - 110px), 35px) rotate(440deg) scale(.9); }
+  100% { transform: translate(calc(100vw + 110px), -90px) rotate(560deg) scale(1); }
+}
+
+@media (max-width: 800px) {
+  .cs-training-premium {
+    padding: 24px 18px 48px;
+  }
+  .cs-training-premium-grid {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+  .cs-training-premium .cs-training-choice {
+    min-height: 330px;
+    padding: 24px;
+  }
+  .cs-training-choice-content {
+    padding: 35px 0 25px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cs-training-premium .cs-training-choice,
+  .cs-training-choice-arrow {
+    transition: none;
+  }
+  .cs-training-premium .cs-training-choice:hover {
+    transform: none;
+  }
+  .cs-training-animation-ball {
+    animation: none;
+  }
+}

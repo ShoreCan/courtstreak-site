@@ -1,0 +1,120 @@
+/* CourtStreak The Lab catalog controls.
+   Kept separate so Lab updates cannot overwrite styling on Progress or Profile. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.cs-lab-catalog-tools {
+  display: grid;
+  grid-template-columns: minmax(230px, 1fr) minmax(150px, auto) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 15px 0 9px;
+  border-bottom: 1px solid #18283d;
+}
+
+.cs-lab-search,
+.cs-lab-level-filter {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  color: #8292a9;
+  background: #0c1829;
+  border: 1px solid #263850;
+  border-radius: 11px;
+}
+
+.cs-lab-search {
+  gap: 10px;
+  padding: 0 13px;
+}
+
+.cs-lab-search:focus-within,
+.cs-lab-level-filter:focus-within {
+  border-color: #c45a1a;
+  box-shadow: 0 0 0 3px rgba(244, 124, 32, 0.09);
+}
+
+.cs-lab-search svg {
+  flex: 0 0 auto;
+  color: #ff7a2b;
+}
+
+.cs-lab-search input,
+.cs-lab-level-filter select {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  color: #eef3f9;
+  background: transparent;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.cs-lab-search input::placeholder { color: #708198; }
+
+.cs-lab-level-filter {
+  min-width: 160px;
+  padding: 0 11px;
+}
+
+.cs-lab-level-filter select { cursor: pointer; }
+.cs-lab-level-filter option { color: #eef3f9; background: #0c1829; }
+
+.cs-lab-result-count {
+  color: #8798ad;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.cs-lab-row-level {
+  color: #ff8a42;
+  font-weight: 900;
+  letter-spacing: .045em;
+  text-transform: uppercase;
+}
+
+.cs-drill-detail-summary {
+  max-width: 640px;
+  margin: -5px 0 17px;
+  color: #9cacbf;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+@media (max-width: 700px) {
+  .cs-lab-catalog-tools {
+    grid-template-columns: minmax(0, 1fr) 118px;
+    gap: 7px;
+    padding-top: 11px;
+  }
+
+  .cs-lab-search,
+  .cs-lab-level-filter { min-height: 38px; }
+  .cs-lab-search { padding-inline: 10px; }
+  .cs-lab-level-filter { min-width: 0; padding-inline: 8px; }
+  .cs-lab-search input,
+  .cs-lab-level-filter select { font-size: 9px; }
+  .cs-lab-result-count { grid-column: 1 / -1; font-size: 7px; }
+  .cs-lab-row-meta > span:nth-child(3) { display: inline-flex; }
+  .cs-drill-detail-summary { margin-top: -7px; font-size: 12px; }
+}
+
+@media (max-width: 390px) {
+  .cs-lab-catalog-tools { grid-template-columns: 1fr; }
+  .cs-lab-result-count { grid-column: auto; }
+  .cs-lab-row-meta > span:nth-child(3),
+  .cs-lab-row-meta > span:nth-child(4) { display: none; }
+}

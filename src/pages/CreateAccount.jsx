@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient.js';
 
 export default function CreateAccount() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const inviteCode = searchParams.get('invite');
 const [form, setForm] = useState({
@@ -50,11 +51,12 @@ const [form, setForm] = useState({
 
     if (inviteCode) {
       loginUrl.searchParams.set('invite', inviteCode);
+      if (searchParams.get('accept') === '1') loginUrl.searchParams.set('accept', '1');
     }
 
     const redirectTo = loginUrl.toString();
 
-    const { error: signupError } = await supabase.auth.signUp({
+    const { data: signupData, error: signupError } = await supabase.auth.signUp({
       email: form.email.trim().toLowerCase(),
       password: form.password,
       options: {
@@ -72,6 +74,11 @@ const [form, setForm] = useState({
 
     if (signupError) {
       setError(signupError.message);
+      return;
+    }
+
+    if (signupData?.session && inviteCode) {
+      navigate(`/training-circles/join/${encodeURIComponent(inviteCode)}${searchParams.get('accept') === '1' ? '?accept=1' : ''}`);
       return;
     }
 
@@ -100,7 +107,7 @@ const [form, setForm] = useState({
 
       <section className="cs-auth-card">
         <p className="cs-auth-eyebrow">CREATE YOUR ACCOUNT</p>
-        <h2>Start your CourtStreak membership.</h2>
+        <h2>{inviteCode ? 'Create your account to join your crew.' : 'Start your CourtStreak membership.'}</h2>
         <p className="cs-auth-muted">
           Enter your information below. You will verify your email before logging in.
         </p>
@@ -190,7 +197,7 @@ const [form, setForm] = useState({
         </form>
 
         <p className="cs-auth-login">
-          Already registered? <Link to="/login">Log in</Link>
+          Already registered? <Link to={inviteCode ? `/login?invite=${encodeURIComponent(inviteCode)}${searchParams.get('accept') === '1' ? '&accept=1' : ''}` : '/login'}>Log in</Link>
         </p>
       </section>
     </main>

@@ -46,10 +46,12 @@ export default function RequireMembership({ children }) {
       setStatus(hasActiveMembership ? 'active' : 'unpaid');
     }
 
-    checkAccess();
+    checkAccess().catch(() => { if (active) setStatus('error'); });
+    const timeout = setTimeout(() => { if (active) setStatus((value) => value === 'checking' ? 'error' : value); }, 15000);
 
     return () => {
       active = false;
+      clearTimeout(timeout);
     };
   }, []);
 

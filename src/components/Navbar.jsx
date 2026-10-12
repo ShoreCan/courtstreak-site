@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+import '../public-preview-entry.css';
 
 const HOME = '/courtstreak-site/';
 
@@ -6,9 +8,10 @@ const menus = [
   {
     title: 'Membership',
     links: [
+      ['Preview the App', '/courtstreak-site/preview'],
       ['Pricing', '/courtstreak-site/pricing'],
      ['What’s Included', '/courtstreak-site/whats-included'],
-      ['Create Account', `${HOME}#join`],
+      ['Create Account', '/courtstreak-site/create-account'],
       ['FAQ', '/courtstreak-site/faq'],
     ],
   },
@@ -60,6 +63,7 @@ export default function Navbar() {
       </a>
 
       <div className="premium-menu">
+        <Link className="cs-public-nav-preview" to="/preview">Preview</Link>
         {menus.map((menu) => (
           <div className="premium-menu-item" key={menu.title}>
             <button type="button">{menu.title}</button>
@@ -82,6 +86,8 @@ export default function Navbar() {
   </a>
 </div>
 
+      <Link className="cs-public-mobile-preview" to="/preview">Preview</Link>
+
       <button
         className="hamburger"
         type="button"
@@ -96,6 +102,7 @@ export default function Navbar() {
 
       {open && (
         <div className="mobile-menu">
+          <Link className="cs-public-menu-preview" to="/preview" onClick={() => setOpen(false)}><strong>Preview the App →</strong><small>Free to explore · No account needed</small></Link>
           {menus.map((menu) => (
             <details className="mobile-menu-group" key={menu.title}>
               <summary>{menu.title}</summary>

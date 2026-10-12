@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
+import usePreviewNavigate from '../lib/usePreviewNavigate.js';
+import { PREVIEW_CIRCLES, PREVIEW_CIRCLE_STATS, previewSessions } from '../lib/previewData.js';
 import { supabase } from '../lib/supabaseClient.js';
 import CircleCompetitionHub from '../components/CircleCompetitionHub.jsx';
 import {
@@ -84,8 +86,8 @@ function getLocalDateKey(value) {
   return `${year}-${month}-${day}`;
 }
 
-export default function TrainingCircleDetail() {
-  const navigate = useNavigate();
+export default function TrainingCircleDetail({ previewOnly = false }) {
+  const navigate = usePreviewNavigate(previewOnly);
   const location = useLocation();
   const { circleId } = useParams();
   const challengeDraft = location.state?.challengeDraft ?? null;
@@ -176,6 +178,14 @@ export default function TrainingCircleDetail() {
   }
 
   async function loadCirclePage() {
+    if (previewOnly) {
+      const sample={...PREVIEW_CIRCLES[0],owner_id:'alex',motto:'Show up. Put in the work.',badge_key:'basketball',theme_key:'orange',allow_member_challenges:true};
+      setCircle(sample); setCurrentUserId('jordan');
+      setMembers(PREVIEW_CIRCLE_STATS['sample-crew'].leaders.map((m)=>({...m,userId:m.user_id,name:`${m.first_name} ${m.last_name}`,role:m.user_id==='alex'?'owner':'member',weeklyXp:m.weekly_training_xp,weeklyWorkouts:4})));
+      setWeeklyStats({workouts:12,xp:560});
+      setActivity(previewSessions().slice(0,6).map((s,i)=>({id:s.id,userId:i%2?'jordan':'alex',name:i%2?'Jordan Player':'Alex Player',workout:'Ball Handling',minutes:10,xp:45,completedAt:s.completed_at})));
+      setLoading(false); return;
+    }
     if (!supabase || !circleId) {
       setPageError('CourtStreak could not load this Training Circle.');
       setLoading(false);
@@ -391,9 +401,10 @@ export default function TrainingCircleDetail() {
   useEffect(() => {
     loadCirclePage();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [circleId]);
+  }, [circleId, previewOnly]);
 
   async function handleCreateInvite() {
+    if (previewOnly) { navigate("/preview/membership"); return; }
     if (!canInvite || creatingInvite) return;
 
     setCreatingInvite(true);
@@ -450,16 +461,19 @@ export default function TrainingCircleDetail() {
   }
 
   async function copyInviteCode() {
+    if (previewOnly) { navigate("/preview/membership"); return; }
     await navigator.clipboard.writeText(inviteCode);
     showFeedback('success', 'Invitation code copied.');
   }
 
   async function copyInviteLink() {
+    if (previewOnly) { navigate("/preview/membership"); return; }
     await navigator.clipboard.writeText(getInviteUrl());
     showFeedback('success', 'Invitation link copied.');
   }
 
   async function shareInvite() {
+    if (previewOnly) { navigate("/preview/membership"); return; }
     const text = getInviteMessage();
     if (navigator.share) {
       try {
@@ -478,6 +492,7 @@ export default function TrainingCircleDetail() {
   }
 
   async function handleSaveSettings(event) {
+    if (previewOnly) { navigate("/preview/membership"); return; }
     event.preventDefault();
     if (!isOwner || savingSettings) return;
 
@@ -511,6 +526,7 @@ export default function TrainingCircleDetail() {
   }
 
   async function handleLeaveCircle() {
+    if (previewOnly) { navigate("/preview/membership"); return; }
     if (isOwner || actionLoading) return;
     setActionLoading(true);
     const { error } = await supabase.rpc('leave_training_circle', {
@@ -528,6 +544,7 @@ export default function TrainingCircleDetail() {
   }
 
   async function handleDeleteCircle() {
+    if (previewOnly) { navigate("/preview/membership"); return; }
     if (!isOwner || actionLoading) return;
     setActionLoading(true);
     const { error } = await supabase.rpc('delete_training_circle', {
@@ -545,6 +562,7 @@ export default function TrainingCircleDetail() {
   }
 
   async function handleRemoveMember(member) {
+    if (previewOnly) { navigate("/preview/membership"); return; }
     if (!isOwner || actionLoading) return;
     setActionLoading(true);
     const { error } = await supabase.rpc('remove_training_circle_member', {
@@ -565,6 +583,7 @@ export default function TrainingCircleDetail() {
   }
 
   async function handleTransferOwnership(member) {
+    if (previewOnly) { navigate("/preview/membership"); return; }
     if (!isOwner || actionLoading) return;
     setActionLoading(true);
     const { error } = await supabase.rpc(
@@ -589,6 +608,7 @@ export default function TrainingCircleDetail() {
   }
 
   async function handleRevokeInvites() {
+    if (previewOnly) { navigate("/preview/membership"); return; }
     if (!isOwner || actionLoading) return;
     setActionLoading(true);
     const { error } = await supabase.rpc('revoke_training_circle_invites', {
@@ -681,6 +701,7 @@ export default function TrainingCircleDetail() {
         </section>
 
         <CircleCompetitionHub
+          previewOnly={previewOnly}
           circle={circle}
           members={members}
           currentUserId={currentUserId}

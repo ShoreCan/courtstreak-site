@@ -36,7 +36,7 @@ const checkoutType = searchParams.get('checkout');
     }
 
    if (inviteCode) {
-  navigate(`/training-circles/join/${encodeURIComponent(inviteCode)}`);
+  navigate(`/training-circles/join/${encodeURIComponent(inviteCode)}${searchParams.get('accept') === '1' ? '?accept=1' : ''}`);
   return;
 }
 
@@ -124,7 +124,7 @@ if (hasActiveMembership) {
 <Link
   to={
     inviteCode
-      ? `/create-account?invite=${encodeURIComponent(inviteCode)}`
+      ? `/create-account?invite=${encodeURIComponent(inviteCode)}${searchParams.get('accept') === '1' ? '&accept=1' : ''}`
       : checkoutType === 'membership'
         ? '/create-account?checkout=membership'
         : '/create-account'

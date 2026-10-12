@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import usePreviewNavigate from '../lib/usePreviewNavigate.js';
 import {
   Activity,
   CalendarDays,
@@ -58,8 +58,9 @@ export default function CircleCompetitionHub({
   currentUserId,
   initialDraft,
   showFeedback,
+  previewOnly = false,
 }) {
-  const navigate = useNavigate();
+  const navigate = usePreviewNavigate(previewOnly);
   const [activeTab, setActiveTab] = useState(initialDraft ? 'challenges' : 'today');
   const [loading, setLoading] = useState(true);
   const [dailyChallenge, setDailyChallenge] = useState(null);
@@ -125,6 +126,12 @@ export default function CircleCompetitionHub({
   }, [draft, drills, customWorkouts, sourceKey, sourceType]);
 
   async function loadCompetition() {
+    if (previewOnly) {
+      const sample={id:'sample-challenge',circle_id:'sample-crew',creator_id:'alex',source_type:'drill',source_key:'crossovers',source_name:'Crossovers',source_payload:{durationSeconds:60},challenge_type:'score',duration_seconds:60,status:'active',verification_mode:'manual',expires_at:new Date(Date.now()+86400000).toISOString()};
+      setDailyChallenge(sample); setChallenges([sample]);
+      setEntries([{id:'sample-entry',challenge_id:sample.id,user_id:'alex',status:'completed',score:52,verification_mode:'manual'}]);
+      setAwards([]); setPulse(null); setLoading(false); return;
+    }
     if (!circle?.id || !currentUserId) return;
     setLoading(true);
 
@@ -173,7 +180,7 @@ export default function CircleCompetitionHub({
 
   useEffect(() => {
     void loadCompetition();
-  }, [circle?.id, currentUserId]);
+  }, [circle?.id, currentUserId, previewOnly]);
 
   useEffect(() => {
     if (!initialDraft) return;
@@ -183,6 +190,7 @@ export default function CircleCompetitionHub({
   }, [initialDraft]);
 
   function openBuilder() {
+    if (previewOnly) { navigate("/preview/membership"); return; }
     setDraft(null);
     setSourceType('workout');
     setSourceKey(WORKOUT_PROGRAMS[0]?.key ?? '');
@@ -192,6 +200,7 @@ export default function CircleCompetitionHub({
   }
 
   async function createChallenge() {
+    if (previewOnly) { navigate("/preview/membership"); return; }
     if (!selectedSource || creating) return;
     setCreating(true);
     const { data, error } = await supabase.rpc('create_circle_challenge', {
@@ -205,7 +214,7 @@ export default function CircleCompetitionHub({
       p_duration_seconds: selectedSource.sourcePayload?.durationSeconds ?? null,
       p_deadline_hours: deadlineHours,
       p_baseline_score: selectedSource.baselineScore ?? null,
-      p_verification_mode: selectedSource.verificationMode ?? 'manual',
+      p_verification_mode: 'manual',
     });
     setCreating(false);
     if (error) {
@@ -221,6 +230,7 @@ export default function CircleCompetitionHub({
   }
 
   async function acceptChallenge(challenge) {
+    if (previewOnly) { navigate("/preview/membership"); return; }
     const { error } = await supabase.rpc('accept_circle_challenge', { p_challenge_id: challenge.id });
     if (error) {
       showFeedback?.('error', error.message || 'Challenge could not be accepted.');
@@ -231,6 +241,7 @@ export default function CircleCompetitionHub({
   }
 
   function startChallenge(challenge) {
+    if (previewOnly) { navigate("/preview/membership"); return; }
     const state = {
       circleChallenge: {
         id: challenge.id,
@@ -281,7 +292,7 @@ export default function CircleCompetitionHub({
           <div>
             <span>CIRCLE COMPETITION</span>
             <h2>Train together. Earn your spot.</h2>
-            <p>Real workouts, verified results, and four meaningful ways to lead.</p>
+            <p>Real workouts, clearly labeled results, and four meaningful ways to lead.</p>
           </div>
         </div>
         <button type="button" className="cs-competition-create" onClick={openBuilder}><Plus /> Create challenge</button>
@@ -302,7 +313,7 @@ export default function CircleCompetitionHub({
               <div className="player"><span>{incomingPlayer?.initials ?? 'CS'}</span><small>NEW CHALLENGE</small></div>
               <div>
                 <h3><strong>{incomingPlayer?.name ?? 'A Circle player'}</strong> posted {Number(incomingLeader.score ?? 0).toLocaleString()} {incomingChallenge.challenge_type === 'completion' ? 'completed rounds' : 'reps'}.</h3>
-                <p>{incomingChallenge.source_name}{incomingChallenge.duration_seconds ? ` · ${incomingChallenge.duration_seconds} seconds` : ''} · {incomingLeader.verification_mode === 'ai' ? 'AI verified' : 'Manual result'}</p>
+                <p>{incomingChallenge.source_name}{incomingChallenge.duration_seconds ? ` · ${incomingChallenge.duration_seconds} seconds` : ''} · {incomingLeader.verification_mode === 'ai' ? 'Camera count (experimental)' : 'Manual result'}</p>
                 <span>Think you can beat it?</span>
               </div>
               <button onClick={() => acceptChallenge(incomingChallenge)}>Challenge back <ChevronRight /></button>
@@ -387,7 +398,7 @@ export default function CircleCompetitionHub({
             <p>Choose real CourtStreak training, the opponent, and the deadline.</p>
 
             {draft ? (
-              <div className="cs-selected-challenge-source"><small>{sourceLabel(draft.sourceType)}</small><strong>{draft.sourceName}</strong>{draft.baselineScore != null ? <em>{Number(draft.baselineScore).toLocaleString()} reps · {draft.verificationMode === 'ai' ? 'AI verified' : 'Manual result'}</em> : null}<button onClick={() => setDraft(null)}>Choose something else</button></div>
+              <div className="cs-selected-challenge-source"><small>{sourceLabel(draft.sourceType)}</small><strong>{draft.sourceName}</strong>{draft.baselineScore != null ? <em>{Number(draft.baselineScore).toLocaleString()} reps · {draft.verificationMode === 'ai' ? 'Camera count (experimental)' : 'Manual result'}</em> : null}<button onClick={() => setDraft(null)}>Choose something else</button></div>
             ) : (
               <>
                 <label><span>Training type</span><select value={sourceType} onChange={(event) => { const next = event.target.value; setSourceType(next); setSourceKey(next === 'drill' ? drills[0]?.drill_key ?? '' : next === 'custom_workout' ? customWorkouts[0]?.workout_key ?? '' : WORKOUT_PROGRAMS[0]?.key ?? ''); }}><option value="workout">CourtStreak workout</option><option value="drill">Single drill</option><option value="custom_workout" disabled={!customWorkouts.length}>My custom workout</option></select></label>
@@ -398,7 +409,7 @@ export default function CircleCompetitionHub({
             <label><span>Challenge</span><select value={targetUserId} onChange={(event) => setTargetUserId(event.target.value)}><option value="circle">Entire Circle</option>{members.filter((member) => member.userId !== currentUserId).map((member) => <option value={member.userId} key={member.userId}>{member.name}</option>)}</select></label>
             <label><span>Deadline</span><select value={deadlineHours} onChange={(event) => setDeadlineHours(Number(event.target.value))}><option value={24}>24 hours</option><option value={48}>48 hours</option><option value={72}>3 days</option><option value={168}>7 days</option></select></label>
 
-            <div className="cs-competition-modal-note"><ShieldCheck /><span><strong>Results stay transparent.</strong><small>AI-supported attempts are marked AI verified. Manual attempts are clearly labeled.</small></span></div>
+            <div className="cs-competition-modal-note"><ShieldCheck /><span><strong>Results stay transparent.</strong><small>Results identify their recording method. Guided Manual totals are self-reported.</small></span></div>
             <button className="submit" disabled={!selectedSource || creating} onClick={createChallenge}>{creating ? 'Sending…' : 'Send challenge'}<ChevronRight /></button>
           </section>
         </div>

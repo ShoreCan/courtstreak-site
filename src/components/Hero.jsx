@@ -1,4 +1,7 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
+import '../customer-preview.css';
+import '../public-preview-entry.css';
 import {
   ArrowRight,
   CheckCircle2,
@@ -81,6 +84,11 @@ export default function Hero({
             </form>
           )}
 
+          <div className="cs-public-preview-entry">
+            <Link className="cs-public-preview-button" to="/preview">Preview the App <ArrowRight size={19} aria-hidden="true" /></Link>
+            <p>No account or payment needed. Explore the dashboard, drills, and sample progress.</p>
+          </div>
+          <p className="cs-preview-price">Membership: $29.99/month · Manage or cancel anytime</p>
           <div className="court-home-benefits">
             <div>
               <Target size={29} />

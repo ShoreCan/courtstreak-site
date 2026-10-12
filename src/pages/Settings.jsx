@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import {
   FiArrowLeft,
   FiCheck,
@@ -17,14 +17,15 @@ import {
   FiUser,
   FiUsers,
 } from 'react-icons/fi';
+import usePreviewNavigate from '../lib/usePreviewNavigate.js';
 import { supabase } from '../lib/supabaseClient.js';
 
 const skillLevels = ['Beginner', 'Intermediate', 'Advanced'];
 const trainingDurations = ['10 minutes', '20 minutes', '30 minutes'];
 const dominantHands = ['Right', 'Left', 'Both'];
 
-export default function Settings() {
-  const navigate = useNavigate();
+export default function Settings({ previewOnly = false }) {
+  const navigate = usePreviewNavigate(previewOnly);
 
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -44,6 +45,7 @@ export default function Settings() {
   const [passwordSaving, setPasswordSaving] = useState(false);
 
   useEffect(() => {
+    if (previewOnly) { setUser({id:'sample-player',email:'jordan@example.test'}); setLoading(false); return undefined; }
     let isMounted = true;
 
     async function loadSettings() {
@@ -102,7 +104,7 @@ export default function Settings() {
     return () => {
       isMounted = false;
     };
-  }, [navigate]);
+  }, [navigate, previewOnly]);
 
   function clearMessages() {
     setMessage('');
@@ -111,6 +113,7 @@ export default function Settings() {
 
   async function handleSavePreferences(event) {
     event.preventDefault();
+    if (previewOnly) { navigate("/preview/membership"); return; }
     clearMessages();
     setSaving(true);
 
@@ -156,6 +159,7 @@ window.setTimeout(() => {
 
   async function handlePasswordChange(event) {
     event.preventDefault();
+    if (previewOnly) { navigate("/preview/membership"); return; }
     clearMessages();
 
     if (newPassword.length < 8) {
@@ -182,6 +186,7 @@ window.setTimeout(() => {
   }
 
   async function handleLogout() {
+    if (previewOnly) { navigate("/"); return; }
     await supabase.auth.signOut();
     navigate('/login', { replace: true });
   }
@@ -255,6 +260,8 @@ window.setTimeout(() => {
             </span>
           </div>
 
+          {previewOnly && <p className="cs-settings-preview-note">These are sample player settings. Members can personalize their training, privacy, and account preferences. Changes and saving are disabled in this preview.</p>}
+
           {message ? (
             <div className="cs-settings-message success">
               <FiCheck />
@@ -298,6 +305,7 @@ window.setTimeout(() => {
                     <label>
                       <span>Current skill level</span>
                       <select
+                        disabled={previewOnly}
                         value={skillLevel}
                         onChange={(event) =>
                           setSkillLevel(event.target.value)
@@ -314,23 +322,25 @@ window.setTimeout(() => {
                     <label>
                       <span>Weekly training goal</span>
                       <select
+                        disabled={previewOnly}
                         value={weeklyGoal}
                         onChange={(event) =>
                           setWeeklyGoal(event.target.value)
                         }
                       >
-                        <option value="2">2 days per week</option>
-                        <option value="3">3 days per week</option>
-                        <option value="4">4 days per week</option>
-                        <option value="5">5 days per week</option>
-                        <option value="6">6 days per week</option>
-                        <option value="7">Every day</option>
+                        <option value="2">2 workouts per week</option>
+                        <option value="3">3 workouts per week</option>
+                        <option value="4">4 workouts per week</option>
+                        <option value="5">5 workouts per week</option>
+                        <option value="6">6 workouts per week</option>
+                        <option value="7">7 workouts per week</option>
                       </select>
                     </label>
 
                     <label>
                       <span>Preferred training time</span>
                       <select
+                        disabled={previewOnly}
                         value={trainingDuration}
                         onChange={(event) =>
                           setTrainingDuration(event.target.value)
@@ -347,6 +357,7 @@ window.setTimeout(() => {
                     <label>
                       <span>Dominant hand</span>
                       <select
+                        disabled={previewOnly}
                         value={dominantHand}
                         onChange={(event) =>
                           setDominantHand(event.target.value)
@@ -385,6 +396,7 @@ window.setTimeout(() => {
                     <label>
                       <span>Completed training visibility</span>
                       <select
+                        disabled={previewOnly}
                         value={defaultSharing}
                         onChange={(event) =>
                           setDefaultSharing(event.target.value)
@@ -415,6 +427,7 @@ window.setTimeout(() => {
                         type="button"
                         className={allowChallenges ? 'active' : ''}
                         aria-pressed={allowChallenges}
+                        disabled={previewOnly}
                         onClick={() =>
                           setAllowChallenges((current) => !current)
                         }
@@ -438,7 +451,7 @@ window.setTimeout(() => {
                     CourtStreak account.
                   </span>
 
-                  <button type="submit" disabled={saving}>
+                  <button type="submit" disabled={previewOnly || saving}>
                     <FiSave />
                     {saving ? 'Saving...' : 'Save Preferences'}
                   </button>
@@ -480,6 +493,7 @@ window.setTimeout(() => {
                       <FiLock />
 
                       <input
+                        disabled={previewOnly}
                         type={showPassword ? 'text' : 'password'}
                         value={newPassword}
                         onChange={(event) =>
@@ -505,7 +519,7 @@ window.setTimeout(() => {
                     </div>
                   </label>
 
-                  <button type="submit" disabled={passwordSaving}>
+                  <button type="submit" disabled={previewOnly || passwordSaving}>
                     {passwordSaving
                       ? 'Updating...'
                       : 'Update Password'}
@@ -513,7 +527,7 @@ window.setTimeout(() => {
                 </form>
 
                 <Link
-                  to="/membership"
+                  to={previewOnly ? "/preview/membership" : "/membership"}
                   className="cs-settings-link-row"
                 >
                   <span>
@@ -528,7 +542,7 @@ window.setTimeout(() => {
                 </Link>
 
                 <Link
-                  to="/profile"
+                  to={previewOnly ? "/preview/profile" : "/profile"}
                   className="cs-settings-link-row"
                 >
                   <span>
@@ -584,6 +598,7 @@ window.setTimeout(() => {
 
                 <a
                   href="mailto:courtstreaksupport@gmail.com?subject=CourtStreak Account Deletion Request"
+                  onClick={previewOnly ? (event) => { event.preventDefault(); navigate("/preview/membership"); } : undefined}
                   className="cs-settings-link-row danger"
                 >
                   <span>
@@ -604,7 +619,7 @@ window.setTimeout(() => {
                 onClick={handleLogout}
               >
                 <FiLogOut />
-                Log Out of CourtStreak
+                {previewOnly ? "Exit Preview" : "Log Out of CourtStreak"}
               </button>
             </>
           )}

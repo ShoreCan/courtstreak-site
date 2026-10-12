@@ -1,0 +1,26 @@
+import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { supabase } from '../lib/supabaseClient.js';
+import '../customer-preview.css';
+
+export default function TrainingStart({ previewOnly = false }) {
+  const route = (path) => previewOnly ? (path === '/dashboard' ? '/preview' : `/preview${path}`) : path;
+  const [preferences, setPreferences] = useState(null);
+  useEffect(() => {
+    if (previewOnly) return undefined;
+    let mounted = true;
+    supabase?.auth.getUser().then(({ data }) => {
+      if (mounted) setPreferences(data?.user?.user_metadata || {});
+    }).catch(() => {});
+    return () => { mounted = false; };
+  }, [previewOnly]);
+  return <main className="cs-training-start">
+    <Link to={route("/dashboard")}>← Dashboard</Link><p className="cs-preview-eyebrow">START TRAINING</p>
+    <h1>What are you working on today?</h1><p>Choose a full plan or focus on one skill. Read the instructions, then follow the timer.</p>
+    <div className="cs-preview-grid">
+      <Link className="cs-preview-card" to={route("/workout")}><span>FULL WORKOUT</span><h2>Train with a plan</h2><p>Choose a 10- or 20-minute workout. Finish every round to record a full workout.</p><strong>Choose a workout →</strong></Link>
+      <Link className="cs-preview-card" to={route("/lab")}><span>PRACTICE A SKILL</span><h2>Focus on one drill</h2><p>Explore drills, coaching cues, and demonstrations. Single drills count as practice, rather than full workouts.</p><strong>Explore drills →</strong></Link>
+    </div>
+    {preferences && <p className="cs-guide-note">Your saved level: {preferences.skill_level || 'Intermediate'}. Preferred session: {preferences.preferred_training_duration || '20 minutes'}. You can choose any plan; 30-minute plans are not currently available.</p>}
+  </main>;
+}

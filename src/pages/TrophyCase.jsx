@@ -125,13 +125,6 @@ export default function TrophyCase() {
         return;
       }
 
-      const { error: unlockError } = await supabase.rpc(
-        'check_and_unlock_achievements'
-      );
-
-      if (unlockError) {
-        console.error('Could not check achievements:', unlockError);
-      }
 
       const [profileResult, achievementResult] = await Promise.all([
         supabase
@@ -303,6 +296,58 @@ export default function TrophyCase() {
             </div>
           </section>
         )}
+
+        <section className="cs-achievement-browser">
+          <div className="cs-achievement-browser-heading">
+            <div>
+              <span>ACHIEVEMENTS</span>
+              <h2>Track what you&apos;ve earned.</h2>
+            </div>
+            <button type="button" onClick={() => navigate('/trophies/collection')}>View Trophy Case <ChevronRight /></button>
+          </div>
+
+          <div className="cs-achievement-filter-row" role="tablist" aria-label="Achievement categories">
+            {FILTERS.map(([value, label]) => (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeFilter === value}
+                className={activeFilter === value ? 'active' : ''}
+                onClick={() => setActiveFilter(value)}
+                key={value}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <div className="cs-achievement-grid">
+            {visibleAchievements.slice(0, 8).map((achievement) => {
+              const Icon = achievementIcon(achievement.achievement_icon, achievement.is_trophy);
+              const hidden = achievement.is_secret && !achievement.unlocked;
+              return (
+                <button
+                  type="button"
+                  className={`cs-achievement-tile ${achievement.unlocked ? 'unlocked' : 'locked'} ${achievement.achievement_tier || 'bronze'}`}
+                  onClick={() => setSelectedAchievement(achievement)}
+                  key={achievement.achievement_id}
+                >
+                  <span className="cs-achievement-seal"><Icon />{!achievement.unlocked && <Lock />}</span>
+                  <span className="cs-achievement-value">{achievement.unlocked ? <Check /> : `${achievement.progress_percent}%`}</span>
+                  <strong>{hidden ? 'Secret Achievement' : achievement.achievement_name}</strong>
+                  <small>{achievement.unlocked ? 'EARNED' : `${Math.min(achievement.current_value, achievement.target_value)} of ${achievement.target_value}`}</small>
+                  {!achievement.unlocked && <span className="cs-achievement-tile-track"><i style={{ width: `${achievement.progress_percent}%` }} /></span>}
+                </button>
+              );
+            })}
+          </div>
+
+          {visibleAchievements.length > 8 && (
+            <button type="button" className="cs-achievement-view-all" onClick={() => navigate('/trophies/collection')}>
+              Explore all {visibleAchievements.length} achievements <ChevronRight />
+            </button>
+          )}
+        </section>
 
         <button
           type="button"

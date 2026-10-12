@@ -1,22 +1,18 @@
+import usePreviewNavigate from '../lib/usePreviewNavigate.js';
+import { PREVIEW_PROFILE, PREVIEW_STATS } from '../lib/previewData.js';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   FiActivity,
   FiArrowRight,
   FiAward,
-  FiBarChart2,
-  FiGrid,
-  FiHome,
-  FiLogOut,
   FiPlay,
-  FiSettings,
   FiTarget,
-  FiTrendingUp,
-  FiUser,
   FiUsers,
   FiZap,
 } from 'react-icons/fi';
 import { FaFire } from 'react-icons/fa';
+import { normalizeStats } from '../lib/trainingAccess.js';
 import { supabase } from '../lib/supabaseClient.js';
 
 const achievementDefinitions = [
@@ -54,20 +50,26 @@ const achievementDefinitions = [
   },
 ];
 
-export default function Dashboard() {
-  const navigate = useNavigate();
-  const [verifiedWeeklyWorkouts, setVerifiedWeeklyWorkouts] = useState(0);
+export default function Dashboard({ previewOnly = false }) {
+  const navigate = usePreviewNavigate(previewOnly);
+  const [verifiedStats, setVerifiedStats] = useState(null);
   const [profile, setProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileError, setProfileError] = useState('');
   const [trainingCircles, setTrainingCircles] = useState([]);
   const [circlesLoading, setCirclesLoading] = useState(true);
   const [todayXp, setTodayXp] = useState(0);
+  const [spotlightTab, setSpotlightTab] = useState('progress');
 
   useEffect(() => {
     let isMounted = true;
 
     async function loadDashboard() {
+      if (previewOnly) {
+        setProfile(PREVIEW_PROFILE); setVerifiedStats(PREVIEW_STATS); setTodayXp(30);
+        setTrainingCircles([{ id: 'sample', name: 'Sample Training Crew', weekly_workout_goal: 20, circle_type: 'friends', privacy: 'private' }]);
+        setProfileLoading(false); setCirclesLoading(false); return;
+      }
       if (!supabase) {
         setProfileError('CourtStreak could not connect to Supabase.');
         setCirclesLoading(false);
@@ -110,7 +112,7 @@ export default function Dashboard() {
         console.error('Could not refresh training streak:', streakError);
       }
 
-      const [profileResult, todayXpResult, weeklyResult, circlesResult] =
+      const [profileResult, todayXpResult, statsResult, circlesResult] =
         await Promise.all([
           supabase
             .from('profiles')
@@ -120,22 +122,7 @@ export default function Dashboard() {
             .eq('id', user.id)
             .single(),
           supabase.rpc('get_today_xp'),
-          supabase
-            .from('workout_completions')
-            .select('id, completed_at')
-            .eq('user_id', user.id)
-            .gte(
-              'completed_at',
-              (() => {
-                const now = new Date();
-                const start = new Date(now);
-                const day = start.getDay();
-                const daysSinceMonday = (day + 6) % 7;
-                start.setDate(start.getDate() - daysSinceMonday);
-                start.setHours(0, 0, 0, 0);
-                return start.toISOString();
-              })()
-            ),
+          supabase.rpc('get_my_courtstreak_stats'),
           supabase
             .from('training_circle_members')
             .select(`
@@ -169,14 +156,14 @@ export default function Dashboard() {
         setTodayXp(todayXpResult.data?.[0]?.total_today_xp ?? 0);
       }
 
-      if (weeklyResult.error) {
+      if (statsResult.error || !normalizeStats(statsResult.data)) {
         console.error(
-          'Could not load verified weekly workouts:',
-          weeklyResult.error
+          'Could not load verified CourtStreak stats:',
+          statsResult.error
         );
-        setVerifiedWeeklyWorkouts(0);
+        setProfileError('CourtStreak could not load your verified stats.');
       } else {
-        setVerifiedWeeklyWorkouts(weeklyResult.data?.length ?? 0);
+        setVerifiedStats(normalizeStats(statsResult.data));
       }
 
       if (circlesResult.error) {
@@ -199,12 +186,12 @@ export default function Dashboard() {
       setProfileLoading(false);
     }
 
-    loadDashboard();
+    loadDashboard().catch(() => { if (isMounted) { setProfileError("Your dashboard could not load. Please try again."); setProfileLoading(false); setCirclesLoading(false); } });
 
     return () => {
       isMounted = false;
     };
-  }, [navigate]);
+  }, [navigate, previewOnly]);
 
   const achievements = useMemo(
     () =>
@@ -228,94 +215,22 @@ export default function Dashboard() {
     achievements.find((achievement) => !achievement.unlocked) ||
     achievements[achievements.length - 1];
   const featuredCircle = trainingCircles[0] || null;
-  const totalXp = profile?.xp ?? 0;
-  const playerLevel = profile?.level ?? 1;
-  const weeklyWorkouts = verifiedWeeklyWorkouts;
-  const weeklyGoal = Math.max(profile?.weekly_goal ?? 4, 1);
+  if (profileLoading) return <main className="cs-welcome-page"><section className="cs-welcome-card"><h1>Loading your dashboard…</h1><p>Preparing your training and progress.</p></section></main>;
+  if (profileError) return <main className="cs-welcome-page"><section className="cs-welcome-card"><h1>Your dashboard could not load.</h1><p>{profileError}</p><button onClick={() => window.location.reload()}>Try again</button></section></main>;
+  const totalXp = verifiedStats?.xp ?? profile?.xp ?? 0;
+  const playerLevel = verifiedStats?.level ?? profile?.level ?? 1;
+  const weeklyWorkouts = verifiedStats?.weekly_workouts ?? 0;
+  const weeklyGoal = Math.max(verifiedStats?.weekly_goal ?? 5, 1);
   const weeklyProgress = Math.min(
     (weeklyWorkouts / weeklyGoal) * 100,
     100
   );
   const workoutsRemaining = Math.max(weeklyGoal - weeklyWorkouts, 0);
-  const xpIntoLevel = totalXp % 100;
-  const xpToNextLevel = xpIntoLevel === 0 ? 100 : 100 - xpIntoLevel;
-
-  const navigationItems = [
-    { label: 'Dashboard', icon: <FiHome />, active: true },
-    {
-      label: 'Start Training',
-      icon: <FiPlay />,
-      action: () => navigate('/workout'),
-    },
-    {
-      label: 'Progress',
-      icon: <FiBarChart2 />,
-      action: () => navigate('/progress'),
-    },
-    {
-      label: 'Achievements',
-      icon: <FiAward />,
-      action: () => navigate('/trophies'),
-    },
-    {
-      label: 'Training Circles',
-      icon: <FiUsers />,
-      action: () => navigate('/training-circles'),
-    },
-    {
-      label: 'Profile',
-      icon: <FiUser />,
-      action: () => navigate('/profile'),
-    },
-    {
-      label: 'Membership',
-      icon: <FiGrid />,
-      action: () => navigate('/membership'),
-    },
-    {
-      label: 'Settings',
-      icon: <FiSettings />,
-      action: () => navigate('/settings'),
-    },
-  ];
-
-  async function handleLogout() {
-    if (supabase) await supabase.auth.signOut();
-    navigate('/login');
-  }
+  const xpIntoLevel = Number(verifiedStats?.level_progress_percent ?? 0);
+  const xpToNextLevel = verifiedStats?.xp_needed_for_next_level ?? 0;
 
   return (
     <main className="cs-dash-v3">
-      <aside className="cs-dash-v3-sidebar">
-        <Link to="/" className="cs-dash-v3-logo">
-          <span>CS</span>
-          <strong>CourtStreak</strong>
-        </Link>
-
-        <nav aria-label="Player navigation">
-          {navigationItems.map((item) => (
-            <button
-              key={item.label}
-              type="button"
-              className={item.active ? 'active' : ''}
-              onClick={item.action}
-            >
-              {item.icon}
-              <span>{item.label}</span>
-            </button>
-          ))}
-        </nav>
-
-        <button
-          type="button"
-          className="cs-dash-v3-logout"
-          onClick={handleLogout}
-        >
-          <FiLogOut />
-          <span>Log Out</span>
-        </button>
-      </aside>
-
       <section className="cs-dash-v3-main">
         <header className="cs-dash-v3-header">
           <div>
@@ -328,7 +243,7 @@ export default function Dashboard() {
           </div>
 
           <div className="cs-dash-v3-header-stats">
-            <span><FaFire /> {profile?.training_streak ?? 0} days</span>
+            <span><FaFire /> {verifiedStats?.training_streak ?? profile?.training_streak ?? 0} days</span>
             <span><FiZap /> Level {playerLevel}</span>
           </div>
         </header>
@@ -355,8 +270,8 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <button type="button" onClick={() => navigate('/workout')}>
-                <span><FiPlay /> Start Workout</span>
+              <button type="button" onClick={() => navigate('/train')}>
+                <span><FiPlay /> Start Training</span>
                 <FiArrowRight />
               </button>
             </article>
@@ -400,7 +315,27 @@ export default function Dashboard() {
           </div>
 
           <div className="cs-dash-v3-secondary">
-            <article className="cs-dash-v3-player-card">
+            <section className="cs-dash-v3-spotlight" aria-label="Your CourtStreak at a glance">
+              <div className="cs-dash-v3-spotlight-heading">
+                <div>
+                  <span className="cs-dash-v3-label">AT A GLANCE</span>
+                  <h2>Your CourtStreak</h2>
+                </div>
+                <nav aria-label="Dashboard summary">
+                  <button type="button" className={spotlightTab === 'progress' ? 'active' : ''} onClick={() => setSpotlightTab('progress')}>
+                    Progress
+                  </button>
+                  <button type="button" className={spotlightTab === 'circle' ? 'active' : ''} onClick={() => setSpotlightTab('circle')}>
+                    Circle
+                  </button>
+                  <button type="button" className={spotlightTab === 'milestone' ? 'active' : ''} onClick={() => setSpotlightTab('milestone')}>
+                    Next win
+                  </button>
+                </nav>
+              </div>
+
+              <div className="cs-dash-v3-spotlight-content" aria-live="polite">
+            {spotlightTab === 'progress' ? <article className="cs-dash-v3-player-card">
               <div className="cs-dash-v3-player-top">
                 <div className="cs-dash-v3-level-ring">
                   <span>LEVEL</span>
@@ -419,17 +354,17 @@ export default function Dashboard() {
 
               <div className="cs-dash-v3-player-meta">
                 <span>
-                  <strong>{profile?.workouts_completed ?? 0}</strong>
+                  <strong>{verifiedStats?.workouts_completed ?? 0}</strong>
                   Workouts
                 </span>
                 <span>
-                  <strong>{profile?.best_training_streak ?? 0}</strong>
+                  <strong>{verifiedStats?.best_training_streak ?? profile?.best_training_streak ?? 0}</strong>
                   Best streak
                 </span>
               </div>
-            </article>
+            </article> : null}
 
-            <article className="cs-dash-v3-circle-card">
+            {spotlightTab === 'circle' ? <article className="cs-dash-v3-circle-card">
               <div className="cs-dash-v3-section-head">
                 <div>
                   <span className="cs-dash-v3-label">TRAINING CIRCLE</span>
@@ -482,9 +417,9 @@ export default function Dashboard() {
                   View all {trainingCircles.length} Circles
                 </button>
               ) : null}
-            </article>
+            </article> : null}
 
-            <article className="cs-dash-v3-achievement">
+            {spotlightTab === 'milestone' ? <article className="cs-dash-v3-achievement">
               <div className="cs-dash-v3-achievement-icon">
                 {nextAchievement.icon}
               </div>
@@ -501,7 +436,9 @@ export default function Dashboard() {
               <button type="button" onClick={() => navigate('/trophies')}>
                 <FiArrowRight />
               </button>
-            </article>
+            </article> : null}
+              </div>
+            </section>
           </div>
         </section>
       </section>

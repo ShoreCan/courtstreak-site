@@ -2,17 +2,17 @@ import React from 'react';
 import { CheckCircle2 } from 'lucide-react';
 
 const included = [
-  'Daily workouts',
-  'Beginner → advanced progressions',
-  'New challenges every week',
+  '10- and 20-minute guided workouts',
+  'Drill instructions and coaching cues',
+  'Circle challenges',
   'Streak tracking',
   'XP and badges',
   'Private Training Circles',
   'Friend and team leaderboards',
-  'Coach dashboard preview',
-  'Parent progress visibility',
+  'Workout and drill library',
+  'Training progress and personal bests',
   'Mobile-friendly web access',
-  'Video instruction ready',
+  'Demonstrations where available',
   'Future updates included',
 ];
 

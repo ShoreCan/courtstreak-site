@@ -1,0 +1,30 @@
+/* Public preview entry points, shared by desktop and mobile landing pages. */
+.cs-public-preview-entry { width:min(100%,610px); margin:18px 0 14px; }
+.cs-public-preview-button { display:inline-flex; align-items:center; justify-content:center; gap:14px; min-height:52px; padding:14px 24px; border:1px solid rgba(255,145,78,.5); border-radius:14px; color:#fff; background:#132139; font-size:16px; font-weight:800; text-decoration:none; box-shadow:0 8px 24px rgba(4,12,24,.12); transition:background .18s,border-color .18s; }
+.cs-public-preview-button:hover { background:#1a2d48; border-color:#ff964a; }
+.cs-public-preview-entry > p { margin:10px 0 0; color:#c3cddd; font-size:13px; line-height:1.6; max-width:550px; }
+.cs-app-preview-copy .cs-public-preview-entry > p { color:#63748c; }
+.cs-public-nav-preview { display:inline-flex; align-items:center; color:#c94f09; font-size:13px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; white-space:nowrap; padding:18px 0; }
+.cs-public-mobile-preview { display:none; }
+.cs-public-menu-preview { display:flex; flex-direction:column; gap:5px; padding:16px 18px; margin-bottom:14px; border:1px solid #e8c6ad; border-radius:14px; color:#142139; background:#fff5ed; }
+.cs-public-menu-preview strong { color:#b54806; font-size:16px; }
+.cs-public-menu-preview small { color:#526276; font-size:12px; }
+.cs-public-preview-button:focus-visible,.cs-public-nav-preview:focus-visible,.cs-public-mobile-preview:focus-visible,.cs-public-menu-preview:focus-visible { outline:3px solid #ff853d; outline-offset:5px; }
+@media(max-width:1100px) {
+  .premium-nav .premium-menu,.premium-nav .desktop-auth { display:none!important; }
+  .premium-nav .hamburger { display:flex; flex-shrink:0; }
+  .cs-public-mobile-preview { display:inline-flex; align-items:center; justify-content:center; margin-left:auto; padding:10px 12px; border:1px solid #e8c6ad; border-radius:12px; color:#b54806; background:#fff5ed; font-size:13px; font-weight:800; }
+}
+@media(max-width:600px) {
+  .cs-public-preview-button { width:100%; }
+  .premium-nav { gap:10px; }
+  .cs-public-mobile-preview { padding:10px; }
+}
+@media(min-width:1101px) {
+  .premium-nav { column-gap:20px; }
+  .premium-nav .brand,.premium-nav .nav-auth { flex-shrink:0; }
+  .premium-nav .premium-menu { gap:18px; }
+  .premium-nav .premium-menu-item button { white-space:nowrap; font-size:12px; letter-spacing:.08em; }
+  .premium-nav .nav-auth { gap:10px; }
+  .premium-nav .nav-auth a { white-space:nowrap; }
+}

@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
+import usePreviewNavigate from '../lib/usePreviewNavigate.js';
+import { PREVIEW_CIRCLES, PREVIEW_CIRCLE_STATS } from '../lib/previewData.js';
 import { supabase } from '../lib/supabaseClient.js';
 import {
   ArrowLeft,
@@ -12,30 +14,22 @@ import {
   Zap,
 } from 'lucide-react';
 
-const previewMembers = [
-  { id: 1, initials: 'TR' },
-  { id: 2, initials: 'ZA' },
-  { id: 3, initials: 'IS' },
-  { id: 4, initials: 'MA' },
-];
-
-export default function TrainingCircles() {
-  const navigate = useNavigate();
+export default function TrainingCircles({ previewOnly = false }) {
+  const navigate = usePreviewNavigate(previewOnly);
+  const location = useLocation();
+  const challengeDraft = location.state?.challengeDraft ?? null;
 const [showCreateCircle, setShowCreateCircle] = useState(false);
 const [circleName, setCircleName] = useState('');
 const [circleType, setCircleType] = useState('Friends');
 const [creatingCircle, setCreatingCircle] = useState(false);
 const [createCircleError, setCreateCircleError] = useState('');
 const [circles, setCircles] = useState([]);
+const [circleStats, setCircleStats] = useState({});
+const [circleStatsError, setCircleStatsError] = useState('');
 const [loadingCircles, setLoadingCircles] = useState(true);
-  const weeklyGoal = 20;
-  const weeklyCompleted = 14;
 
-  const weeklyProgress = Math.min(
-    (weeklyCompleted / weeklyGoal) * 100,
-    100
-  );
   async function loadCircles() {
+  if (previewOnly) { setCircles(PREVIEW_CIRCLES); setCircleStats(PREVIEW_CIRCLE_STATS); setLoadingCircles(false); return; }
   if (!supabase) {
     setLoadingCircles(false);
     return;
@@ -84,12 +78,106 @@ const [loadingCircles, setLoadingCircles] = useState(true);
     .filter((circle) => circle?.id);
 
   setCircles(loadedCircles);
+
+  const statsEntries = await Promise.all(
+    loadedCircles.map(async (circle) => {
+      const { data: statsData, error: statsError } =
+        await supabase.rpc('get_training_circle_weekly_stats', {
+          p_circle_id: circle.id,
+        });
+
+      if (statsError) {
+        console.error(
+          `Could not load verified stats for Circle ${circle.id}:`,
+          statsError
+        );
+
+        return [circle.id, null];
+      }
+
+      const members = statsData ?? [];
+
+      const weeklyWorkouts = members.reduce(
+        (total, member) =>
+          total + Number(member.weekly_workouts ?? 0),
+        0
+      );
+
+      const weeklyTrainingXp = members.reduce(
+        (total, member) =>
+          total + Number(member.weekly_training_xp ?? 0),
+        0
+      );
+
+      const leaders = [...members]
+        .sort(
+          (a, b) =>
+            Number(b.weekly_training_xp ?? 0) -
+            Number(a.weekly_training_xp ?? 0)
+        )
+        .filter(
+          (member) =>
+            Number(member.weekly_workouts ?? 0) > 0 ||
+            Number(member.weekly_training_xp ?? 0) > 0
+        );
+
+      let pendingChallenges = 0;
+      const { data: activeChallenges } = await supabase
+        .from('circle_challenges')
+        .select('id, target_user_id')
+        .eq('circle_id', circle.id)
+        .eq('status', 'active')
+        .gt('expires_at', new Date().toISOString());
+
+      const eligibleChallenges = (activeChallenges ?? []).filter(
+        (challenge) => !challenge.target_user_id || challenge.target_user_id === user.id
+      );
+      if (eligibleChallenges.length) {
+        const { data: ownEntries } = await supabase
+          .from('circle_challenge_entries')
+          .select('challenge_id')
+          .eq('user_id', user.id)
+          .in('challenge_id', eligibleChallenges.map((challenge) => challenge.id));
+        const enteredIds = new Set((ownEntries ?? []).map((entry) => entry.challenge_id));
+        pendingChallenges = eligibleChallenges.filter((challenge) => !enteredIds.has(challenge.id)).length;
+      }
+
+      return [
+        circle.id,
+        {
+          memberCount: members.length,
+          weeklyWorkouts,
+          weeklyTrainingXp,
+          leaders,
+          pendingChallenges,
+        },
+      ];
+    })
+  );
+
+  const failedStats = statsEntries.some(
+    ([, stats]) => stats === null
+  );
+
+  setCircleStats(
+    Object.fromEntries(
+      statsEntries.filter(([, stats]) => stats !== null)
+    )
+  );
+
+  setCircleStatsError(
+    failedStats
+      ? 'Some Circle activity could not be verified right now.'
+      : ''
+  );
+
   setLoadingCircles(false);
 }
 useEffect(() => {
   loadCircles();
-}, []);
+}, [previewOnly]);
 async function handleCreateCircle() {
+  if (previewOnly) { navigate("/preview/membership"); return; }
   const trimmedName = circleName.trim();
 
   if (!trimmedName || creatingCircle) {
@@ -181,7 +269,7 @@ async function handleCreateCircle() {
            <button
   type="button"
   className="cs-circles-primary"
-  onClick={() => setShowCreateCircle(true)}
+  onClick={() => previewOnly ? navigate("/preview/membership") : setShowCreateCircle(true)}
 >
               <Plus size={18} />
               Create Circle
@@ -190,6 +278,7 @@ async function handleCreateCircle() {
             <button
               type="button"
               className="cs-circles-secondary"
+              onClick={previewOnly ? () => navigate("/preview/membership") : undefined}
             >
               <UserPlus size={18} />
               Join Circle
@@ -211,6 +300,16 @@ async function handleCreateCircle() {
             </div>
           </div>
 
+          {challengeDraft ? (
+            <div className="cs-circle-challenge-route-banner">
+              <span><Trophy size={18} /></span>
+              <div>
+                <small>START A CIRCLE CHALLENGE</small>
+                <strong>Choose who you want to challenge with {challengeDraft.sourceName}.</strong>
+              </div>
+            </div>
+          ) : null}
+
           <div className="cs-circles-simple-grid">
 
    {loadingCircles ? (
@@ -218,7 +317,21 @@ async function handleCreateCircle() {
     Loading your Training Circles...
   </div>
 ) : circles.length > 0 ? (
-  circles.map((circle) => (
+  circles.map((circle) => {
+    const stats = circleStats[circle.id];
+    const weeklyGoal = Math.max(
+      Number(circle.weekly_workout_goal ?? 20),
+      1
+    );
+
+    const weeklyWorkouts = stats?.weeklyWorkouts ?? 0;
+
+    const weeklyProgress = Math.min(
+      (weeklyWorkouts / weeklyGoal) * 100,
+      100
+    );
+
+    return (
     <article
       className="cs-circle-showcase"
       key={circle.id}
@@ -256,18 +369,24 @@ async function handleCreateCircle() {
         <div className="cs-circle-showcase-progress">
           <span>WEEKLY TEAM GOAL</span>
 
-          <strong>
-            0
-            <small>%</small>
-          </strong>
+          {stats ? (
+            <>
+              <strong>
+                {Math.round(weeklyProgress)}
+                <small>%</small>
+              </strong>
 
-          <p>
-            0 of {circle.weekly_workout_goal ?? 20} workouts completed
-          </p>
+              <p>
+                {weeklyWorkouts} of {weeklyGoal} workouts completed
+              </p>
 
-          <div className="cs-circle-showcase-track">
-            <div style={{ width: '0%' }} />
-          </div>
+              <div className="cs-circle-showcase-track">
+                <div style={{ width: `${weeklyProgress}%` }} />
+              </div>
+            </>
+          ) : (
+            <p>Circle activity unavailable</p>
+          )}
 
           <div className="cs-circle-showcase-streak">
             <Flame size={16} />
@@ -278,16 +397,42 @@ async function handleCreateCircle() {
         <div className="cs-circle-showcase-leaders">
           <span>THIS WEEK&apos;S LEADERS</span>
 
-          <div className="cs-circle-empty-leaderboard">
-            <Trophy size={24} />
+          {!stats ? (
+            <div className="cs-circle-empty-leaderboard">
+              <Trophy size={24} />
+              <strong>Leaderboard unavailable</strong>
+              <p>
+                CourtStreak could not verify this Circle&apos;s
+                activity right now.
+              </p>
+            </div>
+          ) : stats.leaders.length === 0 ? (
+            <div className="cs-circle-empty-leaderboard">
+              <Trophy size={24} />
+              <strong>No leaderboard yet</strong>
+              <p>
+                Complete a workout and this week&apos;s rankings
+                will appear here.
+              </p>
+            </div>
+          ) : (
+            <div className="cs-circle-weekly-leaders">
+              {stats.leaders.slice(0, 3).map((leader, index) => (
+                <div
+                  className="cs-circle-weekly-leader"
+                  key={leader.user_id}
+                >
+                  <strong>
+                    #{index + 1} {`${leader.first_name || 'Player'} ${leader.last_name || ''}`.trim()}
+                  </strong>
 
-            <strong>No leaderboard yet</strong>
-
-            <p>
-              Train with your Circle and weekly rankings
-              will appear here.
-            </p>
-          </div>
+                  <span>
+                    {Number(leader.weekly_training_xp ?? 0)} training XP
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
       </div>
@@ -296,7 +441,9 @@ async function handleCreateCircle() {
         type="button"
         className="cs-circle-showcase-open"
         onClick={() =>
-          navigate(`/training-circles/${circle.id}`)
+          navigate(`/training-circles/${circle.id}`, {
+            state: challengeDraft ? { challengeDraft } : null,
+          })
         }
       >
         <span>
@@ -304,10 +451,13 @@ async function handleCreateCircle() {
           Enter {circle.name}
         </span>
 
+        {stats?.pendingChallenges > 0 ? <small className="cs-circle-pending-challenges">{stats.pendingChallenges} new {stats.pendingChallenges === 1 ? 'challenge' : 'challenges'}</small> : null}
+
         <ChevronRight size={18} />
       </button>
     </article>
-  ))
+    );
+  })
 ) : (
   <div className="cs-circle-empty-state">
     <Users size={28} />
@@ -325,6 +475,7 @@ async function handleCreateCircle() {
             <button
               type="button"
               className="cs-circle-simple-create"
+              onClick={() => previewOnly ? navigate("/preview/membership") : setShowCreateCircle(true)}
             >
               <div>
                 <Plus size={22} />

@@ -1,38 +1,49 @@
-import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import React, { lazy, Suspense } from 'react';
+import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import Home from './pages/Home.jsx';
-import BallHandling from './pages/BallHandling.jsx';
-import Players from './pages/Players.jsx';
-import Parents from './pages/Parents.jsx';
-import Coaches from './pages/Coaches.jsx';
-import Reviews from './pages/Reviews.jsx';
-import FAQPage from './pages/FAQPage.jsx';
-import WhatsIncludedPage from './pages/WhatsIncludedPage.jsx';
-import ContactPage from './pages/ContactPage.jsx';
-import PricingPage from './pages/PricingPage.jsx';
-import About from './pages/About.jsx';
-import CreateAccount from './pages/CreateAccount.jsx';
-import Login from './pages/Login.jsx';
-import ForgotPassword from './pages/ForgotPassword.jsx';
-import ResetPassword from './pages/ResetPassword.jsx';
-import Dashboard from './pages/Dashboard.jsx';
-import Welcome from './pages/Welcome.jsx';
-import Workout from './pages/Workout.jsx';
-import Profile from './pages/Profile.jsx';
-import Membership from './pages/Membership.jsx';
-import TrophyCase from './pages/TrophyCase.jsx';
-import TrophyCollection from './pages/TrophyCollection.jsx';
-import Settings from './pages/Settings.jsx';
-import Progress from './pages/Progress.jsx';
-import TrainingCircles from './pages/TrainingCircles.jsx';
-import TrainingCircleDetail from './pages/TrainingCircleDetail.jsx';
-import JoinTrainingCircle from './pages/JoinTrainingCircle.jsx';
+const BallHandling = lazy(() => import('./pages/BallHandling.jsx'));
+const Players = lazy(() => import('./pages/Players.jsx'));
+const Parents = lazy(() => import('./pages/Parents.jsx'));
+const Coaches = lazy(() => import('./pages/Coaches.jsx'));
+const Reviews = lazy(() => import('./pages/Reviews.jsx'));
+const FAQPage = lazy(() => import('./pages/FAQPage.jsx'));
+const WhatsIncludedPage = lazy(() => import('./pages/WhatsIncludedPage.jsx'));
+const ContactPage = lazy(() => import('./pages/ContactPage.jsx'));
+const PricingPage = lazy(() => import('./pages/PricingPage.jsx'));
+const About = lazy(() => import('./pages/About.jsx'));
+const CreateAccount = lazy(() => import('./pages/CreateAccount.jsx'));
+const Login = lazy(() => import('./pages/Login.jsx'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword.jsx'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword.jsx'));
+const Dashboard = lazy(() => import('./pages/Dashboard.jsx'));
+const Welcome = lazy(() => import('./pages/Welcome.jsx'));
+const Workout = lazy(() => import('./pages/Workout.jsx'));
+const Lab = lazy(() => import('./pages/Lab.jsx'));
+const LabDrillDetail = lazy(() => import('./pages/LabDrillDetail.jsx'));
+const LabDrillSession = lazy(() => import('./pages/LabDrillSession.jsx'));
+const Profile = lazy(() => import('./pages/Profile.jsx'));
+const Membership = lazy(() => import('./pages/Membership.jsx'));
+const TrophyCollection = lazy(() => import('./pages/TrophyCollection.jsx'));
+const Settings = lazy(() => import('./pages/Settings.jsx'));
+const Progress = lazy(() => import('./pages/Progress.jsx'));
+const TrainingCircles = lazy(() => import('./pages/TrainingCircles.jsx'));
+const TrainingCircleDetail = lazy(() => import('./pages/TrainingCircleDetail.jsx'));
+const JoinTrainingCircle = lazy(() => import('./pages/JoinTrainingCircle.jsx'));
 import RequireMembership from './components/RequireMembership.jsx';
+const TrainingStart = lazy(() => import('./pages/TrainingStart.jsx'));
+const CustomerPreview = lazy(() => import('./pages/CustomerPreview.jsx'));
+import RequireAccount from './components/RequireAccount.jsx';
+import AppErrorBoundary from './components/AppErrorBoundary.jsx';
+import PlayerAppNav from './components/PlayerAppNav.jsx';
 export default function App() {
+  const location = useLocation();
   return (
-
-    <Routes>
+    <AppErrorBoundary key={location.pathname}>
+      <Suspense fallback={<main className="cs-welcome-page"><section className="cs-welcome-card"><h1>Opening CourtStreak…</h1></section></main>}>
+      <Routes>
       <Route path="/" element={<Home />} />
+      <Route path="/preview/*" element={<CustomerPreview />} />
+      <Route path="/train" element={<RequireMembership><TrainingStart /></RequireMembership>} />
       <Route path="/players" element={<Players />} />
       <Route path="/parents" element={<Parents />} />
       <Route path="/coaches" element={<Coaches />} />
@@ -75,8 +86,33 @@ export default function App() {
 <Route
   path="/training/ball-handling"
   element={
+    <BallHandling />
+  }
+/>
+
+<Route
+  path="/lab"
+  element={
     <RequireMembership>
-      <BallHandling />
+      <Lab />
+    </RequireMembership>
+  }
+/>
+
+<Route
+  path="/lab/drill/:drillKey"
+  element={
+    <RequireMembership>
+      <LabDrillDetail />
+    </RequireMembership>
+  }
+/>
+
+<Route
+  path="/lab/drill/:drillKey/session"
+  element={
+    <RequireMembership>
+      <LabDrillSession />
     </RequireMembership>
   }
 />
@@ -110,9 +146,9 @@ export default function App() {
 <Route
   path="/membership"
   element={
-    <RequireMembership>
+    <RequireAccount>
       <Membership />
-    </RequireMembership>
+    </RequireAccount>
   }
 />
 
@@ -120,7 +156,7 @@ export default function App() {
   path="/trophies"
   element={
     <RequireMembership>
-      <TrophyCase />
+      <TrophyCollection />
     </RequireMembership>
   }
 />
@@ -156,6 +192,10 @@ export default function App() {
   element={<JoinTrainingCircle />}
 />
 
-    </Routes>
+      <Route path="*" element={<main className="cs-welcome-page"><section className="cs-welcome-card"><h1>Page not found.</h1><p>Choose a destination to continue.</p><Link to="/dashboard">Dashboard</Link> · <Link to="/preview">Explore CourtStreak</Link></section></main>} />
+      </Routes>
+      </Suspense>
+      <PlayerAppNav />
+    </AppErrorBoundary>
   );
 }
