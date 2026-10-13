@@ -156,7 +156,7 @@ export default function Hero({
 
           <div className="court-phone-header">
             <div>
-              <p>Good evening, Trey</p>
+              <p>Good evening, Jordan</p>
               <h2>Ready to work?</h2>
             </div>
 
@@ -194,24 +194,6 @@ export default function Hero({
     <span>Crossover improvement</span>
   </div>
 </div>
-
-          <section className="court-phone-streak">
-            <div className="court-phone-streak-copy">
-              <p>Your streak</p>
-
-              <h3>
-                <Flame size={23} />
-                17 Days
-              </h3>
-
-              <span>Keep showing up!</span>
-            </div>
-
-            <div className="court-phone-ring">
-              <strong>17</strong>
-              <span>day streak</span>
-            </div>
-          </section>
 
          <div className="court-phone-proof">
   <div className="court-phone-proof-heading">

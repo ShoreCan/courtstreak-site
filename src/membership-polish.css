@@ -1,0 +1,43 @@
+/* Shared visual language for browsing membership and managing an existing plan. */
+.cs-membership-page { min-height: 100vh; box-sizing: border-box; color: #f5f7fc; background: radial-gradient(ellipse at 95% 0,rgba(255,118,38,.09),transparent 38rem),#07101f; padding: 32px clamp(18px,4vw,48px) 72px; }
+.cs-membership-shell { max-width: 1080px; margin: 0 auto; }
+.cs-membership-back { display: inline-flex; gap: 8px; align-items: center; color: #b7c3d7; text-decoration: none; min-height: 44px; margin-bottom: 20px; }
+.cs-membership-heading { max-width: 660px; margin-bottom: 32px; }
+.cs-membership-eyebrow { color: #ffad6b; font-size: 11px; font-weight: 800; letter-spacing: .13em; }
+.cs-membership-heading h1 { font-size: clamp(32px,4vw,48px); line-height: 1.1; letter-spacing: -.035em; margin: 12px 0; color: #fff; }
+.cs-membership-heading > p { font-size: 17px; line-height: 1.6; margin: 0; color: #acbad0; }
+.cs-membership-layout { display: grid; grid-template-columns: minmax(0,1.08fr) minmax(0,1fr); gap: 28px; align-items: start; }
+.cs-membership-plan { min-width: 0; border: 1px solid #805134; border-radius: 24px; padding: clamp(24px,3vw,36px); background: linear-gradient(145deg,#182336,#101929); box-shadow: inset 0 3px 0 #ff7626,0 16px 48px rgba(0,0,0,.18); }
+.cs-membership-plan h2 { margin: 20px 0 0; font-size: 23px; color: #fff; line-height: 1.25; }
+.cs-membership-plan .cs-membership-price { margin: 16px 0; font-size: clamp(40px,4.5vw,52px); letter-spacing: -.04em; line-height: 1.1; font-weight: 800; color: #fff; }
+.cs-membership-price span { font-size: 16px; color: #a9b7cc; font-weight: 500; letter-spacing: 0; }
+.cs-membership-muted { color: #aebcd1; line-height: 1.6; font-size: 14px; }
+.cs-membership-checklist { list-style: none; padding: 20px 0; margin: 20px 0; display: grid; gap: 14px; border-block: 1px solid #2d3a50; }
+.cs-membership-checklist li { display: flex; gap: 10px; font-size: 14px; line-height: 1.5; }
+.cs-membership-checklist svg { flex-shrink: 0; color: #ffad6b; margin-top: 2px; }
+.cs-membership-primary { display: flex; justify-content: center; align-items: center; gap: 10px; width: 100%; box-sizing: border-box; padding: 14px 16px; min-height: 52px; border: 0; border-radius: 12px; color: #fff; background: #e95f0b; font: inherit; font-size: 15px; font-weight: 750; text-decoration: none; cursor: pointer; text-align: center; }
+.cs-membership-primary:hover { background: #fc741c; }
+.cs-membership-primary:disabled { opacity: .7; cursor: wait; }
+.cs-membership-small { margin: 14px 0; color: #a5b3c8; font-size: 12px; line-height: 1.6; text-align: center; }
+.cs-membership-text-link { color: #ffb580; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-size: 14px; font-weight: 650; }
+.cs-membership-value { min-width: 0; padding: 12px 4px; }
+.cs-membership-value > h2 { color: #fff; margin: 0 0 24px; font-size: 24px; line-height: 1.25; }
+.cs-membership-value article { display: flex; gap: 14px; margin-bottom: 24px; }
+.cs-membership-value article > svg { color: #ffad6b; flex-shrink: 0; margin-top: 2px; }
+.cs-membership-value h3 { margin: 0 0 7px; color: #ecf1f9; font-size: 16px; }
+.cs-membership-value article p, .cs-membership-preview-note p, .cs-membership-tracking p { color: #aebcd1; font-size: 14px; line-height: 1.65; margin: 0; }
+.cs-membership-preview-note { border: 1px solid #2b3b54; border-radius: 16px; padding: 20px; background: #111d30; }
+.cs-membership-preview-note > strong { display: block; margin-bottom: 8px; font-size: 16px; }
+.cs-membership-tracking { padding: 20px 2px; font-size: 13px; color: #aebcd1; }
+.cs-membership-tracking summary { cursor: pointer; }
+.cs-membership-tracking p { margin-top: 12px; }
+.cs-membership-plan-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.cs-membership-status { border: 1px solid #43516a; border-radius: 30px; padding: 7px 10px; color: #c2ccdc; font-size: 12px; text-transform: capitalize; }
+.cs-membership-status.is-active { color: #a2e7ba; border-color: #35674f; background: #123124; }
+.cs-membership-details { margin: 24px 0; border-block: 1px solid #2d3a50; padding: 8px 0; }
+.cs-membership-details > div { display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; flex-wrap: wrap; }
+.cs-membership-details dt { display: flex; gap: 8px; align-items: center; color: #aebcd1; font-size: 13px; }
+.cs-membership-details dd { margin: 0; color: #f1f5fb; font-size: 14px; }
+.cs-membership-error { padding: 16px; border: 1px solid #874841; background: #321c22; color: #ffd2cd; border-radius: 12px; line-height: 1.5; }
+.cs-membership-page :is(a,button,summary):focus-visible { outline: 2px solid #ffb580; outline-offset: 4px; }
+@media(max-width:700px) { .cs-membership-layout { grid-template-columns: minmax(0,1fr); gap: 24px; } .cs-membership-page { padding-top: 24px; } .cs-membership-heading { margin-bottom: 24px; } .cs-membership-heading > p { font-size: 15px; } .cs-membership-value > h2 { font-size: 22px; } }

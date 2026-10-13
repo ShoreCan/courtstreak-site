@@ -33,7 +33,7 @@ export default function AppPreview() {
         </p>
 
         <div className="cs-public-preview-entry">
-          <Link className="cs-public-preview-button" to="/preview">Explore the App <ArrowRight size={19} aria-hidden="true" /></Link>
+          <Link className="cs-public-preview-button" to="/preview">Explore CourtStreak <ArrowRight size={19} aria-hidden="true" /></Link>
           <p>Browse the real layout with sample data. Training and saving unlock with membership.</p>
         </div>
 
@@ -135,7 +135,7 @@ export default function AppPreview() {
     <div className="phone cs-app-preview-phone">
       <div className="phone-header">
         <div>
-          <small>Good evening, Trey</small>
+          <small>Good evening, Jordan</small>
           <h3>What are we working on?</h3>
         </div>
 
@@ -197,18 +197,6 @@ export default function AppPreview() {
             <ArrowRight size={16} />
           </div>
 
-          <div>
-            <span className="cs-app-drill-icon">
-              <Play size={15} />
-            </span>
-
-            <span>
-              <strong>Combo Challenge</strong>
-              <small>Advanced • +20 XP</small>
-            </span>
-
-            <ArrowRight size={16} />
-          </div>
         </div>
       </div>
 
