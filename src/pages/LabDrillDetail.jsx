@@ -200,6 +200,7 @@ export default function LabDrillDetail({ previewOnly = false }) {
             <button className="cs-drill-start-button" type="button" onClick={() => navigate(`/lab/drill/${drill.drill_key}/session`)}><FiPlay /> Start This Drill</button>
             <button className="cs-drill-challenge-button" type="button" onClick={() => navigate('/training-circles', { state: { challengeDraft: { sourceType: 'drill', sourceKey: drill.drill_key, sourceName: drill.name, sourcePayload: { durationSeconds: drill.default_duration_seconds }, challengeType: 'score' } } })}><FiUsers /> Challenge a Circle</button>
           </div>
+          {!previewOnly && drill.drill_key === 'right-hand-pound' && <div className="cs-drill-primary-actions"><button className="cs-drill-start-button" type="button" onClick={() => navigate('/lab/drill/right-hand-pound/session?mode=iphone-vision-test')}>Test automatic dribble counting · iPhone</button><small>Experimental on-device computer vision. No XP or score is saved.</small></div>}
           {!previewOnly && drill.drill_key === 'right-hand-pound' && <FrontCameraCheck />}
           <DrillGuide drill={drill} showVideo={false} />
 

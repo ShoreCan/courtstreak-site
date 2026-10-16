@@ -10,9 +10,13 @@ import { requireTrainingAccess } from '../lib/trainingAccess.js';
 import DrillGuide from '../components/DrillGuide.jsx';
 
 const LocalPoundPilot = import.meta.env.DEV ? React.lazy(() => import('../components/ai/LocalPoundPilot.jsx')) : null;
+const IPhonePoundTest = React.lazy(() => import('../components/ai/IPhonePoundTest.jsx'));
 export default function LabDrillSession() {
   const { drillKey } = useParams();
   const location = useLocation();
+  if (drillKey === 'right-hand-pound' && new URLSearchParams(location.search).get('mode') === 'iphone-vision-test') {
+    return <React.Suspense fallback={<main className="cs-session-page">Opening on-device camera…</main>}><IPhonePoundTest /></React.Suspense>;
+  }
   if (import.meta.env.DEV && ['localhost', '127.0.0.1'].includes(window.location.hostname) && drillKey === 'right-hand-pound' && new URLSearchParams(location.search).get('mode') === 'ai-test') {
     return <React.Suspense fallback={<main className="cs-session-page">Opening camera test…</main>}><LocalPoundPilot /></React.Suspense>;
   }
