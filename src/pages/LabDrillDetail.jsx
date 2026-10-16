@@ -2,6 +2,8 @@ import { getDrillVideo } from '../data/drillVideos.js';
 import usePreviewNavigate from '../lib/usePreviewNavigate.js';
 import { PREVIEW_DRILLS } from '../data/previewDrills.js';
 import DrillGuide from '../components/DrillGuide.jsx';
+import FrontCameraCheck from '../components/ai/FrontCameraCheck.jsx';
+import '../cs-mobile-drill-fix.css';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { FiArrowLeft, FiCheck, FiClock, FiHeart, FiPlay, FiRefreshCw, FiStar, FiUsers, FiZap } from 'react-icons/fi';
@@ -194,6 +196,11 @@ export default function LabDrillDetail({ previewOnly = false }) {
             <button type="button" className={`cs-drill-favorite ${isFavorite ? 'is-favorite' : ''}`} onClick={toggleFavorite} aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}><FiHeart /><span>{isFavorite ? 'Saved' : 'Save'}</span></button>
           </div>
 
+          <div className="cs-mobile-drill-quick-actions">
+            <button className="cs-drill-start-button" type="button" onClick={() => navigate(`/lab/drill/${drill.drill_key}/session`)}><FiPlay /> Start This Drill</button>
+            <button className="cs-drill-challenge-button" type="button" onClick={() => navigate('/training-circles', { state: { challengeDraft: { sourceType: 'drill', sourceKey: drill.drill_key, sourceName: drill.name, sourcePayload: { durationSeconds: drill.default_duration_seconds }, challengeType: 'score' } } })}><FiUsers /> Challenge a Circle</button>
+          </div>
+          {!previewOnly && drill.drill_key === 'right-hand-pound' && <FrontCameraCheck />}
           <DrillGuide drill={drill} showVideo={false} />
 
           <div className="cs-drill-primary-actions">

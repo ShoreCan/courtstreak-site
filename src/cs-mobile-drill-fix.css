@@ -1,0 +1,28 @@
+/* CourtStreak responsive drill detail + iPhone front-camera test. */
+.cs-front-check {margin:16px 0;padding:16px;border:1px solid #334863;border-radius:17px;background:#14263d;color:#f8fafc}
+.cs-front-check-heading{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px}
+.cs-front-check-heading strong{font-size:16px}
+.cs-front-check-heading span{font-size:11px;color:#ffc18f}
+.cs-front-check p{color:#d0ddec;font-size:13px;line-height:1.5;margin:10px 0}
+.cs-front-frame{position:relative;overflow:hidden;aspect-ratio:3/4;max-height:400px;background:#091727;border-radius:12px}
+.cs-front-frame video{width:100%;height:100%;object-fit:contain;transform:scaleX(-1);display:block}
+.cs-front-placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:18px;color:#afc1d5;font-size:13px}
+.cs-front-controls{display:flex;margin:12px 0}
+.cs-front-controls button{width:100%;padding:13px 15px;border:0;border-radius:11px;color:white;background:#df742d;font-weight:800;cursor:pointer}
+.cs-front-controls button:disabled{opacity:.65;cursor:wait}
+.cs-front-check small{display:block;color:#adc0d4;font-size:11px;line-height:1.55}
+.cs-mobile-drill-quick-actions{display:none}
+@media(max-width:700px){
+  .cs-drill-detail-shell{gap:12px!important;padding:12px!important;margin-top:10px!important}
+  .cs-drill-detail-media,.cs-drill-detail-media video,.cs-drill-detail-placeholder{min-height:0!important;height:auto!important;max-height:220px!important;aspect-ratio:16/9!important}
+  .cs-drill-detail-media video{width:100%!important;object-fit:contain!important;background:#081525}
+  .cs-drill-detail-copy h1{font-size:clamp(27px,8vw,36px)!important;margin:5px 0 10px!important}
+  .cs-drill-detail-meta{gap:5px!important}
+  .cs-drill-detail-meta>span{padding:6px 8px!important;font-size:10px!important}
+  .cs-mobile-drill-quick-actions{display:grid;gap:8px;margin:14px 0}
+  .cs-mobile-drill-quick-actions button{width:100%;min-height:48px;display:flex;justify-content:center;align-items:center;gap:9px}
+  .cs-drill-detail-copy>.cs-drill-primary-actions{display:none!important}
+  .cs-drill-coaching-card{padding:15px!important;margin-top:14px!important}
+  .cs-front-check{margin:12px 0;padding:13px}
+  .cs-drill-detail-page{padding-bottom:calc(95px + env(safe-area-inset-bottom))!important}
+}
