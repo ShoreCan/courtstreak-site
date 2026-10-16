@@ -196,12 +196,27 @@ export default function LabDrillDetail({ previewOnly = false }) {
             <button type="button" className={`cs-drill-favorite ${isFavorite ? 'is-favorite' : ''}`} onClick={toggleFavorite} aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}><FiHeart /><span>{isFavorite ? 'Saved' : 'Save'}</span></button>
           </div>
 
-          <div className="cs-mobile-drill-quick-actions">
-            <button className="cs-drill-start-button" type="button" onClick={() => navigate(`/lab/drill/${drill.drill_key}/session`)}><FiPlay /> Start This Drill</button>
+          <div className={`cs-mobile-drill-quick-actions ${!previewOnly && drill.drill_key === 'right-hand-pound' ? 'cs-has-ai-choice' : ''}`}>
+            {!( !previewOnly && drill.drill_key === 'right-hand-pound') && <button className="cs-drill-start-button" type="button" onClick={() => navigate(`/lab/drill/${drill.drill_key}/session`)}><FiPlay /> Start This Drill</button>}
             <button className="cs-drill-challenge-button" type="button" onClick={() => navigate('/training-circles', { state: { challengeDraft: { sourceType: 'drill', sourceKey: drill.drill_key, sourceName: drill.name, sourcePayload: { durationSeconds: drill.default_duration_seconds }, challengeType: 'score' } } })}><FiUsers /> Challenge a Circle</button>
           </div>
-          {!previewOnly && drill.drill_key === 'right-hand-pound' && <div className="cs-drill-primary-actions"><button className="cs-drill-start-button" type="button" onClick={() => navigate('/lab/drill/right-hand-pound/session?mode=iphone-vision-test')}>Test automatic dribble counting · iPhone</button><small>Experimental on-device computer vision. No XP or score is saved.</small></div>}
-          {!previewOnly && drill.drill_key === 'right-hand-pound' && <FrontCameraCheck />}
+          {!previewOnly && drill.drill_key === 'right-hand-pound' && (
+            <section className="cs-iphone-entry-card" aria-label="Choose your tracking method">
+              <div className="cs-iphone-entry-heading">
+                <span className="cs-iphone-entry-kicker">YOUR DRILL · TWO WAYS TO TRAIN</span>
+                <strong>How would you like to track?</strong>
+                <p>Choose the experimental front-camera counter or the standard manual timer.</p>
+              </div>
+              <button className="cs-iphone-entry-ai" type="button" onClick={() => navigate('/lab/drill/right-hand-pound/session?mode=iphone-vision-test')}>
+                <span><b>Try AI camera tracking</b><small>Front camera · 20-second counting test</small></span><span aria-hidden="true">→</span>
+              </button>
+              <button className="cs-iphone-entry-manual" type="button" onClick={() => navigate('/lab/drill/right-hand-pound/session')}>
+                <span><b>Use manual tracking</b><small>Guided timer · enter your reps</small></span><span aria-hidden="true">→</span>
+              </button>
+              <small className="cs-iphone-entry-disclaimer">AI count is experimental, can be inaccurate, and does not save XP or scores.</small>
+            </section>
+          )}
+          {!previewOnly && drill.drill_key === 'right-hand-pound' && <details className="cs-iphone-camera-details"><summary>Check front-camera framing <span>Optional setup</span></summary><FrontCameraCheck /></details>}
           <DrillGuide drill={drill} showVideo={false} />
 
           <div className="cs-drill-primary-actions">

@@ -26,3 +26,28 @@
   .cs-front-check{margin:12px 0;padding:13px}
   .cs-drill-detail-page{padding-bottom:calc(95px + env(safe-area-inset-bottom))!important}
 }
+
+
+/* CourtStreak iPhone: visible AI entrance and compact optional framing. */
+.cs-iphone-entry-card{margin:16px 0;padding:18px;border:1px solid #435b7a;border-radius:20px;background:linear-gradient(145deg,#162e4b,#0c1d32);box-shadow:0 12px 28px rgba(0,0,0,.14)}
+.cs-iphone-entry-heading{margin-bottom:14px}
+.cs-iphone-entry-kicker{display:block;letter-spacing:.13em;font-size:10px;font-weight:800;color:#ffad6c;margin-bottom:7px}
+.cs-iphone-entry-heading strong{display:block;color:#fff;font-size:clamp(19px,4.8vw,25px);line-height:1.2}
+.cs-iphone-entry-heading p{color:#b9cadc;line-height:1.45;font-size:13px;margin:7px 0 0}
+.cs-iphone-entry-card button{appearance:none;width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;border-radius:13px;padding:14px 15px;text-align:left;cursor:pointer;min-height:66px}
+.cs-iphone-entry-card button span:first-child{display:flex;flex-direction:column;gap:4px}
+.cs-iphone-entry-card button b{font-size:15px;line-height:1.3}
+.cs-iphone-entry-card button small{font-size:11px;line-height:1.3;font-weight:500}
+.cs-iphone-entry-ai{background:linear-gradient(110deg,#f18b36,#ed6918);border:1px solid #ffb17b;color:#fff;margin-bottom:9px}
+.cs-iphone-entry-ai small{color:#fff6ee}
+.cs-iphone-entry-manual{background:#1d304a;border:1px solid #415977;color:#eef3fa}
+.cs-iphone-entry-manual small{color:#b9cadc}
+.cs-iphone-entry-disclaimer{display:block;color:#a9bed5;line-height:1.5;font-size:11px;margin-top:12px}
+.cs-iphone-camera-details{margin:12px 0;background:#14273d;border:1px solid #344c69;border-radius:15px;overflow:hidden}
+.cs-iphone-camera-details summary{cursor:pointer;display:flex;justify-content:space-between;gap:12px;padding:15px;color:#eef4fa;font-weight:700;font-size:13px;list-style:none}
+.cs-iphone-camera-details summary::-webkit-details-marker{display:none}
+.cs-iphone-camera-details summary span{font-weight:500;color:#fdad70;font-size:11px}
+.cs-iphone-camera-details .cs-front-check{margin:0;border:0;background:transparent;border-top:1px solid #344c69;border-radius:0}
+.cs-iphone-entry-card button:focus-visible,.cs-iphone-camera-details summary:focus-visible{outline:3px solid #fbb77b;outline-offset:3px}
+@media(max-width:700px){.cs-drill-detail-copy .cs-iphone-entry-card{display:block!important}.cs-iphone-entry-card{margin:12px 0 10px;padding:15px}.cs-drill-detail-copy>.cs-drill-primary-actions{display:none!important}.cs-front-frame{max-height:min(55vh,330px)!important}.cs-drill-detail-page{padding-bottom:calc(120px + env(safe-area-inset-bottom))!important}}
+@media(prefers-reduced-motion:no-preference){.cs-iphone-entry-card button{transition:transform .18s ease,filter .18s ease}.cs-iphone-entry-card button:active{transform:scale(.985)}}
