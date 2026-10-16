@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "counter_baseline": "0.7.8",
+  "ball": {
+    "file": "courtstreak-ball.onnx",
+    "size": 512,
+    "output_shape": [
+      1,
+      300,
+      6
+    ],
+    "source_weights": "yolo26n.pt",
+    "source_sha256": "9b09cc8bf347f0fc8a5f7657480587f25db09b34bf33b0652110fb03a8ad4fef",
+    "sha256": "6d6490cbaa8fc24cbd05f6db88274f7db6b4a180100dbedb5876e7bed7d80820"
+  },
+  "pose": {
+    "file": "courtstreak-pose.onnx",
+    "size": 640,
+    "output_shape": [
+      1,
+      56,
+      8400
+    ],
+    "source_weights": "yolo11n-pose.pt",
+    "source_sha256": "869e83fcdffdc7371fa4e34cd8e51c838cc729571d1635e5141e3075e9319dc0",
+    "sha256": "f0fe983de02d0dfb734c52ca21c539bffdcc9c76a86dc5457e16c262d84e6022"
+  }
+}
