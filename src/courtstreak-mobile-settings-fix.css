@@ -1,0 +1,34 @@
+/* CourtStreak mobile settings polish — scoped, safe presentation only */
+.cs-profile-settings-shortcut {display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:8px 12px;border:1px solid rgba(255,122,22,.42);border-radius:12px;background:rgba(255,122,22,.11);color:#ffd0a5;font:inherit;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap}
+.cs-profile-settings-shortcut:hover,.cs-profile-settings-shortcut:focus-visible{background:rgba(255,122,22,.22);outline-offset:2px}
+@media (max-width:900px){
+.cs-settings-page {overflow-x:clip;padding-bottom:calc(100px + env(safe-area-inset-bottom,0px))}
+.cs-settings-layout{display:block;width:min(100% - 32px,700px);padding:20px 0 32px}
+.cs-settings-sidebar{position:static;padding:0;border:0;box-shadow:none;background:none;margin:0 0 15px}
+.cs-settings-sidebar-heading{display:none}
+.cs-settings-sidebar nav{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0;padding:3px 0 8px;scroll-snap-type:x proximity}
+.cs-settings-sidebar nav::-webkit-scrollbar{display:none}
+.cs-settings-sidebar nav a{flex:0 0 auto;display:inline-flex;gap:6px;align-items:center;justify-content:center;min-height:42px;padding:9px 13px;border-radius:999px;background:#142238;border:1px solid #30425c;color:#dce5f4;text-decoration:none;scroll-snap-align:start;font-size:12px;white-space:nowrap}
+.cs-settings-sidebar nav a:focus-visible{outline:2px solid #ff8227;outline-offset:2px}
+.cs-settings-heading{margin-bottom:20px}
+.cs-settings-heading>p{margin-bottom:7px}
+.cs-settings-heading h1{font-size:clamp(26px,6vw,36px);line-height:1.12;letter-spacing:-.035em;max-width:22ch;margin:0 0 8px}
+.cs-settings-heading>span{display:block;font-size:13px;line-height:1.55;max-width:52ch}
+.cs-settings-card{padding:19px 16px;margin-bottom:14px;border-radius:19px;scroll-margin-top:88px}
+.cs-settings-card-heading{align-items:flex-start;gap:11px}
+.cs-settings-card-heading h2{font-size:clamp(18px,4.2vw,22px);line-height:1.22}
+.cs-settings-card-heading p{font-size:13px;line-height:1.5}
+.cs-settings-card-heading small{font-size:10px;letter-spacing:.11em}
+.cs-settings-field-grid{display:grid;grid-template-columns:1fr;gap:13px}
+.cs-settings-field-grid select{max-width:100%;min-width:0;width:100%;min-height:46px}
+.cs-settings-content,.cs-settings-card,.cs-settings-field-grid>*{min-width:0}
+.cs-settings-save-row{display:flex;flex-direction:column;align-items:stretch;gap:10px;margin:0 0 18px}
+.cs-settings-save-row button{width:100%;min-height:48px}
+.cs-settings-password-form{grid-template-columns:1fr}
+.cs-settings-password-form>button{width:100%}
+.cs-settings-link-row{min-width:0}
+.cs-settings-link-row>span{min-width:0}
+.cs-settings-topbar{min-height:62px}
+.cs-settings-topbar>button{font-size:14px}
+}
+@media (max-width:380px){.cs-profile-settings-shortcut{font-size:12px;padding:8px 9px}.cs-settings-layout{width:calc(100% - 24px)}}

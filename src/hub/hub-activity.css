@@ -1,0 +1,1239 @@
+.cs-notifications {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.cs-notification-bell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid #516780;
+  border-radius: 13px;
+  background: linear-gradient(140deg, #253e57, #172a41);
+  color: #e7f1ff;
+  cursor: pointer;
+}
+.cs-notification-bell > span {
+  position: absolute;
+  right: -5px;
+  top: -5px;
+  display: grid;
+  place-items: center;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 4px;
+  border-radius: 10px;
+  background: #ffac66;
+  color: #102137;
+  font-size: 10px;
+  font-weight: 750;
+  border: 2px solid #122339;
+}
+.cs-notification-panel {
+  position: fixed;
+  z-index: 1100;
+  width: min(420px, calc(100vw - 24px));
+  max-height: min(650px, calc(100dvh - 125px));
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(150deg, #1d334b, #102237);
+  color: #eef5ff;
+  border: 1px solid #536981;
+  border-radius: 19px;
+  box-shadow: 0 22px 65px #0008;
+  text-align: left;
+  font-family: inherit;
+  overflow: hidden;
+}
+.cs-notification-panel > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 18px 12px;
+  gap: 16px;
+}
+.cs-notification-panel h2 {
+  font-size: 19px;
+  margin: 0 0 5px;
+  letter-spacing: -0.4px;
+  color: #eef5ff;
+}
+.cs-notification-panel header small {
+  font-size: 10px;
+  color: #a9c0d8;
+}
+.cs-notification-panel header > button,
+.cs-notification-dismiss {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #bdd0e5;
+  cursor: pointer;
+}
+.cs-notification-tools {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 18px 10px;
+  border-bottom: 1px solid #3c536b;
+}
+.cs-notification-tools button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 0;
+  color: #ffca9e;
+  font-size: 11px;
+  min-height: 44px;
+  cursor: pointer;
+}
+.cs-notification-tools button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.cs-notification-items {
+  overflow: auto;
+  min-height: 0;
+  overscroll-behavior: contain;
+}
+.cs-notification-items article {
+  display: flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-bottom: 1px solid #344d66;
+}
+.cs-notification-items article.unread {
+  background: #77b5ee09;
+}
+.cs-notification-open {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  padding: 15px 5px;
+  background: transparent;
+  color: #edf5ff;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+}
+.cs-notification-open > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+.cs-notification-open strong {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.cs-notification-open span {
+  font-size: 11px;
+  color: #b4c9df;
+  line-height: 1.5;
+}
+.cs-notification-open small {
+  font-size: 9px;
+  color: #95afca;
+}
+.cs-alert-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: transparent;
+  flex-shrink: 0;
+}
+.unread .cs-alert-dot {
+  background: #ffb16d;
+  box-shadow: 0 0 0 4px #ffb16d10;
+}
+.cs-notification-panel > footer {
+  padding: 12px 18px;
+  color: #96b0ca;
+  font-size: 9px;
+  line-height: 1.6;
+  border-top: 1px solid #344d66;
+}
+.cs-notification-empty,
+.cs-notification-error {
+  padding: 18px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #bbd1e7;
+  margin: 0;
+}
+.cs-notification-error {
+  color: #ffc197;
+}
+.cs-notifications button:focus-visible {
+  outline: 2px solid #ffc392;
+  outline-offset: -3px;
+}
+#cs-workboard.hd-dashboard .hc-session-markers li > button {
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid #70b494aa;
+  color: #a2ebc8;
+  background: linear-gradient(145deg, #2b654e66, #214d3d33);
+  cursor: pointer;
+  position: relative;
+}
+#cs-workboard.hd-dashboard .hc-session-markers li > button:hover {
+  background: #356c5544;
+  border-color: #a4ecc9;
+}
+#cs-workboard.hd-dashboard .hc-session-markers li > button:after {
+  content: "↗";
+  font-size: 9px;
+  position: absolute;
+  right: 5px;
+  top: 4px;
+  color: #a9ddc4;
+}
+#cs-workboard.hd-dashboard .cs-receipts-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #ffc391;
+  margin-bottom: 20px;
+}
+#cs-workboard.hd-dashboard .cs-receipts-heading h2 {
+  margin: 0 0 5px;
+  color: #edf5ff;
+}
+#cs-workboard.hd-dashboard .cs-receipts-heading p {
+  font-size: 10px;
+  color: #aac1d9;
+  margin: 0;
+}
+#cs-workboard.hd-dashboard .cs-receipt-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+#cs-workboard.hd-dashboard .cs-receipt-tabs button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  border: 1px solid #49637c;
+  background: #14283e;
+  color: #bdd1e7;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 11px;
+}
+#cs-workboard.hd-dashboard .cs-receipt-tabs button[aria-pressed="true"] {
+  background: #ffaf6c13;
+  border-color: #ffba8080;
+  color: #ffd0a6;
+}
+#cs-workboard.hd-dashboard .cs-receipt-summary {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  padding: 16px 0 22px;
+  border-bottom: 1px solid #39516c;
+}
+#cs-workboard.hd-dashboard .cs-receipt-summary > div {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-width: 120px;
+}
+#cs-workboard.hd-dashboard .cs-receipt-summary span {
+  font-size: 10px;
+  color: #a7bfd8;
+}
+#cs-workboard.hd-dashboard .cs-receipt-summary strong {
+  font-size: 14px;
+  color: #d7e9f8;
+  font-weight: 600;
+  line-height: 1.5;
+}
+#cs-workboard.hd-dashboard .cs-receipt-rounds {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0;
+}
+#cs-workboard.hd-dashboard .cs-receipt-rounds li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid #344c64;
+}
+#cs-workboard.hd-dashboard .cs-receipt-round-number {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  background: #7acba217;
+  color: #a4e2c5;
+  border-radius: 9px;
+}
+#cs-workboard.hd-dashboard .cs-receipt-rounds li > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+#cs-workboard.hd-dashboard .cs-receipt-rounds li > div:nth-child(2) {
+  flex: 1;
+}
+#cs-workboard.hd-dashboard .cs-receipt-rounds strong {
+  font-size: 12px;
+  line-height: 1.5;
+  font-weight: 550;
+}
+#cs-workboard.hd-dashboard .cs-receipt-rounds small {
+  font-size: 9px;
+  line-height: 1.5;
+  color: #a9c1da;
+}
+#cs-workboard.hd-dashboard .cs-receipt-result {
+  text-align: right;
+  max-width: 100px;
+}
+#cs-workboard.hd-dashboard .cs-receipt-result strong {
+  font-size: 20px;
+  color: #b2d9f6;
+  font-variant-numeric: tabular-nums;
+}
+#cs-workboard.hd-dashboard .cs-repeat-hint {
+  padding: 12px 14px;
+  background: #7fb7e710;
+  border: 1px solid #7fb7e740;
+  border-radius: 12px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #bad3e9;
+  margin-bottom: 18px;
+}
+#cs-workboard.hd-dashboard .cs-repeat-action {
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+@media (max-width: 600px) {
+  .cs-notification-panel {
+    max-height: calc(100dvh - 110px);
+  }
+  #cs-workboard.hd-dashboard .cs-receipt-result {
+    max-width: 76px;
+  }
+  #cs-workboard.hd-dashboard .cs-receipt-rounds li {
+    gap: 9px;
+  }
+  #cs-workboard.hd-dashboard .cs-repeat-action .cs-btn {
+    width: 100%;
+    justify-content: center;
+  }
+  .cs-dash-v3-header-stats {
+    flex-wrap: wrap;
+  }
+}
+.cs-notification-filters {
+  display: flex;
+  gap: 6px;
+  padding: 0 18px 12px;
+}
+.cs-notification-filters button {
+  flex: 1;
+  min-height: 44px;
+  border: 1px solid #415c77;
+  border-radius: 10px;
+  background: #11273d;
+  color: #b5cce3;
+  font-size: 11px;
+  cursor: pointer;
+}
+.cs-notification-filters button[aria-pressed="true"] {
+  background: #ffad7015;
+  border-color: #ffb77d80;
+  color: #ffcca3;
+}
+.cs-notification-items article {
+  position: relative;
+  display: block;
+  padding: 4px 12px 10px;
+}
+.cs-notification-open {
+  width: 100%;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 2px 8px;
+}
+.cs-alert-kind {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: #7fb8e717;
+  color: #b2d9fa;
+  border: 1px solid #7fb8e730;
+}
+.cs-alert-completion .cs-alert-kind {
+  background: #82cca217;
+  border-color: #82cca240;
+  color: #a8e5c7;
+}
+.cs-alert-due .cs-alert-kind {
+  background: #ffb16d12;
+  border-color: #ffb16d40;
+  color: #ffc394;
+}
+.cs-alert-feedback .cs-alert-kind {
+  background: #b4a4e915;
+  border-color: #b4a4e940;
+  color: #d1c2fa;
+}
+.cs-notification-open strong {
+  display: block;
+  line-height: 1.6;
+}
+.cs-notification-open strong em {
+  font-size: 8px;
+  font-style: normal;
+  color: #ffd3b0;
+  background: #ffb16d15;
+  border: 1px solid #ffb16d40;
+  border-radius: 5px;
+  padding: 2px 5px;
+  margin-left: 5px;
+  white-space: nowrap;
+}
+.cs-notification-open .cs-alert-action {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: #ffca9e;
+  margin-top: 3px;
+}
+.cs-notification-open .cs-alert-deadline {
+  color: #ffcca3;
+  line-height: 1.5;
+}
+.cs-notification-dismiss {
+  width: auto;
+  height: auto;
+  min-height: 44px;
+  margin: 0 0 0 auto;
+  padding: 8px;
+  font-size: 10px;
+  color: #a4bcd4;
+  cursor: pointer;
+}
+.cs-notification-panel > footer summary {
+  cursor: pointer;
+  min-height: 36px;
+  padding: 6px 0;
+  font-size: 10px;
+  color: #bad0e7;
+}
+.cs-notification-panel > footer p {
+  margin: 8px 0;
+  font-size: 10px;
+  line-height: 1.7;
+}
+#cs-workboard.hd-dashboard .cs-reminder-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #ffc291;
+  margin-bottom: 22px;
+}
+#cs-workboard.hd-dashboard .cs-reminder-heading h2 {
+  color: #edf5ff;
+  margin: 0 0 5px;
+}
+#cs-workboard.hd-dashboard .cs-reminder-heading p {
+  margin: 0;
+  color: #acc4dd;
+  font-size: 11px;
+}
+#cs-workboard.hd-dashboard .cs-inapp-reminder {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  border: 1px solid #6d8aa860;
+  background: linear-gradient(140deg, #24425b88, #14283d);
+  padding: 20px;
+  border-radius: 16px;
+}
+#cs-workboard.hd-dashboard .cs-reminder-symbol {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  background: #87bce915;
+  color: #b9dffb;
+  flex-shrink: 0;
+}
+#cs-workboard.hd-dashboard .cs-reminder-channel {
+  font-size: 9px;
+  letter-spacing: 1.2px;
+  color: #adc8e3;
+  font-weight: 650;
+}
+#cs-workboard.hd-dashboard .cs-inapp-reminder h3 {
+  margin: 8px 0;
+  font-size: 20px;
+  letter-spacing: -0.5px;
+  line-height: 1.4;
+  color: #edf5ff;
+}
+#cs-workboard.hd-dashboard .cs-inapp-reminder p {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #bfd3e8;
+  margin: 8px 0 12px;
+}
+#cs-workboard.hd-dashboard .cs-inapp-reminder small {
+  font-size: 10px;
+  color: #f2c8a4;
+  line-height: 1.6;
+}
+#cs-workboard.hd-dashboard .cs-inapp-reminder.finished {
+  border-color: #79c6a35c;
+}
+#cs-workboard.hd-dashboard .cs-inapp-reminder.finished .cs-reminder-symbol {
+  color: #a2e5c2;
+  background: #79c6a314;
+}
+#cs-workboard.hd-dashboard .cs-reminder-explainer {
+  font-size: 11px;
+  line-height: 1.7;
+  color: #a7bfd9;
+  margin: 14px 0 24px;
+}
+#cs-workboard.hd-dashboard .cs-email-reminder {
+  border: 1px solid #3d5570;
+  border-radius: 13px;
+  padding: 4px 16px;
+}
+#cs-workboard.hd-dashboard .cs-email-reminder > summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  color: #d5e5f5;
+  font-size: 13px;
+  cursor: pointer;
+  list-style: none;
+}
+#cs-workboard.hd-dashboard .cs-email-reminder > summary:after {
+  content: "+";
+  margin-left: auto;
+  font-size: 18px;
+  color: #9ab5d0;
+}
+#cs-workboard.hd-dashboard .cs-email-reminder[open] > summary:after {
+  content: "−";
+}
+#cs-workboard.hd-dashboard .cs-email-reminder summary small {
+  font-size: 10px;
+  color: #9db9d4;
+  margin-left: 6px;
+}
+#cs-workboard.hd-dashboard .cs-email-reminder > p {
+  font-size: 11px;
+  line-height: 1.7;
+  color: #b3cae2;
+  margin: 8px 0 18px;
+}
+#cs-workboard.hd-dashboard .cs-email-reminder .cs-link {
+  min-height: 44px;
+  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  margin: 12px 0;
+}
+@media (max-width: 600px) {
+  #cs-workboard.hd-dashboard .cs-inapp-reminder {
+    padding: 16px;
+    gap: 12px;
+  }
+  #cs-workboard.hd-dashboard .cs-inapp-reminder h3 {
+    font-size: 17px;
+  }
+  .cs-notification-panel > footer {
+    max-height: 140px;
+    overflow: auto;
+  }
+}
+/* Contained headers and viewport-bound alerts; independent of page pill styles. */
+.cs-notifications,
+.cs-notifications *,
+.cs-notification-panel,
+.cs-notification-panel * {
+  box-sizing: border-box;
+}
+.cs-notifications {
+  min-width: 0;
+  width: 44px;
+  max-width: 44px;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  vertical-align: middle;
+}
+.cs-notifications .cs-notification-bell {
+  width: 44px;
+  min-width: 44px;
+  max-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  line-height: 1;
+}
+.cs-notifications .cs-notification-count {
+  position: absolute;
+  right: 2px;
+  top: 2px;
+  display: grid;
+  place-items: center;
+  min-width: 16px;
+  max-width: 27px;
+  height: 16px;
+  min-height: 16px;
+  padding: 0 3px;
+  border: 1px solid #14263c;
+  border-radius: 8px;
+  background: #ffac66;
+  color: #102137;
+  font-size: 9px;
+  line-height: 1;
+  font-weight: 750;
+  white-space: nowrap;
+  margin: 0;
+  box-sizing: border-box;
+}
+.cs-notification-panel {
+  margin: 0;
+  min-width: 0;
+  height: auto;
+  max-width: calc(100vw - 24px);
+  font-size: 14px;
+  line-height: 1.5;
+  isolation: isolate;
+}
+.cs-notification-panel > header,
+.cs-notification-panel > .cs-notification-filters,
+.cs-notification-panel > .cs-notification-tools,
+.cs-notification-panel > footer {
+  flex-shrink: 0;
+  min-width: 0;
+}
+.cs-notification-panel > header > div {
+  min-width: 0;
+}
+.cs-notification-panel h2,
+.cs-notification-panel strong,
+.cs-notification-panel span,
+.cs-notification-panel small,
+.cs-notification-panel p {
+  overflow-wrap: anywhere;
+}
+.cs-notification-panel .cs-notification-items {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.cs-notification-panel .cs-notification-open > div {
+  min-width: 0;
+}
+.cs-notification-panel .cs-notification-open .cs-alert-kind {
+  flex-shrink: 0;
+}
+.cs-notification-panel .cs-notification-open > div > span,
+.cs-notification-panel .cs-notification-open small {
+  display: block;
+  max-width: 100%;
+}
+.cs-notification-panel .cs-notification-open .cs-alert-action {
+  display: flex;
+  flex-wrap: wrap;
+}
+.cs-notification-panel > footer {
+  max-height: 160px;
+  overflow: auto;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+}
+#cs-workboard.hd-dashboard .cs-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, auto) 44px;
+  grid-template-areas: "heading actions bell";
+  align-items: start;
+  gap: 12px 18px;
+  width: 100%;
+  min-width: 0;
+}
+#cs-workboard.hd-dashboard .cs-page-heading {
+  grid-area: heading;
+  min-width: 0;
+}
+#cs-workboard.hd-dashboard .cs-page-heading h1 {
+  margin: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
+#cs-workboard.hd-dashboard .cs-header-bell {
+  grid-area: bell;
+  justify-self: end;
+  align-self: start;
+  width: 44px;
+  height: 44px;
+  min-width: 0;
+  display: grid;
+  place-items: center;
+}
+#cs-workboard.hd-dashboard .cs-top > .cs-actions {
+  grid-area: actions;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+  max-width: 100%;
+  width: auto;
+  margin: 0;
+  gap: 8px;
+}
+#cs-workboard.hd-dashboard .cs-top > .cs-actions > .cs-btn {
+  max-width: 100%;
+  min-width: 0;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.cs-dash-v3 .cs-dash-v3-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, auto) 44px;
+  grid-template-areas: "heading stats bell";
+  gap: 12px 16px;
+  align-items: start;
+  min-width: 0;
+}
+.cs-dash-v3 .cs-dash-v3-header > div:first-child {
+  grid-area: heading;
+  min-width: 0;
+}
+.cs-dash-v3 .cs-dashboard-bell {
+  grid-area: bell;
+  width: 44px;
+  height: 44px;
+  justify-self: end;
+}
+.cs-dash-v3 .cs-dash-v3-header-stats {
+  grid-area: stats;
+  min-width: 0;
+  max-width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  flex-direction: row;
+  gap: 8px;
+}
+.cs-dash-v3 .cs-dash-v3-header-stats > span {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 900px) {
+  #cs-workboard.hd-dashboard .cs-top {
+    grid-template-columns: minmax(0, 1fr) 44px;
+    grid-template-areas: "heading bell" "actions actions";
+    gap: 12px;
+  }
+  #cs-workboard.hd-dashboard .cs-top > .cs-actions {
+    justify-content: flex-start;
+    width: 100%;
+  }
+  .cs-dash-v3 .cs-dash-v3-header {
+    grid-template-columns: minmax(0, 1fr) 44px;
+    grid-template-areas: "heading bell" "stats stats";
+    gap: 12px;
+  }
+  .cs-dash-v3 .cs-dash-v3-header-stats {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}
+@media (max-width: 480px) {
+  #cs-workboard.hd-dashboard .cs-top {
+    column-gap: 10px;
+  }
+  #cs-workboard.hd-dashboard .cs-top > .cs-actions {
+    gap: 8px;
+  }
+  #cs-workboard.hd-dashboard .cs-top > .cs-actions > .cs-btn {
+    flex: 1 1 180px;
+  }
+  #cs-workboard.hd-dashboard .cs-top > .cs-actions > .cs-link {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 4px;
+  }
+  .cs-notification-panel > header {
+    padding: 16px 14px 10px;
+    gap: 10px;
+  }
+  .cs-notification-panel > .cs-notification-filters {
+    padding: 0 14px 10px;
+    gap: 5px;
+  }
+  .cs-notification-panel > .cs-notification-tools {
+    padding: 0 14px 8px;
+  }
+  .cs-notification-panel > .cs-notification-tools button {
+    font-size: 11px;
+  }
+  .cs-notification-panel .cs-notification-filters button {
+    min-width: 0;
+    padding: 8px 6px;
+    white-space: normal;
+    line-height: 1.4;
+  }
+  .cs-notification-panel .cs-notification-items article {
+    padding: 2px 12px 8px;
+  }
+}
+@media (max-height: 480px) {
+  .cs-notification-panel {
+    display: block;
+    overflow: auto;
+  }
+  .cs-notification-panel .cs-notification-items {
+    overflow: visible;
+  }
+  .cs-notification-panel > footer {
+    max-height: none;
+    overflow: visible;
+  }
+}
+/* Shrinkable Hub surfaces: horizontal scrolling belongs to the session table only. */
+#cs-workboard.hd-dashboard,
+#cs-workboard.hd-dashboard * {
+  box-sizing: border-box;
+}
+#cs-workboard.hd-dashboard .cs-app,
+#cs-workboard.hd-dashboard .cs-app > main,
+#cs-workboard.hd-dashboard .detail-pane,
+#cs-workboard.hd-dashboard .cs-panel,
+#cs-workboard.hd-dashboard .hd-card,
+#cs-workboard.hd-dashboard .hd-overview-grid,
+#cs-workboard.hd-dashboard .hd-player-grid,
+#cs-workboard.hd-dashboard .cs-grid,
+#cs-workboard.hd-dashboard .pc-grid {
+  min-width: 0;
+  max-width: 100%;
+}
+#cs-workboard.hd-dashboard
+  :is(.cs-panel, .hd-card)
+  :is(h2, h3, strong, p, label, summary) {
+  overflow-wrap: anywhere;
+}
+#cs-workboard.hd-dashboard .cs-actions {
+  min-width: 0;
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+#cs-workboard.hd-dashboard .cs-formgrid > * {
+  min-width: 0;
+}
+#cs-workboard.hd-dashboard .cs-field input,
+#cs-workboard.hd-dashboard .cs-field select,
+#cs-workboard.hd-dashboard .cs-field textarea {
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+#cs-workboard.hd-dashboard .cs-field input[type="checkbox"],
+#cs-workboard.hd-dashboard .cs-field input[type="radio"] {
+  width: auto;
+}
+#cs-workboard.hd-dashboard .cs-profile-head {
+  flex-wrap: wrap;
+  gap: 12px;
+  min-width: 0;
+}
+#cs-workboard.hd-dashboard .cs-profile-head > div {
+  min-width: 0;
+  flex: 1 1 140px;
+}
+#cs-workboard.hd-dashboard .cs-child-picker {
+  display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
+}
+#cs-workboard.hd-dashboard .cs-child-picker > button {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+#cs-workboard.hd-dashboard .session-board {
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+#cs-workboard.hd-dashboard .cs-btn,
+#cs-workboard.hd-dashboard .cs-link {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+#cs-workboard.hd-dashboard .cs-panel-head {
+  min-width: 0;
+  max-width: 100%;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+#cs-workboard.hd-dashboard .cs-panel-head > div {
+  min-width: 0;
+}
+#cs-workboard.hd-dashboard .cs-breakdown > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+#cs-workboard.hd-dashboard .cs-workout-card {
+  min-width: 0;
+  max-width: 100%;
+}
+#cs-workboard.hd-dashboard .hc-recipient-actions {
+  min-width: 0;
+  max-width: 100%;
+}
+#cs-workboard.hd-dashboard .cs-demo {
+  min-width: 0;
+  max-width: 100%;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+#cs-workboard.hd-dashboard .hub-preview-identity,
+#cs-workboard.hd-dashboard .hub-preview-public-actions {
+  min-width: 0;
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+#cs-workboard.hd-dashboard .hub-preview-public-actions > a {
+  max-width: 100%;
+  min-width: 0;
+  white-space: normal;
+  text-align: center;
+  justify-content: center;
+  line-height: 1.5;
+}
+@media (max-width: 760px) {
+  #cs-workboard.hd-dashboard .cs-app > main {
+    padding-bottom: calc(
+      var(--cs-hub-nav-height, 72px) + 44px + env(safe-area-inset-bottom, 0px)
+    );
+  }
+  #cs-workboard.hd-dashboard .cs-nav {
+    max-width: calc(100% - 24px);
+    box-sizing: border-box;
+  }
+  #cs-workboard.hd-dashboard .cs-nav .hub-nav-link {
+    min-width: 0;
+    max-width: 100%;
+    padding: 8px 2px;
+    line-height: 1.35;
+  }
+  #cs-workboard.hd-dashboard .cs-nav .pc-nav-short {
+    min-width: 0;
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: center;
+  }
+  #cs-workboard.hd-dashboard .cs-field input,
+  #cs-workboard.hd-dashboard .cs-field select,
+  #cs-workboard.hd-dashboard .cs-field textarea {
+    font-size: 16px;
+  }
+  #cs-workboard.hd-dashboard .workspace-controls .cs-field {
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+  }
+  #cs-workboard.hd-dashboard .cs-formgrid,
+  #cs-workboard.hd-dashboard .cs-workout-grid,
+  #cs-workboard.hd-dashboard .cs-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  #cs-workboard.hd-dashboard .hc-recipient-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  #cs-workboard.hd-dashboard .detail-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+    width: 100%;
+    min-width: 0;
+    margin: 16px 0;
+  }
+  #cs-workboard.hd-dashboard .detail-tabs button {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding: 10px 8px;
+    font-size: 12px;
+    line-height: 1.5;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  #cs-workboard.hd-dashboard .cs-breakdown {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 5px;
+    align-items: start;
+  }
+  #cs-workboard.hd-dashboard .cs-breakdown > strong {
+    text-align: left;
+    white-space: normal;
+  }
+  #cs-workboard.hd-dashboard .hc-assignment-totals {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px 12px;
+  }
+  #cs-workboard.hd-dashboard .hc-assignment-totals > div {
+    padding: 0;
+    min-width: 0;
+    border: 0;
+  }
+  #cs-workboard.hd-dashboard
+    .hc-assignment-totals
+    > div:last-child:nth-child(3) {
+    grid-column: 1/-1;
+    border-top: 1px solid #52657b55;
+    padding-top: 14px;
+  }
+  #cs-workboard.hd-dashboard .hc-assignment-totals > div > span {
+    font-size: 11px;
+    line-height: 1.6;
+  }
+  #cs-workboard.hd-dashboard .hp-score-stats strong {
+    font-size: clamp(18px, 5vw, 24px);
+    overflow-wrap: anywhere;
+  }
+  #cs-workboard.hd-dashboard .hd-ring strong {
+    font-size: clamp(18px, 5.4vw, 25px);
+  }
+  #cs-workboard.hd-dashboard .cs-steps {
+    gap: 6px;
+    min-width: 0;
+  }
+  #cs-workboard.hd-dashboard .cs-step {
+    min-width: 0;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+  }
+  #cs-workboard.hd-dashboard .hc-assignment-heading {
+    align-items: flex-start;
+  }
+  #cs-workboard.hd-dashboard .hc-assignment-heading > div {
+    min-width: 0;
+  }
+  #cs-workboard.hd-dashboard .cs-inapp-reminder {
+    min-width: 0;
+  }
+  #cs-workboard.hd-dashboard .cs-inapp-reminder > div {
+    min-width: 0;
+  }
+  #cs-workboard.hd-dashboard .hc-recipient-actions > .cs-btn,
+  #cs-workboard.hd-dashboard .hc-recipient-actions > .cs-link {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+  #cs-workboard.hd-dashboard .cs-wizard-footer {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    gap: 10px;
+    min-width: 0;
+  }
+  #cs-workboard.hd-dashboard .cs-wizard-footer > button {
+    min-width: 0;
+    width: 100%;
+    white-space: normal;
+  }
+}
+@media (max-width: 380px) {
+  #cs-workboard.hd-dashboard .cs-app > main {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  #cs-workboard.hd-dashboard .cs-panel,
+  #cs-workboard.hd-dashboard .hd-card {
+    padding: 14px;
+  }
+  #cs-workboard.hd-dashboard .cs-demo {
+    padding: 12px;
+  }
+  #cs-workboard.hd-dashboard .hub-preview-public-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  #cs-workboard.hd-dashboard .hp-plan-numbers {
+    gap: 14px;
+  }
+  #cs-workboard.hd-dashboard .hp-plan-numbers > span {
+    padding-left: 14px;
+    min-width: 0;
+  }
+  #cs-workboard.hd-dashboard .hp-plan-numbers > strong {
+    font-size: 44px;
+  }
+  #cs-workboard.hd-dashboard .hp-plan-card .cs-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  #cs-workboard.hd-dashboard .cs-selected-plan {
+    min-width: 0;
+  }
+}
+
+/* Assignment matrix: explicit control geometry prevents inherited button padding
+   from clipping NEXT; full-width name buttons keep progress tracks comparable. */
+#cs-workboard.hd-dashboard .cs-tracker-table {
+  table-layout: fixed;
+  width: 100%;
+  border-collapse: collapse;
+}
+#cs-workboard.hd-dashboard .cs-tracker-table .cs-tracker-player-column {
+  width: 136px;
+}
+#cs-workboard.hd-dashboard .cs-tracker-table th,
+#cs-workboard.hd-dashboard .cs-tracker-table td {
+  padding: 10px 6px;
+  text-align: center;
+}
+#cs-workboard.hd-dashboard .cs-tracker-table th:first-child {
+  width: auto;
+}
+#cs-workboard.hd-dashboard .cs-tracker-table .cs-tracker-groups th:first-child,
+#cs-workboard.hd-dashboard .cs-tracker-table td:first-child {
+  text-align: left;
+  padding-left: 0;
+  padding-right: 12px;
+}
+#cs-workboard.hd-dashboard .cs-tracker-table .cs-tracker-groups th {
+  padding-bottom: 4px;
+}
+#cs-workboard.hd-dashboard .cs-tracker-table .cs-tracker-groups th[rowspan] {
+  padding-bottom: 10px;
+}
+#cs-workboard.hd-dashboard .cs-tracker-table .cs-tracker-assignment {
+  display: block;
+  color: #c4d1e2;
+  font-size: 11px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+#cs-workboard.hd-dashboard .cs-tracker-table .cs-tracker-session-headings th {
+  color: #f1d2b8;
+  padding-top: 4px;
+  font-size: 11px;
+}
+#cs-workboard.hd-dashboard .cs-tracker-table .session-name {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0;
+  margin: 0;
+  border-radius: 4px;
+  line-height: 1.4;
+  white-space: normal;
+}
+#cs-workboard.hd-dashboard .cs-tracker-table .cs-tracker-player-name {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+#cs-workboard.hd-dashboard .cs-tracker-table .session-name small {
+  font-size: 11px;
+  font-weight: 400;
+  margin-top: 3px;
+}
+#cs-workboard.hd-dashboard .cs-tracker-table .session-name .hd-thin-track {
+  width: 100%;
+  max-width: 112px;
+  height: 3px;
+  margin-top: 6px;
+  flex: none;
+}
+#cs-workboard.hd-dashboard .cs-tracker-table .session-cell {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  min-width: 48px;
+  max-width: 48px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  margin: 0;
+  border-radius: 10px;
+  line-height: 1;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+#cs-workboard.hd-dashboard .cs-tracker-table .session-cell.next {
+  font-size: 10px;
+}
+#cs-workboard.hd-dashboard .cs-tracker-table .session-cell svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+#cs-workboard.hd-dashboard .cs-tracker-table button:focus-visible {
+  outline: 2px solid #ff9e52;
+  outline-offset: 2px;
+}

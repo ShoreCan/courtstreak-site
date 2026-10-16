@@ -8,7 +8,7 @@ const menus = [
   {
     title: 'Membership',
     links: [
-      ['Preview the App', '/courtstreak-site/preview'],
+      ['Explore CourtStreak', '/courtstreak-site/preview'],
       ['Pricing', '/courtstreak-site/pricing'],
      ['What’s Included', '/courtstreak-site/whats-included'],
       ['Create Account', '/courtstreak-site/create-account'],
@@ -16,10 +16,12 @@ const menus = [
     ],
   },
   {
-    title: 'For Groups',
+    title: 'Parents & Coaches',
     links: [
       ['Players', '/courtstreak-site/players'],
       ['Parents', '/courtstreak-site/parents'],
+      ['Team & Family Hub', '/courtstreak-site/hub'],
+      ['Explore All Previews', '/courtstreak-site/preview'],
       ['Coaches', '/courtstreak-site/coaches'],
       ['AAU Teams', '/courtstreak-site/coaches'],
       ['Training Circles', `${HOME}#community`],
@@ -102,7 +104,7 @@ export default function Navbar() {
 
       {open && (
         <div className="mobile-menu">
-          <Link className="cs-public-menu-preview" to="/preview" onClick={() => setOpen(false)}><strong>Preview the App →</strong><small>Free to explore · No account needed</small></Link>
+          <Link className="cs-public-menu-preview" to="/preview" onClick={() => setOpen(false)}><strong>Explore CourtStreak →</strong><small>Free to explore · No account needed</small></Link>
           {menus.map((menu) => (
             <details className="mobile-menu-group" key={menu.title}>
               <summary>{menu.title}</summary>

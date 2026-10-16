@@ -1,0 +1,59 @@
+/* Deliberate spacing and compact mobile hierarchy, scoped to player screens. */
+.cs-share-training { display:flex;flex-wrap:wrap;gap:8px;align-items:center; }
+.cs-week-interactive { margin-top:18px;padding-top:14px;border-top:1px solid rgba(150,171,203,.15); }
+.cs-week-taps { display:grid;grid-template-columns:repeat(7,1fr);gap:6px; }
+.cs-week-taps button { display:grid;place-items:center;gap:8px;min-height:60px;padding:7px 0;border:1px solid transparent;border-radius:13px;background:rgba(151,172,202,.07);color:#aabacf;cursor:pointer; }
+.cs-week-taps button span { font-size:11px;font-weight:600; }
+.cs-week-taps button i { font-style:normal;font-size:16px;color:#7b8ba1; }
+.cs-week-taps button.trained { background:rgba(255,111,24,.14); }
+.cs-week-taps button.trained i { color:#ff842f; }
+.cs-week-taps button.selected { border-color:#ff842f;background:rgba(255,111,24,.2); }
+.cs-week-taps button:disabled { opacity:.35;cursor:default; }
+.cs-week-taps button:focus-visible { outline:2px solid #ff842f;outline-offset:2px; }
+.cs-week-interactive > p { font-size:12px;margin:10px 0 0;color:#aabacf; }
+.cs-drill-guide .cs-guide-more { margin-top:16px;border:1px solid rgba(149,171,201,.2);border-radius:14px;padding:14px; }
+.cs-guide-more summary { cursor:pointer;min-height:24px;font-size:14px;font-weight:650;color:#f2f5fb; }
+.cs-guide-more summary:focus-visible { outline:2px solid #ff842f;outline-offset:4px; }
+.cs-guide-more[open] summary { margin-bottom:16px; }
+.cs-share-training button { display:inline-flex;gap:8px;align-items:center;min-height:44px;border-radius:12px;padding:12px 16px;border:1px solid #405066;background:#132033;color:#fff;cursor:pointer; }
+.cs-share-training [role="status"] { font-size:13px;color:#bac8da; }
+.cs-comparison-note { margin:12px 0;color:#aebed2;font-size:13px;line-height:1.5; }
+.cs-comparison-note strong { color:#fff; }
+.cs-day-results { list-style:none;margin:12px 0;padding:0;display:grid;gap:8px; }
+.cs-day-results li { display:flex;justify-content:space-between;gap:12px;padding:12px;border-radius:12px;background:rgba(127,151,185,.08);font-size:14px; }
+.cs-day-results small { display:block;font-size:12px;color:#aebed2;margin-top:3px; }
+.cs-results-actions .cs-share-training { justify-content:center; }
+.cs-results-performance .cs-results-comparison { color:#bac8da; }
+:is(.cs-progress-page,.cs-session-page,.cs-workout-page) button:focus-visible,.cs-share-training button:focus-visible { outline:2px solid #ff822f;outline-offset:4px; }
+@media(max-width:820px) {
+  body:has(.cs-app-mobile-nav) { padding-bottom:calc(100px + env(safe-area-inset-bottom)) !important; }
+  .cs-player-app-active .cs-dash-v3,.cs-customer-preview .cs-dash-v3 { padding:20px 16px 28px !important; }
+  .cs-dash-v3 .cs-dash-v3-header { gap:12px !important;margin-bottom:18px !important; }
+  .cs-dash-v3 .cs-dash-v3-header h1 { font-size:clamp(26px,7vw,34px) !important;line-height:1.12 !important;letter-spacing:-.04em; }
+  .cs-dash-v3 .cs-dash-v3-header-stats { flex-wrap:wrap;gap:6px !important; }
+  .cs-dash-v3 .cs-dash-v3-header-stats span { min-height:32px !important;padding:7px 10px !important;font-size:12px !important; }
+  .cs-dash-v3 .cs-dash-v3-training { min-height:0 !important;padding:22px !important;gap:22px !important;border-radius:24px !important; }
+  .cs-dash-v3 .cs-dash-v3-training-copy h2 { font-size:32px !important;line-height:1.12 !important;margin:8px 0 10px !important; }
+  .cs-dash-v3 .cs-dash-v3-training-copy p { font-size:15px !important;line-height:1.5 !important;max-width:32ch; }
+  .cs-dash-v3 .cs-dash-v3-tags { display:none !important; }
+  .cs-dash-v3 .cs-dash-v3-training > button { min-height:50px !important;padding:14px 18px !important;font-size:16px !important;margin-top:4px !important; }
+  .cs-dash-v3 .cs-dash-v3-week { min-height:0 !important;padding:20px !important;border-radius:24px !important; }
+  .cs-dash-v3 .cs-dash-v3-week h2 { font-size:22px !important; }
+  .cs-dash-v3 .cs-dash-v3-label { font-size:11px !important;letter-spacing:.12em !important; }
+  .cs-dash-v3 .cs-dash-v3-primary { gap:16px !important; }
+  .cs-progress-page .cs-progress-hero h1 { font-size:32px !important; }
+  .cs-progress-page .cs-progress-card { padding:18px !important; }
+  .cs-progress-drill-select { max-width:100%;min-width:0 !important; }
+  .cs-progress-drill-select select { max-width:100%;white-space:normal; }
+  .cs-preview-banner { padding:14px 16px !important;gap:12px; }
+  .cs-preview-banner strong { font-size:12px !important;letter-spacing:.08em !important; }
+  .cs-preview-banner span,.cs-preview-banner a { font-size:12px !important; }
+  .cs-competition-title-lockup h2 { font-size:24px !important; }
+  .cs-results-actions { display:flex;flex-direction:column;gap:10px; }
+  .cs-results-actions > button,.cs-results-actions .cs-share-training,.cs-results-actions .cs-share-training button { width:100%; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .cs-dash-v3 *, .cs-competition-hub *, .cs-progress-page *, .cs-results-page *, .cs-session-page * { animation:none !important;transition:none !important;scroll-behavior:auto !important; }
+}
+
+.cs-profile-hub-access{display:flex;gap:12px 24px;flex-wrap:wrap;margin:0 auto 24px;max-width:1200px}.cs-profile-hub-access a{display:inline-flex;align-items:center;min-height:44px;padding:10px 16px;border:1px solid #3b4c62;border-radius:9px;background:#172a41;color:#eaf1fa;text-decoration:none;font-size:14px}

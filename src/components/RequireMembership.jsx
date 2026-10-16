@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient.js';
+import {getHubAccount,hubHome} from '../hub/api.js';
 
 export default function RequireMembership({ children }) {
   const location = useLocation();
   const [status, setStatus] = useState('checking');
+  const [managerPath,setManagerPath]=useState(null);
 
   useEffect(() => {
     let active = true;
@@ -26,6 +28,10 @@ export default function RequireMembership({ children }) {
         setStatus('logged-out');
         return;
       }
+
+      const account = await getHubAccount();
+      if (!active) return;
+      if (account.role !== 'player') { setManagerPath(hubHome(account.role)); setStatus('manager'); return; }
 
       const {
         data: hasActiveMembership,
@@ -54,6 +60,8 @@ export default function RequireMembership({ children }) {
       clearTimeout(timeout);
     };
   }, []);
+
+  if (status === 'manager') return <Navigate to={managerPath} replace />;
 
   if (status === 'checking') {
     return (

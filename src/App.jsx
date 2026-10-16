@@ -1,4 +1,5 @@
-import React, { lazy, Suspense } from 'react';
+import CourtStreakExperience from './features/courtstreak-ui/CourtStreakExperience';
+import React, { lazy, Suspense, useLayoutEffect } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import Home from './pages/Home.jsx';
 const BallHandling = lazy(() => import('./pages/BallHandling.jsx'));
@@ -35,13 +36,38 @@ const CustomerPreview = lazy(() => import('./pages/CustomerPreview.jsx'));
 import RequireAccount from './components/RequireAccount.jsx';
 import AppErrorBoundary from './components/AppErrorBoundary.jsx';
 import PlayerAppNav from './components/PlayerAppNav.jsx';
+import './ui-polish.css';
+
+const RestorePlayer = lazy(() => import('./hub/RestorePlayer.jsx'));
+const Hub = lazy(() => import('./hub/Hub.jsx'));
+const HubEntry = lazy(() => import('./hub/HubEntry.jsx').then(m=>({default:m.HubEntry})));
+const HubInvite = lazy(() => import('./hub/HubEntry.jsx').then(m=>({default:m.HubInvite})));
+const HubTraining = lazy(() => import('./hub/HubTraining.jsx'));
+
+function RouteScrollReset() {
+  const { pathname, hash } = useLocation();
+  useLayoutEffect(() => { if (!hash) window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); }, [pathname]);
+  return null;
+}
+
 export default function App() {
   const location = useLocation();
   return (
     <AppErrorBoundary key={location.pathname === "/preview" || location.pathname.startsWith("/preview/") ? "customer-preview" : location.pathname}>
+      <RouteScrollReset />
       <Suspense fallback={<main className="cs-welcome-page"><section className="cs-welcome-card"><h1>Opening CourtStreak…</h1></section></main>}>
       <Routes>
+        <Route path="/experience-lab" element={<CourtStreakExperience />} />
       <Route path="/" element={<Home />} />
+      <Route path="/preview/hub/*" element={<Hub preview />} />
+      <Route path="/account/restore-player" element={<RequireAccount><RestorePlayer /></RequireAccount>} />
+      <Route path="/hub" element={<RequireAccount><HubEntry /></RequireAccount>} />
+      <Route path="/hub/invite/:token" element={<RequireAccount><HubInvite /></RequireAccount>} />
+      <Route path="/team-hub/*" element={<RequireAccount><Hub /></RequireAccount>} />
+      <Route path="/family-hub/*" element={<RequireAccount><Hub /></RequireAccount>} />
+      <Route path="/assigned-work/*" element={<RequireAccount><Hub /></RequireAccount>} />
+      <Route path="/connections" element={<RequireAccount><Hub /></RequireAccount>} />
+      <Route path="/assigned-training/:assignmentId/:runId" element={<RequireMembership><HubTraining /></RequireMembership>} />
       <Route path="/preview/*" element={<CustomerPreview />} />
       <Route path="/train" element={<RequireMembership><TrainingStart /></RequireMembership>} />
       <Route path="/players" element={<Players />} />

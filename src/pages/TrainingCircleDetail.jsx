@@ -1,7 +1,8 @@
+// CourtStreak quality update v1
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
 import usePreviewNavigate from '../lib/usePreviewNavigate.js';
-import { PREVIEW_CIRCLES, PREVIEW_CIRCLE_STATS, previewSessions } from '../lib/previewData.js';
+import { PREVIEW_CIRCLES, PREVIEW_CIRCLE_STATS, PREVIEW_CIRCLE_ACTIVITY } from '../lib/previewData.js';
 import { supabase } from '../lib/supabaseClient.js';
 import CircleCompetitionHub from '../components/CircleCompetitionHub.jsx';
 import {
@@ -97,6 +98,7 @@ export default function TrainingCircleDetail({ previewOnly = false }) {
   const [members, setMembers] = useState([]);
   const [activity, setActivity] = useState([]);
   const [weeklyStats, setWeeklyStats] = useState({ workouts: 0, xp: 0 });
+  const [verifiedLeaders, setVerifiedLeaders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pageError, setPageError] = useState('');
 
@@ -181,9 +183,10 @@ export default function TrainingCircleDetail({ previewOnly = false }) {
     if (previewOnly) {
       const sample={...PREVIEW_CIRCLES[0],owner_id:'alex',motto:'Show up. Put in the work.',badge_key:'basketball',theme_key:'orange',allow_member_challenges:true};
       setCircle(sample); setCurrentUserId('jordan');
-      setMembers(PREVIEW_CIRCLE_STATS['sample-crew'].leaders.map((m)=>({...m,userId:m.user_id,name:`${m.first_name} ${m.last_name}`,role:m.user_id==='alex'?'owner':'member',weeklyXp:m.weekly_training_xp,weeklyWorkouts:4})));
-      setWeeklyStats({workouts:12,xp:560});
-      setActivity(previewSessions().slice(0,6).map((s,i)=>({id:s.id,userId:i%2?'jordan':'alex',name:i%2?'Jordan Player':'Alex Player',workout:'Ball Handling',minutes:10,xp:45,completedAt:s.completed_at})));
+      setMembers(PREVIEW_CIRCLE_STATS['sample-crew'].leaders.map((m)=>({...m,userId:m.user_id,name:`${m.first_name} ${m.last_name}`,role:m.user_id==='alex'?'owner':'member',weeklyXp:m.weekly_training_xp,weeklyWorkouts:m.weekly_workouts,initials:`${m.first_name[0]}${m.last_name[0]}`})));
+      setWeeklyStats({workouts:PREVIEW_CIRCLE_STATS['sample-crew'].weeklyWorkouts,xp:PREVIEW_CIRCLE_STATS['sample-crew'].weeklyTrainingXp});
+      setVerifiedLeaders(PREVIEW_CIRCLE_STATS['sample-crew'].leaders || []);
+      setActivity(PREVIEW_CIRCLE_ACTIVITY);
       setLoading(false); return;
     }
     if (!supabase || !circleId) {
@@ -302,6 +305,7 @@ export default function TrainingCircleDetail({ previewOnly = false }) {
 
     if (userIds.length === 0) {
       setWeeklyStats({ workouts: 0, xp: 0 });
+      setVerifiedLeaders([]);
       setActivity([]);
       setLoading(false);
       return;
@@ -328,6 +332,7 @@ export default function TrainingCircleDetail({ previewOnly = false }) {
     }
 
     const verifiedRows = verifiedWeeklyRows ?? [];
+    setVerifiedLeaders(verifiedRows);
 
     const verifiedWeeklyWorkouts = verifiedRows.reduce(
       (total, member) =>
@@ -462,13 +467,13 @@ export default function TrainingCircleDetail({ previewOnly = false }) {
 
   async function copyInviteCode() {
     if (previewOnly) { navigate("/preview/membership"); return; }
-    await navigator.clipboard.writeText(inviteCode);
+    try { await navigator.clipboard.writeText(inviteCode); } catch { showFeedback('error', 'Copying could not open. Try the share button.'); return; }
     showFeedback('success', 'Invitation code copied.');
   }
 
   async function copyInviteLink() {
     if (previewOnly) { navigate("/preview/membership"); return; }
-    await navigator.clipboard.writeText(getInviteUrl());
+    try { await navigator.clipboard.writeText(getInviteUrl()); } catch { showFeedback('error', 'Copying could not open. Try the share button.'); return; }
     showFeedback('success', 'Invitation link copied.');
   }
 
@@ -700,6 +705,8 @@ export default function TrainingCircleDetail({ previewOnly = false }) {
           <article><Users /><span><strong>{members.length}</strong>Members</span></article>
         </section>
 
+        <CircleMomentumBoard members={members} leaders={verifiedLeaders} currentUserId={currentUserId} weeklyStats={weeklyStats} weeklyGoal={weeklyGoal} />
+
         <CircleCompetitionHub
           previewOnly={previewOnly}
           circle={circle}
@@ -927,4 +934,32 @@ export default function TrainingCircleDetail({ previewOnly = false }) {
       ) : null}
     </main>
   );
+}
+
+
+/** Presentation-only: verified RPC rows are the exclusive scoring source. */
+function CircleMomentumBoard({members,leaders,currentUserId,weeklyStats,weeklyGoal}) {
+  const [metric,setMetric]=useState('workouts');
+  const list=useMemo(()=>{
+    const directory=new Map(members.map(m=>[String(m.userId??m.user_id),m]));
+    return leaders.map(row=>{
+      const id=String(row.user_id??row.userId??'');
+      const player=directory.get(id);
+      const name=player?.name || [row.first_name,row.last_name].filter(Boolean).join(' ') || 'Circle player';
+      return {id,name,workouts:Math.max(0,Number(row.weekly_workouts??row.weeklyWorkouts??0)||0),xp:Math.max(0,Number(row.weekly_training_xp??row.weeklyTrainingXp??0)||0)};
+    }).sort((a,b)=>b[metric]-a[metric]||a.name.localeCompare(b.name));
+  },[members,leaders,metric]);
+  const goal=Math.max(1,Number(weeklyGoal)||20);
+  const completed=Math.max(0,Number(weeklyStats.workouts)||0);
+  const percent=Math.min(100,Math.round(completed/goal*100));
+  const leading=Math.max(1,...list.map(player=>player[metric]));
+  const myRank=list.findIndex(player=>player.id===String(currentUserId));
+  return <section className="cs-momentum" aria-label="Verified weekly Circle standings">
+    <header className="cs-momentum-head"><div><span>WEEKLY CIRCLE RACE</span><h2>Show up for your people.</h2><p>Real training. Real progress. Every workout counts toward your Circle goal.</p></div><div className="cs-momentum-count"><strong>{completed}<small> / {goal}</small></strong><span>Team workouts this week</span></div></header>
+    <div className="cs-momentum-goal" role="progressbar" aria-valuenow={completed} aria-valuemin={0} aria-valuemax={Math.max(goal,completed)} aria-label="Circle weekly workout goal"><span style={{width:`${percent}%`}} /></div>
+    <div className="cs-momentum-sub"><span>{percent}% toward the weekly goal</span><strong>{completed>=goal?'Team goal reached!':`${goal-completed} workouts to go`}</strong></div>
+    <div className="cs-momentum-controls"><div><h3>Member standings</h3><p>{myRank>=0?`You're #${myRank+1} of ${list.length} this week.`:'Keep training to enter the standings.'}</p></div><div className="cs-momentum-toggle" role="group" aria-label="Rank by"><button type="button" aria-pressed={metric==='workouts'} className={metric==='workouts'?'selected':''} onClick={()=>setMetric('workouts')}>Workouts</button><button type="button" aria-pressed={metric==='xp'} className={metric==='xp'?'selected':''} onClick={()=>setMetric('xp')}>Training XP</button></div></div>
+    {list.length ? <ol className="cs-momentum-list">{list.map((player,index)=><li key={player.id||index} className={player.id===String(currentUserId)?'is-me':''}><span className="cs-momentum-rank">{index+1}</span><span className="cs-momentum-avatar" aria-hidden="true">{player.name.split(' ').slice(0,2).map(n=>n[0]||'').join('').toUpperCase()}</span><div className="cs-momentum-person"><div><strong>{player.name}{player.id===String(currentUserId)?' · You':''}</strong><b>{player[metric].toLocaleString()} {metric==='xp'?'XP':'workouts'}</b></div><div className="cs-momentum-bar"><span style={{width:`${player[metric]/leading*100}%`}} /></div></div></li>)}</ol> : <p className="cs-momentum-empty">No verified workouts yet this week. Be the first to train.</p>}
+    <p className="cs-momentum-foot">Rankings use CourtStreak's verified weekly statistics. Drill-only sessions do not count as full workouts.</p>
+  </section>;
 }

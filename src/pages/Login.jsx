@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient.js';
+import { getHubAccount, hubHome, safeHubNext } from '../hub/api.js';
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
+const hubNext = safeHubNext(searchParams.get('next')) || safeHubNext(location.state?.from);
+const inviteRole = hubNext ? new URL(hubNext, window.location.origin).searchParams.get('role') : null;
 const inviteCode = searchParams.get('invite');
 const checkoutType = searchParams.get('checkout');
   const [email, setEmail] = useState('');
@@ -39,6 +43,13 @@ const checkoutType = searchParams.get('checkout');
   navigate(`/training-circles/join/${encodeURIComponent(inviteCode)}${searchParams.get('accept') === '1' ? '?accept=1' : ''}`);
   return;
 }
+
+const next = hubNext;
+if (next) { navigate(next); return; }
+try {
+  const account = await getHubAccount();
+  if (account.role !== 'player') { navigate(hubHome(account.role)); return; }
+} catch (error) { setError(error.message); return; }
 
 const {
   data: hasActiveMembership,
@@ -125,6 +136,8 @@ if (hasActiveMembership) {
   to={
     inviteCode
       ? `/create-account?invite=${encodeURIComponent(inviteCode)}${searchParams.get('accept') === '1' ? '&accept=1' : ''}`
+      : hubNext
+        ? `/create-account?next=${encodeURIComponent(hubNext)}${['parent','coach'].includes(inviteRole)?'&role='+inviteRole:''}`
       : checkoutType === 'membership'
         ? '/create-account?checkout=membership'
         : '/create-account'

@@ -1,0 +1,16 @@
+/* Scoped refinements shared by members and the customer preview. */
+.cs-workout-library-page .cs-workout-library-hero { min-height: 190px; padding: 30px; }
+.cs-workout-library-page .cs-workout-library-hero h1,
+.cs-progress-page .cs-progress-hero h1 { font-size: clamp(2.5rem, 4vw, 3.75rem); line-height: 1.05; }
+.cs-workout-library-page .cs-program-card { min-height: 245px; }
+.cs-workout-library-page .cs-program-card-copy { margin-bottom: 20px; }
+.cs-manual-tracking-note { display: flex; gap: 12px; padding: 16px; margin: 20px 0; border: 1px solid #263449; border-radius: 14px; background: #101a2b; }
+.cs-manual-tracking-note > svg { flex-shrink: 0; color: #ff7626; margin-top: 3px; }
+.cs-manual-tracking-note p { margin: 6px 0 0; line-height: 1.5; color: #aab8cc; font-size: 14px; }
+.cs-progress-day-results { margin-top: 14px; padding: 0 4px; }
+.cs-progress-day-results ul { list-style: none; padding: 0; margin: 0; }
+.cs-progress-day-results li { display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid #273651; font-size: 14px; }
+.cs-progress-day-results li span, .cs-progress-day-results p { color: #aab8cc; }
+.cs-lab-row:focus-visible, .cs-lab-favorite-toggle:focus-visible, .cs-lab-section-jump a:focus-visible { outline: 2px solid #ff7626; outline-offset: 4px; }
+@media (max-width: 640px) { .cs-workout-library-page .cs-workout-library-hero { padding: 22px; } .cs-workout-library-page .cs-program-card { min-height: 0; } .cs-progress-day-results li { flex-wrap: wrap; } }
+@media (prefers-reduced-motion: reduce) { .cs-program-card, .cs-lab-row { transition: none; } }

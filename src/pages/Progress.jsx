@@ -1,5 +1,9 @@
+// CourtStreak quality update v1
+import { comparisonGroups, resultValue as metricValue } from '../lib/trainingMetrics.js';
+import { loadResultContexts, loadTrainingHistory } from '../lib/resultContext.js';
+import ShareTraining from '../components/ShareTraining.jsx';
 import usePreviewNavigate from '../lib/usePreviewNavigate.js';
-import { PREVIEW_PROFILE, PREVIEW_STATS, previewSessions } from '../lib/previewData.js';
+import { PREVIEW_PROFILE, PREVIEW_STATS, PREVIEW_EARNED_ACHIEVEMENTS, previewSessions } from '../lib/previewData.js';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
@@ -39,11 +43,12 @@ function dateKey(value) {
 }
 
 function resultValue(session) {
-  return Number(session?.reps ?? session?.score ?? 0) || 0;
+  return metricValue(session) ?? 0;
 }
 
 function resultLabel(session) {
   if (!session) return '—';
+  if (metricValue(session) === null) return 'Completed';
   const value = resultValue(session);
   return `${value.toLocaleString()} ${session.reps != null ? 'reps' : 'points'}`;
 }
@@ -59,6 +64,8 @@ export default function Progress({ previewOnly = false }) {
   const [sessions, setSessions] = useState([]);
   const [achievementCount, setAchievementCount] = useState(0);
   const [selectedDrill, setSelectedDrill] = useState('');
+  const [contextsAvailable, setContextsAvailable] = useState(true);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(dateKey(new Date()));
   const [calendarPage, setCalendarPage] = useState(0);
   const [selectedPerformanceIndex, setSelectedPerformanceIndex] = useState(0);
@@ -74,7 +81,7 @@ export default function Progress({ previewOnly = false }) {
       if (previewOnly) {
         const history = previewSessions();
         setProfile(PREVIEW_PROFILE); setVerifiedStats(PREVIEW_STATS); setSessions(history);
-        setAchievementCount(6); setSelectedDrill('Crossovers'); setLoading(false); return;
+        setAchievementCount(PREVIEW_EARNED_ACHIEVEMENTS.length); setSelectedDrill(comparisonGroups(history).at(-1)?.key || ''); setLoading(false); return;
       }
       if (!supabase) {
         setErrorMessage('CourtStreak could not connect to Supabase.');
@@ -98,11 +105,7 @@ export default function Progress({ previewOnly = false }) {
           .eq('id', user.id)
           .single(),
         supabase.rpc('get_my_courtstreak_stats'),
-        supabase
-          .from('training_sessions')
-          .select('id, drill_name, category, score, reps, completed_at')
-          .eq('user_id', user.id)
-          .order('completed_at', { ascending: true }),
+        loadTrainingHistory(user.id),
         supabase
           .from('player_achievements')
           .select('achievement_id', { count: 'exact', head: true })
@@ -118,22 +121,26 @@ export default function Progress({ previewOnly = false }) {
       }
 
       if (statsResult.error) { setErrorMessage('Your training totals could not load. Please try again.'); setLoading(false); return; }
-      if (sessionResult.error) console.error('Could not load training history:', sessionResult.error);
-      if (achievementResult.error) console.error('Could not load achievements:', achievementResult.error);
+      if (sessionResult.error) { setErrorMessage('Your training history could not load. Your saved results are unchanged.'); setLoading(false); return; }
+      if (achievementResult.error) { setErrorMessage('Your achievements could not load. Please retry.'); setLoading(false); return; }
 
-      const history = sessionResult.data ?? [];
+      const context = await loadResultContexts(user.id, sessionResult.data ?? []);
+      if (!active) return;
+      const history = context.sessions;
+      setContextsAvailable(context.available);
       const scoredHistory = history.filter((session) => resultValue(session) > 0);
       setProfile(profileResult.data);
       setVerifiedStats(statsResult.data?.[0] ?? statsResult.data ?? null);
       setSessions(history);
       setAchievementCount(achievementResult.count ?? 0);
-      setSelectedDrill(scoredHistory.at(-1)?.drill_name ?? '');
+      setSelectedDrill(comparisonGroups(history).at(-1)?.key || '');
       setLoading(false);
     }
 
-    loadProgress();
+    setLoading(true); setErrorMessage('');
+    loadProgress().catch(() => { if (active) { setErrorMessage('Your progress could not load. Please retry.'); setLoading(false); } });
     return () => { active = false; };
-  }, [navigate, previewOnly]);
+  }, [navigate, previewOnly, loadAttempt]);
 
   const stats = verifiedStats ?? profile ?? {};
   const playerLevel = Number(stats.level ?? 1);
@@ -142,22 +149,14 @@ export default function Progress({ previewOnly = false }) {
   const xpToNext = Number(stats.xp_needed_for_next_level ?? 0);
   const currentStreak = Number(stats.training_streak ?? 0);
   const bestStreak = Number(stats.best_training_streak ?? 0);
-  const workouts = Number(stats.workouts_completed ?? sessions.length ?? 0);
+  const workouts = Number(stats.workouts_completed ?? 0);
   const weeklyWorkouts = Number(stats.weekly_workouts ?? 0);
   const weeklyGoal = Math.max(1, Number(stats.weekly_goal ?? 5));
   const weeklyPercent = Math.min(100, Math.round((weeklyWorkouts / weeklyGoal) * 100));
 
-  const drillOptions = useMemo(() => {
-    const counts = new Map();
-    sessions.forEach((session) => {
-      if (session.drill_name && resultValue(session) > 0) {
-        counts.set(session.drill_name, (counts.get(session.drill_name) ?? 0) + 1);
-      }
-    });
-    return [...counts.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .map(([name, count]) => ({ name, count }));
-  }, [sessions]);
+  const drillOptions = useMemo(() => comparisonGroups(sessions), [sessions]);
+  const selectedGroup = drillOptions.find(group => group.key === selectedDrill);
+  const excludedResults = sessions.filter(session => metricValue(session) !== null).length - drillOptions.reduce((sum, group) => sum + group.count, 0);
 
   const currentWeekDays = useMemo(() => {
     const weekStart = startOfWeek();
@@ -170,7 +169,7 @@ export default function Progress({ previewOnly = false }) {
       }
     });
     return Array.from({ length: 7 }, (_, index) => {
-      const date = new Date(weekStart.getTime() + index * DAY);
+      const date = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + index);
       return {
         key: dateKey(date),
         label: ['M', 'T', 'W', 'T', 'F', 'S', 'S'][index],
@@ -192,7 +191,7 @@ export default function Progress({ previewOnly = false }) {
     return Array.from({ length: 4 }, (_, weekIndex) => ({
       label: shortDate(new Date(calendarStart.getTime() + weekIndex * WEEK)),
       days: Array.from({ length: 7 }, (_, dayIndex) => {
-        const date = new Date(calendarStart.getTime() + (weekIndex * 7 + dayIndex) * DAY);
+        const date = new Date(calendarStart.getFullYear(), calendarStart.getMonth(), calendarStart.getDate() + weekIndex * 7 + dayIndex);
         return {
           date,
           key: dateKey(date),
@@ -209,6 +208,7 @@ export default function Progress({ previewOnly = false }) {
   const elapsedCalendarDays = calendarDays.filter((day) => !day.isFuture);
   const activeDays = elapsedCalendarDays.filter((day) => day.count > 0).length;
   const selectedDay = calendarDays.find((day) => day.key === selectedCalendarDate) ?? calendarDays.at(-1);
+  const selectedDaySessions = sessions.filter((session) => dateKey(session.completed_at) === selectedDay?.key);
   const calendarRangeStart = calendarDays[0]?.date;
   const calendarRangeEnd = calendarDays.at(-1)?.date;
   const calendarSessionCount = elapsedCalendarDays.reduce((total, day) => total + day.count, 0);
@@ -227,9 +227,8 @@ export default function Progress({ previewOnly = false }) {
       .map((session) => dateKey(session.completed_at))
   ).size;
 
-  const selectedHistory = useMemo(() => sessions
-    .filter((session) => session.drill_name === selectedDrill && resultValue(session) > 0)
-    .slice(-12), [sessions, selectedDrill]);
+  const matchingHistory = selectedGroup?.sessions || [];
+  const selectedHistory = matchingHistory.slice(-12);
 
   useEffect(() => {
     setSelectedPerformanceIndex(Math.max(0, selectedHistory.length - 1));
@@ -256,8 +255,8 @@ export default function Progress({ previewOnly = false }) {
   }, [selectedHistory]);
 
   const latestResult = selectedHistory.at(-1);
-  const bestResult = selectedHistory.length
-    ? selectedHistory.reduce((best, session) => resultValue(session) > resultValue(best) ? session : best)
+  const bestResult = matchingHistory.length
+    ? matchingHistory.reduce((best, session) => resultValue(session) > resultValue(best) ? session : best)
     : null;
   const firstValue = resultValue(selectedHistory[0]);
   const latestValue = resultValue(latestResult);
@@ -302,7 +301,8 @@ export default function Progress({ previewOnly = false }) {
     return (
       <main className="cs-progress-page cs-progress-status">
         <p>{errorMessage}</p>
-        <button type="button" onClick={() => navigate('/dashboard')}>Return to Dashboard</button>
+        <button type="button" onClick={() => setLoadAttempt(value => value + 1)}>Try again</button>
+        <button type="button" onClick={() => navigate('/dashboard')}>Dashboard</button>
       </main>
     );
   }
@@ -377,19 +377,20 @@ export default function Progress({ previewOnly = false }) {
               <div>
                 <span>DRILL PERFORMANCE</span>
                 <h2>See every step forward</h2>
-                <p>Choose a drill, then drag across the timeline to review every recorded result.</p>
+                <p>Choose a drill, then drag across the timeline to compare attempts with the same drill, timer, counting rule, and recording method.</p>
               </div>
             </div>
             <label className="cs-progress-drill-select">
               <span className="cs-progress-sr-only">Choose a drill</span>
               <select value={selectedDrill} onChange={(event) => setSelectedDrill(event.target.value)} disabled={!drillOptions.length}>
                 {!drillOptions.length && <option>No completed drills yet</option>}
-                {drillOptions.map((drill) => <option value={drill.name} key={drill.name}>{drill.name}</option>)}
+                {drillOptions.map((drill) => <option value={drill.key} key={drill.key}>{drill.name}</option>)}
               </select>
               <ChevronDown size={17} />
             </label>
           </div>
 
+          {(!contextsAvailable || excludedResults > 0) && <p className="cs-comparison-note">{!contextsAvailable ? 'Comparison details could not load. Saved history is still available.' : `${excludedResults} older results remain in your calendar; missing comparison details exclude them from trends.`}</p>}
           {chart ? (
             <div className="cs-progress-performance-layout">
               <div className="cs-progress-chart-wrap">
@@ -450,16 +451,17 @@ export default function Progress({ previewOnly = false }) {
                     {selectedPerformanceDelta == null ? 'Starting result' : selectedPerformanceDelta === 0 ? 'Same as previous' : `${selectedPerformanceDelta > 0 ? '+' : ''}${selectedPerformanceDelta} from previous`}
                   </em>
                 </div>
-                <div><span>PERSONAL BEST</span><strong>{resultLabel(bestResult)}</strong></div>
+                {!previewOnly && selectedPerformanceResult && <ShareTraining text={`CourtStreak: ${selectedPerformanceResult.drill_name} · ${selectedPerformanceResult.duration_seconds}s · ${resultLabel(selectedPerformanceResult)} · Self-reported result.`} />}
+                <div><span>BEST MATCHING RESULT</span><strong>{resultLabel(bestResult)}</strong></div>
                 <div><span>LATEST RESULT</span><strong>{resultLabel(latestResult)}</strong></div>
                 <div className={improvement >= 0 ? 'positive' : 'negative'}><span>CHANGE</span><strong>{improvement > 0 ? '+' : ''}{improvement}%</strong></div>
-                <small>Based on your last {selectedHistory.length} recorded {selectedHistory.length === 1 ? 'result' : 'results'}.</small>
+                <small>Trend uses your last {selectedHistory.length} recorded {selectedHistory.length === 1 ? 'result' : 'results'}.</small>
               </div>
             </div>
           ) : (
             <div className="cs-progress-empty-state">
               <TrendingUp />
-              <div><strong>Your first trend is waiting.</strong><p>Complete scored or rep-based drills to see your performance line take shape.</p></div>
+              <div><strong>Your first trend is waiting.</strong><p>Save an attempt with comparison details to start a fair trend. Older results stay in Activity.</p></div>
             </div>
           )}
         </section>
@@ -473,7 +475,7 @@ export default function Progress({ previewOnly = false }) {
                 <div>
                   <span>TRAINING CALENDAR</span>
                   <h2>Days you showed up</h2>
-                  <p>Orange gets deeper as your work increases. Select any date to see exactly what you completed.</p>
+                  <p>Select a day to review saved drills and results.</p>
                 </div>
               </div>
 
@@ -533,7 +535,13 @@ export default function Progress({ previewOnly = false }) {
                     <span>{selectedDay ? new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).format(selectedDay.date) : 'Selected day'}</span>
                     <strong>{selectedDay?.count ?? 0} training {(selectedDay?.count ?? 0) === 1 ? 'session' : 'sessions'}</strong>
                   </div>
+                  <ul className="cs-day-results">{sessions.filter(session => dateKey(session.completed_at) === selectedDay?.key).map(session => <li key={session.id}><span>{session.drill_name}<small>{session.duration_seconds ? `${session.duration_seconds}s · ` : ''}{session.verification_mode === 'manual' ? 'Self-reported' : 'Recording details unavailable'}</small></span><strong>{resultLabel(session)}</strong></li>)}</ul>
                   <p><i /> Lighter = less work <i /> Darker = more work</p>
+                </div>
+                <div className="cs-progress-day-results" aria-live="polite">
+                  {selectedDaySessions.length ? <ul>{selectedDaySessions.map((session) => (
+                    <li key={session.id}><strong>{session.drill_name || session.category || 'Training session'}</strong><span>{session.reps != null ? `${session.reps} reps` : session.score != null ? `${session.score} score` : 'Completed'}</span></li>
+                  ))}</ul> : <p>No training recorded on this date.</p>}
                 </div>
               </div>
 

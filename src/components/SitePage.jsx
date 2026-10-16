@@ -3,6 +3,7 @@ import Navbar from './Navbar.jsx';
 import Footer from './Footer.jsx';
 
 export default function SitePage({
+  themeClass = '',
   eyebrow,
   title,
   intro,
@@ -18,7 +19,7 @@ export default function SitePage({
   children,
 }) {
   return (
-    <main className="site-page">
+    <main className={`site-page ${themeClass}`}>
       <Navbar />
 
       <section className="site-page-hero">

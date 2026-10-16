@@ -19,6 +19,9 @@ import {
 import { supabase } from '../lib/supabaseClient.js';
 import '../lab-catalog-controls.css';
 
+const sectionLabels = { foundations: 'Foundations', 'control-rhythm': 'Control & Rhythm', crossovers: 'Crossovers', 'between-legs': 'Between the Legs', 'behind-back': 'Behind the Back', combinations: 'Combinations', 'movement-game-speed': 'Movement & Game Speed' };
+function sectionLabel(section) { return sectionLabels[section.section_key] || section.name; }
+
 function formatHand(hand) {
   if (hand === 'right') return 'Right Hand';
   if (hand === 'left') return 'Left Hand';
@@ -312,18 +315,18 @@ export default function Lab({ previewOnly = false }) {
             </div>
 
             <nav className="cs-lab-section-jump" aria-label="Lab skill sections">
-              {sections.map((section) => <a key={section.id} href={`#${section.section_key}`}>{section.name}</a>)}
+              {sections.filter((section) => (visibleDrillsBySection[section.id] ?? []).length > 0).map((section) => <a key={section.id} href={`#${section.section_key}`}>{sectionLabel(section)}</a>)}
             </nav>
 
             <div className="cs-lab-skill-list">
-              {sections.map((section) => {
+              {sections.map((section, sectionIndex) => {
                 const sectionDrills = visibleDrillsBySection[section.id] ?? [];
                 if ((activeView !== 'all' || hasCatalogFilters) && sectionDrills.length === 0) return null;
                 return (
                   <section className="cs-lab-list-section" key={section.id} id={section.section_key}>
                     <div className="cs-lab-list-section-head">
-                      <div className="cs-lab-section-number">{String(section.display_order).padStart(2, '0')}</div>
-                      <div className="cs-lab-section-title"><h3>{section.name}</h3><p>{section.description}</p></div>
+                      <div className="cs-lab-section-number">{String(sectionIndex + 1).padStart(2, '0')}</div>
+                      <div className="cs-lab-section-title"><h3>{sectionLabel(section)}</h3>{section.description ? <p>{section.description}</p> : null}</div>
                       <span className="cs-lab-section-count">{sectionDrills.length} {sectionDrills.length === 1 ? 'drill' : 'drills'}</span>
                     </div>
 
@@ -337,14 +340,15 @@ export default function Lab({ previewOnly = false }) {
                             tabIndex="0"
                             onClick={() => navigate(`/lab/drill/${drill.drill_key}`)}
                             onKeyDown={(event) => {
-                              if (event.key === 'Enter' || event.key === ' ') navigate(`/lab/drill/${drill.drill_key}`);
+                              if (event.target !== event.currentTarget) return;
+                              if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); navigate(`/lab/drill/${drill.drill_key}`); }
                             }}
                           >
                             <DrillPreview drill={drill} />
                             <div className="cs-lab-row-copy">
                               <div className="cs-lab-row-title-line">
                                 <h4>{drill.name}</h4>
-                                <span className="cs-lab-row-ai">Manual</span>
+                                
                               </div>
                               <div className="cs-lab-row-meta">
                                 {drill.difficulty ? <span className="cs-lab-row-level">{drill.difficulty}</span> : null}
@@ -360,7 +364,7 @@ export default function Lab({ previewOnly = false }) {
                                 className={`cs-lab-favorite-toggle ${favoriteKeys.includes(drill.drill_key) ? 'is-favorite' : ''}`}
                                 onClick={(event) => toggleFavorite(drill, event)}
                                 onKeyDown={(event) => {
-                                  if (event.key === 'Enter' || event.key === ' ') toggleFavorite(drill, event);
+                                  if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleFavorite(drill, event); }
                                 }}
                                 aria-label={favoriteKeys.includes(drill.drill_key) ? `Remove ${drill.name} from favorites` : `Add ${drill.name} to favorites`}
                               ><FiHeart /></span>

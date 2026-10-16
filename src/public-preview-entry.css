@@ -28,3 +28,12 @@
   .premium-nav .nav-auth { gap:10px; }
   .premium-nav .nav-auth a { white-space:nowrap; }
 }
+.cs-home-supporter-entry { margin:20px 0; padding:18px; max-width:610px; border:1px solid #4b5a72; border-radius:14px; background:#12253d; color:#eef5ff; }
+.cs-home-supporter-entry > div:first-child { display:flex; align-items:center; gap:12px; }
+.cs-home-supporter-entry > div:first-child > svg { flex-shrink:0; color:#ffae70; }
+.cs-home-supporter-entry strong { display:block; font-size:14px; line-height:1.45; }
+.cs-home-supporter-entry small { display:block; color:#adc1da; font-size:11px; margin-top:5px; }
+.cs-home-supporter-entry > div:last-child { display:flex; gap:12px; margin-top:14px; }
+.cs-home-supporter-entry a { display:inline-flex; align-items:center; justify-content:center; gap:10px; flex:1; min-height:44px; padding:10px; border:1px solid #476480; border-radius:9px; color:#ffd0a8; background:#203750; font-size:12px; font-weight:650; }
+.cs-home-supporter-entry a:hover { border-color:#ffab69; }
+.cs-home-supporter-entry a:focus-visible { outline:3px solid #ff9b4a; outline-offset:3px; }

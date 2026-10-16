@@ -1,3 +1,7 @@
+import { LAUNCH_DRILL_BY_KEY } from '../data/drillCatalog.js';
+import { WORKOUT_PROGRAMS, isCurrentCustomWorkout } from '../data/workoutPrograms.js';
+// CourtStreak quality update v1
+import { PREVIEW_CIRCLE_PULSE, PREVIEW_CIRCLE_AWARDS } from '../lib/previewData.js';
 import React, { useEffect, useMemo, useState } from 'react';
 import usePreviewNavigate from '../lib/usePreviewNavigate.js';
 import {
@@ -21,7 +25,6 @@ import {
   Zap,
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient.js';
-import { WORKOUT_PROGRAMS } from '../data/workoutPrograms.js';
 import '../circle-competition.css';
 
 const AWARD_META = {
@@ -127,10 +130,10 @@ export default function CircleCompetitionHub({
 
   async function loadCompetition() {
     if (previewOnly) {
-      const sample={id:'sample-challenge',circle_id:'sample-crew',creator_id:'alex',source_type:'drill',source_key:'crossovers',source_name:'Crossovers',source_payload:{durationSeconds:60},challenge_type:'score',duration_seconds:60,status:'active',verification_mode:'manual',expires_at:new Date(Date.now()+86400000).toISOString()};
+      const sample={id:'sample-challenge',circle_id:'sample-crew',creator_id:'alex',source_type:'drill',source_key:'stationary-crossover',source_name:'Crossovers',source_payload:{durationSeconds:60},challenge_type:'score',duration_seconds:60,status:'active',verification_mode:'manual',expires_at:new Date(Date.now()+86400000).toISOString()};
       setDailyChallenge(sample); setChallenges([sample]);
       setEntries([{id:'sample-entry',challenge_id:sample.id,user_id:'alex',status:'completed',score:52,verification_mode:'manual'}]);
-      setAwards([]); setPulse(null); setLoading(false); return;
+      setAwards(PREVIEW_CIRCLE_AWARDS); setPulse(PREVIEW_CIRCLE_PULSE); setLoading(false); return;
     }
     if (!circle?.id || !currentUserId) return;
     setLoading(true);
@@ -151,7 +154,7 @@ export default function CircleCompetitionHub({
     const competitionError = dailyResult.error || challengeResult.error || awardResult.error || pulseResult.error;
     if (competitionError) {
       console.error('Could not load Circle competition:', competitionError);
-      showFeedback?.('error', 'Run the Circle competition SQL to activate challenges and weekly champions.');
+      showFeedback?.('error', 'Circle competition could not load. Please retry or contact support.');
       setLoading(false);
       return;
     }
@@ -191,6 +194,7 @@ export default function CircleCompetitionHub({
 
   function openBuilder() {
     if (previewOnly) { navigate("/preview/membership"); return; }
+    if (circle?.allow_member_challenges === false && circle?.owner_id !== currentUserId) { showFeedback?.('error', 'Only the Circle owner can create challenges.'); return; }
     setDraft(null);
     setSourceType('workout');
     setSourceKey(WORKOUT_PROGRAMS[0]?.key ?? '');
@@ -202,6 +206,7 @@ export default function CircleCompetitionHub({
   async function createChallenge() {
     if (previewOnly) { navigate("/preview/membership"); return; }
     if (!selectedSource || creating) return;
+    if (circle?.allow_member_challenges === false && circle?.owner_id !== currentUserId) { showFeedback?.('error', 'Only the Circle owner can create challenges.'); return; }
     setCreating(true);
     const { data, error } = await supabase.rpc('create_circle_challenge', {
       p_circle_id: circle.id,
@@ -229,8 +234,16 @@ export default function CircleCompetitionHub({
     return data;
   }
 
+  function currentChallengeSource(challenge) {
+    if(challenge.source_type === 'drill') return Boolean(LAUNCH_DRILL_BY_KEY[challenge.source_key]);
+    if(challenge.source_type === 'workout') return WORKOUT_PROGRAMS.some(p=>p.key===challenge.source_key);
+    if(challenge.source_type === 'custom_workout') return isCurrentCustomWorkout(challenge.source_payload?.program);
+    return false;
+  }
+
   async function acceptChallenge(challenge) {
     if (previewOnly) { navigate("/preview/membership"); return; }
+    if (!currentChallengeSource(challenge)) { showFeedback?.('error', 'This challenge uses retired content. Create a new challenge from the core library.'); return; }
     const { error } = await supabase.rpc('accept_circle_challenge', { p_challenge_id: challenge.id });
     if (error) {
       showFeedback?.('error', error.message || 'Challenge could not be accepted.');
@@ -242,6 +255,7 @@ export default function CircleCompetitionHub({
 
   function startChallenge(challenge) {
     if (previewOnly) { navigate("/preview/membership"); return; }
+    if (!currentChallengeSource(challenge)) { showFeedback?.('error', 'This challenge uses retired content. Create a new challenge from the core library.'); return; }
     const state = {
       circleChallenge: {
         id: challenge.id,
@@ -263,6 +277,7 @@ export default function CircleCompetitionHub({
   function challengeAction(challenge) {
     const challengeEntries = entryMap.get(challenge.id) ?? [];
     const ownEntry = challengeEntries.find((entry) => entry.user_id === currentUserId);
+    if (ownEntry?.status !== 'completed' && !currentChallengeSource(challenge)) return <span className="cs-competition-waiting">Retired drill or plan · Create a new challenge</span>;
     const isEligible = !challenge.target_user_id || challenge.target_user_id === currentUserId || challenge.creator_id === currentUserId;
     if (!isEligible) return <span className="cs-competition-waiting">Direct challenge</span>;
     if (ownEntry?.status === 'completed') return <span className="cs-competition-complete"><Check /> Completed</span>;
@@ -326,7 +341,7 @@ export default function CircleCompetitionHub({
               <div>
                 <span>DAILY CIRCLE CHALLENGE</span>
                 <h3>{dailyChallenge?.source_name ?? 'Today’s challenge is loading'}</h3>
-                <p>One verified completion keeps the Circle active. Everyone can post a result.</p>
+                <p>Complete the timer and post a self-reported result. Circle activity follows the member goal shown here.</p>
                 <div><small><Clock3 /> Resets daily</small><small><ShieldCheck /> Results labeled</small></div>
               </div>
               {dailyChallenge ? <div className="cs-circle-challenge-action">{challengeAction(dailyChallenge)}</div> : null}
@@ -367,7 +382,7 @@ export default function CircleCompetitionHub({
 
       {!loading && activeTab === 'champions' ? (
         <div className="cs-weekly-champions">
-          <div className="cs-challenge-board-heading"><div><span>FOUR WAYS TO WIN</span><h3>This week’s champions.</h3><p>No single overall winner. One player can earn more than one title.</p></div><strong>+25 XP each</strong></div>
+          <div className="cs-challenge-board-heading"><div><span>FOUR WAYS TO WIN</span><h3>{previewOnly ? 'Sample weekly standings.' : 'Weekly champions.'}</h3><p>No single overall winner. One player can earn more than one title.</p></div><strong>+25 XP each</strong></div>
           <div className="cs-weekly-award-grid">
             {Object.entries(AWARD_META).map(([key, meta]) => {
               const result = awards.find((award) => award.award_key === key);

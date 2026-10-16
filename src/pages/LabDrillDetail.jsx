@@ -216,6 +216,7 @@ export default function LabDrillDetail({ previewOnly = false }) {
               <FiUsers /> Challenge a Circle
             </button>
           </div>
+          {import.meta.env.DEV && !previewOnly && drill.drill_key === 'right-hand-pound' && ['localhost', '127.0.0.1'].includes(window.location.hostname) && <div className="cs-drill-primary-actions"><button className="cs-drill-start-button" type="button" onClick={() => navigate('/lab/drill/right-hand-pound/session?mode=ai-test')}><FiPlay /> Try AI camera test · 20 sec</button></div>}
           <p className="cs-drill-start-note">Get in position. Your training countdown begins after you start.</p>
         </div>
       </section>

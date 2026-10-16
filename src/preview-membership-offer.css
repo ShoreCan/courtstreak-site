@@ -1,0 +1,12 @@
+.cs-membership-offer .cs-membership-heading { max-width: 760px; }
+.cs-membership-offer .cs-membership-heading h1 { font-size: clamp(36px,4.5vw,56px); }
+.cs-membership-offer .cs-membership-heading > p { max-width: 620px; }
+.cs-membership-offer .cs-membership-plan { border-color: #c07843; background: radial-gradient(circle at 100% 0,rgba(255,118,38,.14),transparent 70%),linear-gradient(145deg,#17263c,#101929); }
+.cs-membership-offer .cs-membership-primary { background: #e95f0b; box-shadow: 0 8px 24px rgba(233,95,11,.16); }
+.cs-membership-offer .cs-membership-value > h2 { font-size: 25px; }
+.cs-membership-offer .cs-membership-value article { padding-bottom: 20px; margin-bottom: 20px; border-bottom: 1px solid #24334a; }
+.cs-membership-offer .cs-membership-preview-note { border-color: #6f4b35; background: linear-gradient(120deg,#282019,#111d30); }
+.cs-membership-offer .cs-membership-preview-note .cs-membership-text-link { color: #ffd0ac; font-size: 16px; }
+.cs-membership-offer .cs-membership-tracking { border-bottom: 1px solid #24334a; padding: 18px 2px; }
+.cs-membership-offer .cs-membership-tracking summary { color: #dce5f4; line-height: 1.5; }
+@media(max-width:700px) { .cs-membership-offer .cs-membership-value > h2 { font-size: 23px; } .cs-membership-offer .cs-membership-plan h2 { font-size: 22px; } }

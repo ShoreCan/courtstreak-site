@@ -1,3 +1,6 @@
+// CourtStreak quality update v1
+import { saveResultContext } from '../lib/resultContext.js';
+import ShareTraining from '../components/ShareTraining.jsx';
 import TrainingVisibility from '../components/TrainingVisibility.jsx';
 import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -6,7 +9,16 @@ import { supabase } from '../lib/supabaseClient.js';
 import { requireTrainingAccess } from '../lib/trainingAccess.js';
 import DrillGuide from '../components/DrillGuide.jsx';
 
+const LocalPoundPilot = import.meta.env.DEV ? React.lazy(() => import('../components/ai/LocalPoundPilot.jsx')) : null;
 export default function LabDrillSession() {
+  const { drillKey } = useParams();
+  const location = useLocation();
+  if (import.meta.env.DEV && ['localhost', '127.0.0.1'].includes(window.location.hostname) && drillKey === 'right-hand-pound' && new URLSearchParams(location.search).get('mode') === 'ai-test') {
+    return <React.Suspense fallback={<main className="cs-session-page">Opening camera test…</main>}><LocalPoundPilot /></React.Suspense>;
+  }
+  return <GuidedLabDrillSession />;
+}
+function GuidedLabDrillSession() {
   const { drillKey } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -19,10 +31,13 @@ export default function LabDrillSession() {
   const [reps, setReps] = useState('');
   const [message, setMessage] = useState('');
   const [sharedCircleIds, setSharedCircleIds] = useState([]);
+  const [visibilityReady, setVisibilityReady] = useState(false);
   const [saving, setSaving] = useState(false);
   const attemptRef = useRef(null);
   const savingRef = useRef(false);
   const receiptRef = useRef(null);
+  const [comparisonSaved, setComparisonSaved] = useState(true);
+  const durationRef = useRef(0);
   useEffect(() => {
     let active = true;
     async function load() {
@@ -53,7 +68,7 @@ export default function LabDrillSession() {
     document.addEventListener('visibilitychange', onHidden); return () => document.removeEventListener('visibilitychange', onHidden);
   }, [phase]);
   async function start() {
-    if (!drill || !['ready', 'finished'].includes(phase) || savingRef.current) return;
+    if (!visibilityReady || !drill || !['ready', 'finished'].includes(phase) || savingRef.current) return;
     savingRef.current = true; setSaving(true); setMessage('');
     try {
       await requireTrainingAccess();
@@ -61,6 +76,7 @@ export default function LabDrillSession() {
       if (result.error) throw new Error('Drill recording is not available yet. Please contact support; no training has been recorded.');
       const attempt = Array.isArray(result.data) ? result.data[0] : result.data;
       if (!attempt?.attempt_id || !Number.isInteger(attempt.duration_seconds)) throw new Error('The training timer could not be prepared. Please try again.');
+      durationRef.current = attempt.duration_seconds;
       attemptRef.current = attempt.attempt_id; receiptRef.current = null;
       setSecondsLeft(attempt.duration_seconds); setCountdown(5); setReps(''); setPaused(false); setPhase('countdown');
     } catch (error) { setMessage(error.message); }
@@ -76,10 +92,11 @@ export default function LabDrillSession() {
       if (!receiptRef.current) {
         const result = await supabase.rpc('complete_lab_drill_attempt', { p_attempt_id: attemptRef.current, p_reps: numericReps });
         if (result.error) throw new Error('Your result could not be saved. Keep this screen open and retry.');
-        receiptRef.current = result.data;
+        receiptRef.current = Array.isArray(result.data) ? result.data[0] : result.data;
+        setComparisonSaved(await saveResultContext(receiptRef.current?.session_id, drill, durationRef.current));
       }
       if (challenge?.id) {
-        const result = await supabase.rpc('submit_circle_challenge_result', { p_challenge_id: challenge.id, p_score: numericReps, p_verification_mode: 'manual', p_result_payload: { drillKey: drill.drill_key, attemptId: attemptRef.current, durationSeconds: drill.default_duration_seconds } });
+        const result = await supabase.rpc('submit_circle_challenge_result', { p_challenge_id: challenge.id, p_score: numericReps, p_verification_mode: 'manual', p_result_payload: { drillKey: drill.drill_key, attemptId: attemptRef.current, durationSeconds: durationRef.current } });
         if (result.error) throw new Error('Your training result was saved, but the Circle result was not posted. Retry to post it.');
       }
       setPhase('saved');
@@ -90,11 +107,11 @@ export default function LabDrillSession() {
   return <main className="cs-session-page"><header className="cs-session-topbar"><button onClick={() => navigate(`/lab/drill/${drillKey}`)}><FiArrowLeft /> Drill details</button><span>GUIDED DRILL</span></header>
     <section className="cs-session-shell"><div>{drill && <DrillGuide drill={drill} />}</div><aside className="cs-session-panel"><span className="cs-lab-eyebrow">GUIDED MANUAL</span><h1>{drill?.name || 'Preparing your drill…'}</h1><p>Follow the full timer, then enter your clean reps. Camera access is not required.</p>
       <div className="cs-session-timer">{phase === 'countdown' ? countdown : clock}</div>
-      {phase === 'ready' && <TrainingVisibility value={sharedCircleIds} onChange={setSharedCircleIds} lockedCircleId={challenge?.circleId} />}
-      {phase === 'ready' && <button className="cs-session-primary" disabled={saving} onClick={start}><FiPlay /> {saving ? 'Preparing…' : 'Start countdown'}</button>}
+      {phase === 'ready' && <TrainingVisibility onReady={setVisibilityReady} value={sharedCircleIds} onChange={setSharedCircleIds} lockedCircleId={challenge?.circleId} />}
+      {phase === 'ready' && <button className="cs-session-primary" disabled={saving || !visibilityReady} onClick={start}><FiPlay /> {saving ? 'Preparing…' : 'Start countdown'}</button>}
       {phase === 'active' && <button className="cs-session-primary" onClick={() => { setPaused(!paused); setMessage(''); }}>{paused ? 'Resume' : 'Pause'}</button>}
       {phase === 'finished' && <div className="cs-session-result"><label htmlFor="session-reps">Clean reps completed</label><input id="session-reps" type="number" inputMode="numeric" min="0" max="10000" step="1" value={reps} onChange={(event) => setReps(event.target.value)} /><p>Timer completed · Result self-reported</p><button className="cs-session-primary" disabled={saving} onClick={save}>{saving ? 'Saving…' : 'Save result'}</button></div>}
-      {phase === 'saved' && <div className="cs-session-result"><FiCheck /><h2>Result saved.</h2><p>Your recorded drill appears in Progress. This counts as a single drill, rather than a full workout.</p><button className="cs-session-primary" onClick={() => navigate(challenge ? `/training-circles/${challenge.circleId}` : '/progress')}>View {challenge ? 'Circle' : 'Progress'}</button></div>}
+      {phase === 'saved' && <div className="cs-session-result"><FiCheck /><h2>Result saved.</h2>{!comparisonSaved && <p>Comparison details could not save. Your result is still in history.</p>}<ShareTraining text={`CourtStreak: ${drill.name} · ${durationRef.current}s · ${reps} clean reps · Self-reported result.`} /><p>Your recorded drill appears in Progress. This counts as a single drill, rather than a full workout.</p><button className="cs-session-primary" onClick={() => navigate(challenge ? `/training-circles/${challenge.circleId}` : '/progress')}>View {challenge ? 'Circle' : 'Progress'}</button></div>}
       {message && <p className="cs-session-message" role="alert">{message}</p>}
       {['countdown', 'active'].includes(phase) && <button onClick={() => { setPhase('ready'); setSecondsLeft(drill.default_duration_seconds); attemptRef.current = null; setMessage('Round canceled. No result was saved.'); }}>Cancel round</button>}
     </aside></section></main>;

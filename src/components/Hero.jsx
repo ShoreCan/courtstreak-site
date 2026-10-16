@@ -85,9 +85,10 @@ export default function Hero({
           )}
 
           <div className="cs-public-preview-entry">
-            <Link className="cs-public-preview-button" to="/preview">Preview the App <ArrowRight size={19} aria-hidden="true" /></Link>
+            <Link className="cs-public-preview-button" to="/preview">Explore CourtStreak <ArrowRight size={19} aria-hidden="true" /></Link>
             <p>No account or payment needed. Explore the dashboard, drills, and sample progress.</p>
           </div>
+          <div className="cs-home-supporter-entry"><div><Users size={21} /><span><strong>Parents &amp; coaches have a home here, too.</strong><small>See effort. Assign work. Follow progress.</small></span></div><div><Link to="/parents">For parents <ArrowRight size={15} /></Link><Link to="/coaches">For coaches <ArrowRight size={15} /></Link></div></div>
           <p className="cs-preview-price">Membership: $29.99/month · Manage or cancel anytime</p>
           <div className="court-home-benefits">
             <div>

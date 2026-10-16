@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, Route, Routes, useSearchParams } from 'react-router-dom';
+import { Link, Route, Routes, useSearchParams, useLocation } from 'react-router-dom';
 import Dashboard from './Dashboard.jsx';
 import Workout from './Workout.jsx';
 import Lab from './Lab.jsx';
@@ -13,9 +13,12 @@ import TrainingCircles from './TrainingCircles.jsx';
 import TrainingCircleDetail from './TrainingCircleDetail.jsx';
 import '../customer-preview.css';
 import PreviewMembership from '../components/MembershipPreview.jsx';
+import PreviewAudienceLinks from '../components/PreviewAudienceLinks.jsx';
+import PreviewWelcome from '../components/PreviewWelcome.jsx';
 
 export default function CustomerPreview() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
   const incomingInvite = searchParams.get('invite') || '';
   const [inviteCode, setInviteCode] = useState(incomingInvite);
   useEffect(() => {
@@ -27,10 +30,13 @@ export default function CustomerPreview() {
     }
   }, [incomingInvite, inviteCode, searchParams, setSearchParams]);
   useEffect(() => { document.body.classList.add('cs-customer-preview'); return () => document.body.classList.remove('cs-customer-preview'); }, []);
+  if (location.pathname.replace(/\/$/, '') === '/preview') return <PreviewWelcome inviteCode={inviteCode} />;
   return <div className="cs-preview-shell">
     <div className="cs-preview-content"><header className="cs-preview-banner"><div><strong>EXPLORE COURTSTREAK</strong><span>Sample player data · Browsing only</span></div><Link to={inviteCode ? `/training-circles/join/${encodeURIComponent(inviteCode)}` : '/create-account'}>{inviteCode ? 'Back to Your Invite →' : 'Join CourtStreak →'}</Link></header>
+      {location.pathname.replace(/\/$/, '') === '/preview/player' && <PreviewAudienceLinks compact />}
       <Routes>
-        <Route index element={<Dashboard previewOnly />} />
+        <Route index element={<PreviewWelcome inviteCode={inviteCode} />} />
+        <Route path="player" element={<Dashboard previewOnly />} />
         <Route path="train" element={<TrainingStart previewOnly />} />
         <Route path="workout" element={<Workout previewOnly />} />
         <Route path="lab" element={<Lab previewOnly />} />

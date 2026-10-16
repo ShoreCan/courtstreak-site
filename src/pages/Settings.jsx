@@ -1,3 +1,5 @@
+import '../courtstreak-mobile-settings-fix.css';
+// CourtStreak quality update v1
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -21,7 +23,7 @@ import usePreviewNavigate from '../lib/usePreviewNavigate.js';
 import { supabase } from '../lib/supabaseClient.js';
 
 const skillLevels = ['Beginner', 'Intermediate', 'Advanced'];
-const trainingDurations = ['10 minutes', '20 minutes', '30 minutes'];
+const trainingDurations = ['10 minutes', '20 minutes'];
 const dominantHands = ['Right', 'Left', 'Both'];
 
 export default function Settings({ previewOnly = false }) {
@@ -38,7 +40,6 @@ export default function Settings({ previewOnly = false }) {
   const [trainingDuration, setTrainingDuration] = useState('20 minutes');
   const [dominantHand, setDominantHand] = useState('Right');
   const [defaultSharing, setDefaultSharing] = useState('Ask every time');
-  const [allowChallenges, setAllowChallenges] = useState(true);
 
   const [newPassword, setNewPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -73,13 +74,12 @@ export default function Settings({ previewOnly = false }) {
 
       setSkillLevel(metadata.skill_level || 'Intermediate');
       setTrainingDuration(
-        metadata.preferred_training_duration || '20 minutes'
+        ['10 minutes', '20 minutes'].includes(metadata.preferred_training_duration) ? metadata.preferred_training_duration : '20 minutes'
       );
       setDominantHand(metadata.dominant_hand || 'Right');
       setDefaultSharing(
         metadata.default_circle_sharing || 'Ask every time'
       );
-      setAllowChallenges(metadata.allow_friend_challenges !== false);
 
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
@@ -138,7 +138,6 @@ export default function Settings({ previewOnly = false }) {
         preferred_training_duration: trainingDuration,
         dominant_hand: dominantHand,
         default_circle_sharing: defaultSharing,
-        allow_friend_challenges: allowChallenges,
       },
     });
 
@@ -233,6 +232,7 @@ window.setTimeout(() => {
               Privacy
             </a>
 
+            <a href="#player-access"><FiUsers /> Parent &amp; coach access</a>
             <a href="#account-settings">
               <FiUser />
               Account
@@ -414,34 +414,12 @@ window.setTimeout(() => {
                       </select>
                     </label>
 
-                    <div className="cs-settings-toggle-row">
-                      <span>
-                        <strong>Friend challenges</strong>
-                        <small>
-                          Allow accepted Training Circle members to
-                          challenge you.
-                        </small>
-                      </span>
 
-                      <button
-                        type="button"
-                        className={allowChallenges ? 'active' : ''}
-                        aria-pressed={allowChallenges}
-                        disabled={previewOnly}
-                        onClick={() =>
-                          setAllowChallenges((current) => !current)
-                        }
-                      >
-                        <i />
-                        <span>{allowChallenges ? 'On' : 'Off'}</span>
-                      </button>
-                    </div>
                   </div>
 
                   <div className="cs-settings-privacy-note">
                     <FiUsers />
-                    Only people in Training Circles you accept can see
-                    shared progress or send challenges.
+                    Your default preselects Circles before training. You can change it for each session. Circle challenges always post to their Circle.
                   </div>
                 </section>
 
@@ -458,6 +436,11 @@ window.setTimeout(() => {
                 </div>
               </form>
 
+              <section className="cs-settings-card" id="player-access">
+                <div className="cs-settings-card-heading"><span className="cs-settings-card-icon"><FiUsers /></span><div><small>YOU CONTROL WHO CAN SEE YOUR PROGRESS</small><h2>Parent &amp; coach access</h2></div></div>
+                <p>Invite a parent or coach to follow your progress and assign work. They use their own account. You can remove access at any time.</p>
+                <Link className="cs-settings-link-row" to={previewOnly ? '/preview/hub?view=parent' : '/connections'}><FiShield /><span><strong>{previewOnly ? 'See a sample Family Hub' : 'Manage invitations & access'}</strong><small>{previewOnly ? 'Sample data only. Previewing never grants access.' : 'Invite someone, review connections, or remove access.'}</small></span><FiChevronRight /></Link>
+              </section>
               <section
                 className="cs-settings-card"
                 id="account-settings"

@@ -1,3 +1,4 @@
+import '../courtstreak-mobile-settings-fix.css';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -303,7 +304,7 @@ export default function Profile({ previewOnly = false }) {
         </button>
 
         <Link to="/" className="cs-profile-brand">CourtStreak</Link>
-        <span className="cs-profile-topbar-spacer" />
+        <button type="button" className="cs-profile-settings-shortcut" onClick={() => navigate('/settings')} aria-label="Open settings"><Settings size={17} /> Settings</button>
       </header>
 
       <section className="cs-player-shell">

@@ -273,7 +273,7 @@ export default function TrophyCase() {
 
         <section className="cs-vault-overview" aria-label="Trophy Case overview">
           <div><span>COLLECTION</span><strong>{earnedAchievements.length}<small> / {achievements.length}</small></strong></div>
-          <div><span>COMPLETION</span><strong>{completion}%</strong></div>
+          <div className="cs-vault-completion-meter"><span>COMPLETION</span><strong>{completion}%</strong><div className="cs-vault-completion-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={completion} aria-label="Trophy collection complete"><span style={{width:`${completion}%`}} /></div></div>
           <div><span>PLAYER LEVEL</span><strong>{profile?.level || 1}</strong></div>
           <div><span>LIFETIME XP</span><strong>{Number(profile?.xp || 0).toLocaleString()}</strong></div>
         </section>

@@ -1,3 +1,6 @@
+// CourtStreak quality update v1
+import { saveResultContext } from '../lib/resultContext.js';
+import ShareTraining from '../components/ShareTraining.jsx';
 import TrainingVisibility from '../components/TrainingVisibility.jsx';
 import usePreviewNavigate from '../lib/usePreviewNavigate.js';
 import DrillGuide from '../components/DrillGuide.jsx';
@@ -7,7 +10,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient.js';
 import '../workout-results.css';
 import '../workout-library.css';
-import { WORKOUT_GOALS, WORKOUT_PROGRAMS } from '../data/workoutPrograms.js';
+import { WORKOUT_GOALS, WORKOUT_PROGRAMS, isCurrentCustomWorkout } from '../data/workoutPrograms.js';
 import {
   FiActivity,
   FiArrowDown,
@@ -62,13 +65,7 @@ function getCustomDrillCategory(drill) {
   return 'foundation';
 }
 
-const CUSTOM_DRILL_LIBRARY = WORKOUT_PROGRAMS.flatMap((program) =>
-  program.drills.map((drill) => ({
-    ...drill,
-    sourceWorkout: program.name,
-    builderCategory: getCustomDrillCategory(drill),
-  }))
-);
+const CUSTOM_DRILL_LIBRARY = [...new Map(WORKOUT_PROGRAMS.flatMap(program=>program.drills.map(drill=>[drill.key,{...drill,sourceWorkout:'Core drill library',builderCategory:getCustomDrillCategory(drill)}]))).values()];
 
 function readSavedCustomWorkouts() {
   if (typeof window === 'undefined') return [];
@@ -98,6 +95,7 @@ export default function Workout({ previewOnly = false }) {
   const [serverProgram, setServerProgram] = useState(null);
   const [startingWorkout, setStartingWorkout] = useState(false);
   const [sharedCircleIds, setSharedCircleIds] = useState([]);
+  const [visibilityReady, setVisibilityReady] = useState(false);
   const startRunRef = useRef(false);
   const [playerPreferences, setPlayerPreferences] = useState({});
   const [resetSecondsLeft, setResetSecondsLeft] = useState(0);
@@ -118,7 +116,7 @@ export default function Workout({ previewOnly = false }) {
   const [customCategory, setCustomCategory] = useState('all');
   const [customVisibleLimit, setCustomVisibleLimit] = useState(36);
   const [editingCustomWorkoutKey, setEditingCustomWorkoutKey] = useState(null);
-  const [trainingMode, setTrainingMode] = useState(null);
+  const [trainingMode, setTrainingMode] = useState('manual');
   const [roundPhase, setRoundPhase] = useState('preview');
   const [roundCountdown, setRoundCountdown] = useState(5);
   const [roundSecondsLeft, setRoundSecondsLeft] = useState(0);
@@ -134,7 +132,9 @@ export default function Workout({ previewOnly = false }) {
 const [pendingRepTotal, setPendingRepTotal] = useState('');
 const [pendingDrillIndex, setPendingDrillIndex] = useState(null);
 const [earnedStreak, setEarnedStreak] = useState(0);
-  const availableWorkoutPrograms = [...WORKOUT_PROGRAMS, ...customWorkouts];
+  const currentCustomWorkouts = customWorkouts.filter(isCurrentCustomWorkout);
+  const retiredCustomCount = customWorkouts.length - currentCustomWorkouts.length;
+  const availableWorkoutPrograms = [...WORKOUT_PROGRAMS, ...currentCustomWorkouts];
   const findAvailableWorkout = (workoutKey) =>
     availableWorkoutPrograms.find((program) => program.key === workoutKey) ?? null;
   const activeWorkout = serverProgram ?? findAvailableWorkout(activeWorkoutKey);
@@ -326,7 +326,7 @@ useEffect(() => {
 
   setCircleChallenge(incoming);
   setCircleChallengeSubmitted(false);
-  setTrainingMode(null);
+  setTrainingMode('manual');
   setPreviewWorkoutKey(incoming.sourceKey);
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }, [location.key]);
@@ -546,7 +546,7 @@ function saveCustomWorkout() {
       : [program, ...workouts];
   });
   void syncCustomWorkout(program);
-  setTrainingMode(null);
+  setTrainingMode('manual');
   setPreviewWorkoutKey(program.key);
   setCustomBuilderOpen(false);
   resetCustomBuilder();
@@ -568,7 +568,7 @@ async function deleteCustomWorkout(workout) {
 }
 
 function openWorkoutPreview(workoutKey) {
-  setTrainingMode(null);
+  setTrainingMode('manual');
   setPreviewWorkoutKey(workoutKey);
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -581,6 +581,7 @@ async function resumeWorkoutDraft() {
     await requireTrainingAccess();
     const {data,error}=await supabase.rpc('get_workout_run',{p_run_id:savedWorkoutDraft.runId});
     if (error || !data?.program) throw new Error(error?.message || 'The saved workout could not be restored.');
+    if (!isCurrentCustomWorkout(data.program)) throw new Error('This saved plan uses retired drills. Choose a core workout; your recorded results remain in Progress.');
     const results=(data.results || []).map((r)=>({drillIndex:r.drill_index,drillName:r.drill_name,reps:r.reps,previousBest:r.previous_best,isPersonalBest:r.previous_best===null || r.reps>r.previous_best,validationMode:'manual',xpAwarded:r.xp_awarded}));
     const completed=results.map((r)=>r.drillIndex); const firstOpen=data.program.drills.findIndex((_,i)=>!completed.includes(i));
     setRunId(data.run_id); setServerProgram(data.program); setActiveWorkoutKey(data.program.key);
@@ -760,11 +761,12 @@ function leaveActiveWorkout() {
     await requireTrainingAccess();
     const {data,error}=await supabase.rpc('complete_workout_drill_attempt',{p_attempt_id:attemptRef.current,p_reps:reps});
     if(error || !data?.session_id)throw new Error(error?.message || 'Your result could not be saved. Keep this screen open and retry.');
+    const contextSaved = await saveResultContext(data.session_id, drill, drill.durationSeconds);
     const result={drillIndex:data.drill_index,drillName:data.drill_name,reps:data.reps,previousBest:data.previous_best,isPersonalBest:data.previous_best===null || data.reps>data.previous_best,validationMode:'manual',xpAwarded:data.xp_awarded};
     setSessionResults((previous)=>[...previous.filter((r)=>r.drillIndex!==currentDrill),result]);
     setEarnedXp((previous)=>previous+data.xp_awarded);setTotalXp(data.xp);setPlayerLevel(data.level);setEarnedStreak(data.training_streak);
     setCompletedDrills((previous)=>[...new Set([...previous,currentDrill])]);setShowRepEntry(false);setPendingRepTotal('');setPendingDrillIndex(null);
-    setRoundPhase('complete');setResetSecondsLeft(drill.transitionSeconds || 0);setRoundMessage('Timed round saved. Result self-reported.');
+    setRoundPhase('complete');setResetSecondsLeft(drill.transitionSeconds || 0);setRoundMessage(contextSaved ? 'Timed round saved. Result self-reported.' : 'Result saved. Comparison details could not save; this attempt stays in history.');
   }catch(error){setRoundMessage(error.message);setShowRepEntry(true);}finally{roundSaveRef.current=false;setSavingRound(false);}
 }
 
@@ -981,22 +983,13 @@ if (showBonusChallenge && selectedChallenge) {
 
             <h1>{currentInstruction}</h1>
 
-            {/* VIDEO PLACEHOLDER */}
-            <div className="cs-challenge-video">
-              <div className="cs-challenge-video-placeholder">
-                <FiPlay />
-                <strong>Drill Demonstration</strong>
-                <span>
-                  Your CourtStreak demonstration video will appear here.
-                </span>
-              </div>
-            </div>
+            <p className="cs-comparison-note">Stay balanced. Keep each bounce controlled. Follow the named drill for the full interval.</p>
 
             <div className="cs-challenge-ready-card">
               <span>WORK INTERVAL</span>
               <strong>1:00</strong>
               <p>
-                Watch the demonstration, get your ball ready, then start
+                Read the drill, get your ball ready, then start
                 when you&apos;re set.
               </p>
             </div>
@@ -1571,40 +1564,18 @@ if (!activeWorkout) {
                 <li><FiCheck /> {previewWorkout.resetSeconds}s guided reset</li>
               </ul>
 
-              <div className="cs-training-mode-picker">
-                <span>STEP 1 · CHOOSE HOW TO RECORD YOUR RESULT</span>
-                <button
-                  type="button"
-                  className={trainingMode === 'manual' ? 'active' : ''}
-                  onClick={() => setTrainingMode('manual')}
-                >
-                  <FiEdit3 />
-                  <span>
-                    <strong>Guided Manual</strong>
-                    <small>Complete every timer, then enter clean reps</small>
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className={trainingMode === 'ai' ? 'active' : ''}
-                  disabled={!aiTrackerAvailable}
-                  onClick={() => setTrainingMode('ai')}
-                >
-                  {aiTrackerAvailable ? <FiCamera /> : <FiLock />}
-                  <span>
-                    <strong>AI Tracker</strong>
-                    <small>{aiTrackerAvailable ? 'Camera-counted · experimental' : 'Not available in this web build yet'}</small>
-                  </span>
-                </button>
+              <div className="cs-manual-tracking-note">
+                <FiEdit3 aria-hidden="true" />
+                <div><strong>Guided training</strong><p>Follow each timer, then enter your clean reps. Camera counting is not included.</p></div>
               </div>
 
-              {!previewOnly && <TrainingVisibility value={sharedCircleIds} onChange={setSharedCircleIds} lockedCircleId={circleChallenge?.circleId} />}
+              {!previewOnly && <TrainingVisibility onReady={setVisibilityReady} value={sharedCircleIds} onChange={setSharedCircleIds} lockedCircleId={circleChallenge?.circleId} />}
               <button
                 type="button"
                 onClick={() => startWorkout(previewWorkout.key)}
-                disabled={startingWorkout || !trainingMode || (trainingMode === 'ai' && !aiTrackerAvailable)}
+                disabled={startingWorkout || (!previewOnly && !visibilityReady) || !trainingMode || (trainingMode === 'ai' && !aiTrackerAvailable)}
               >
-                {startingWorkout ? 'Preparing your workout…' : trainingMode ? `Start with ${trainingMode === 'ai' ? 'AI Tracker' : 'Guided Manual'}` : 'Choose a tracking method'}
+                {startingWorkout ? 'Preparing your workout…' : previewOnly ? 'Unlock this workout' : 'Start workout'}
                 <FiChevronRight />
               </button>
               <button
@@ -1735,14 +1706,15 @@ if (!activeWorkout) {
           </div>
         </div>
 
-        {customWorkouts.length ? (
+        {retiredCustomCount > 0 && <p className="cs-comparison-note">{retiredCustomCount} saved plan(s) use retired drills and need rebuilding from the updated core library. Saved training history is unchanged.</p>}
+        {currentCustomWorkouts.length ? (
           <section className="cs-my-workouts-section">
             <header>
               <div><span>MY WORKOUTS</span><h2>Your saved plans.</h2></div>
-              <strong>{customWorkouts.length} saved</strong>
+              <strong>{currentCustomWorkouts.length} saved</strong>
             </header>
             <div className="cs-custom-workout-grid">
-              {customWorkouts.map((workout) => (
+              {currentCustomWorkouts.map((workout) => (
                 <article className="cs-custom-workout-card" key={workout.key}>
                   <div className="cs-custom-workout-mark"><FiLayers /></div>
                   <div>
@@ -1810,7 +1782,6 @@ if (!activeWorkout) {
 
         <section className="cs-program-card-grid">
           {browsePrograms.map((program, index) => {
-            const phases = [...new Set(program.drills.map((item) => item.phase))];
 
             return (
               <article className={`cs-program-card accent-${program.accent}`} key={program.key}>
@@ -1826,15 +1797,6 @@ if (!activeWorkout) {
                   <p>{program.focus}</p>
                   <h2>{program.name}</h2>
                   <span>{program.summary}</span>
-                </div>
-
-                <div className="cs-program-card-why">
-                  <small>WHY IT MATTERS</small>
-                  <strong>{program.whyItMatters}</strong>
-                </div>
-
-                <div className="cs-program-card-route" aria-label="Workout phases">
-                  {phases.map((phase) => <span key={phase}>{phase}</span>)}
                 </div>
 
                 <footer>
@@ -1881,7 +1843,7 @@ if (workoutFinished) {
     <main className="cs-results-page">
       <section className="cs-results-shell">
         <header className="cs-results-header">
-          <div className="cs-results-check"><FiCheck /></div>
+          <div className="cs-results-check" aria-label="Workout completed"><FiCheck /><span className="cs-results-orbit" aria-hidden="true" /></div>
           <div>
             <span>WORKOUT COMPLETE</span>
             <h1>{activeWorkout?.name ?? 'Workout'} complete.</h1>
@@ -1906,7 +1868,7 @@ if (workoutFinished) {
           <article className="cs-results-performance">
             <div className="cs-results-section-heading">
               <div><span>WORKOUT SEQUENCE</span><h2>Work completed.</h2></div>
-              {personalBests.length > 0 && <strong><FiAward /> {personalBests.length} personal {personalBests.length === 1 ? 'best' : 'bests'}</strong>}
+
             </div>
 
             <div className="cs-results-list">
@@ -1930,25 +1892,7 @@ if (workoutFinished) {
                       ) : (
                         <strong className="cs-results-completed-label"><FiCheck /> Completed</strong>
                       )}
-                      {result?.isPersonalBest ? (
-                        <>
-                          <em>NEW PERSONAL BEST</em>
-                          <small className="cs-results-comparison">
-                            {result.previousBest == null
-                              ? 'First recorded result'
-                              : `Previous best: ${result.previousBest} reps`}
-                          </small>
-                        </>
-                      ) : result ? (
-                        <>
-                          <small className="cs-results-comparison">
-                            Personal best: {result.previousBest} reps
-                          </small>
-                          <small className="cs-results-distance">
-                            {Math.abs(difference)} {Math.abs(difference) === 1 ? 'rep' : 'reps'} away
-                          </small>
-                        </>
-                      ) : null}
+                      {result && <small className="cs-results-comparison">{resultDrill.durationSeconds}s · Self-reported result</small>}
                     </span>
                   </div>
                 );
@@ -1965,6 +1909,7 @@ if (workoutFinished) {
         </section>
 
         <footer className="cs-results-actions">
+          <ShareTraining text={`I completed ${activeWorkout?.name || 'a workout'} on CourtStreak: ${workoutDrills.length} drills · ${workoutDurationMinutes} minutes of guided intervals. Results self-reported.`} />
           <button type="button" className="secondary" onClick={() => navigate('/progress')}>Review Progress <FiTrendingUp /></button>
           <button
             type="button"

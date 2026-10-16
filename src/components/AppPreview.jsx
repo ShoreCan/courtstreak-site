@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import '../public-preview-entry.css';
+import PreviewAudienceLinks from './PreviewAudienceLinks.jsx';
 import {
   ArrowRight,
   CheckCircle2,
@@ -35,6 +36,7 @@ export default function AppPreview() {
         <div className="cs-public-preview-entry">
           <Link className="cs-public-preview-button" to="/preview">Explore CourtStreak <ArrowRight size={19} aria-hidden="true" /></Link>
           <p>Browse the real layout with sample data. Training and saving unlock with membership.</p>
+          <PreviewAudienceLinks />
         </div>
 
         <div className="cs-app-preview-flow">

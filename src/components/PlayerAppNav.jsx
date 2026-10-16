@@ -39,7 +39,7 @@ export default function PlayerAppNav() {
   const previewOnly = location.pathname === '/preview' || location.pathname.startsWith('/preview/');
   const navigate = usePreviewNavigate(previewOnly);
   const previewPath = location.pathname.slice('/preview'.length);
-  const pathname = previewOnly ? (!previewPath || previewPath === '/' ? '/dashboard' : previewPath.replace(/^\/circles(?=\/|$)/, '/training-circles')) : location.pathname;
+  const pathname = previewOnly ? (previewPath === '/player' ? '/dashboard' : previewPath.replace(/^\/circles(?=\/|$)/, '/training-circles')) : location.pathname;
   const [trainMenuOpen, setTrainMenuOpen] = useState(false);
 
   const isAppRoute = appRoutes.some((route) => routeStartsWith(pathname, route));
@@ -75,6 +75,8 @@ export default function PlayerAppNav() {
     { label: 'Training Circles', icon: FiUsers, route: '/training-circles' },
     { label: 'Profile', icon: FiUser, route: '/profile' },
     { label: 'Membership', icon: FiGrid, route: '/membership' },
+    { label: 'My assigned work', icon: FiBookOpen, route: '/assigned-work' },
+    
     { label: 'Settings', icon: FiSettings, route: '/settings' },
   ];
 
@@ -151,11 +153,11 @@ export default function PlayerAppNav() {
         <button
           type="button"
           className={`cs-app-train-button ${
-            routeStartsWith(pathname, '/lab') || routeStartsWith(pathname, '/workout')
+            routeStartsWith(pathname, '/train') || routeStartsWith(pathname, '/lab') || routeStartsWith(pathname, '/workout')
               ? 'is-active'
               : ''
           }`}
-          onClick={() => setTrainMenuOpen(true)}
+          onClick={() => navigate('/train')}
           aria-expanded={trainMenuOpen}
         >
           <span className="cs-app-train-orb"><FiActivity /></span>
