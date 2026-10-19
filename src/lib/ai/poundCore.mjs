@@ -1,5 +1,6 @@
 // Right-hand pound browser port of the saved CourtStreak 0.7.8 count-repair baseline.
 // All coordinates use the SAME mirrored, 1280px-wide frame as the Python engine.
+export const BALL_TRACKER_REVISION = 'BG FIX 01';
 export const median = a => percentile(a, .5);
 export function percentile(a, q) { const s = [...a].sort((a,b)=>a-b); if (!s.length) return 0; const p=(s.length-1)*q, i=Math.floor(p); return s[i]+(s[Math.ceil(p)]-s[i])*(p-i); }
 const distance=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
@@ -23,7 +24,9 @@ export class BallIdentityTracker {
   }else{
    const predicted=this.last.map((v,i)=>v+this.velocity[i]*Math.min(this.missed+1,3));const typical=this.typical(),lane=this.lane(); const scored=[],reacquired=[];
    candidates.forEach((c,i)=>{const g=geometry(c),p=g.center,d=g.diameter;
-    if(this.background.some(b=>b.observations>=5&&distance(p,b.center)<=Math.max(28,d*.65,b.diameter*.65)))return;
+    // Keep the existing hand reacquisition available when background memory overlaps the ball.
+    const recoveringAtHand=phase==='drill'&&this.missed&&hands.some(v=>distance(p,v)<=Math.max(120,d*1.65));
+    if(!recoveringAtHand&&this.background.some(b=>b.observations>=5&&distance(p,b.center)<=Math.max(28,d*.65,b.diameter*.65)))return;
     if(typical!=null&&(d/typical<.58||d/typical>1.68))return;
     const reference=Math.max(typical||this.diameter||d,28),handDistance=hands.length?Math.min(...hands.map(v=>distance(p,v))):Infinity;
     if(phase==='drill'&&this.missed&&handDistance<=Math.max(120,d*1.65))reacquired.push([handDistance/Math.max(d,24),i]);

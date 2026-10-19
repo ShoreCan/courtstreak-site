@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loadDetector } from '../../lib/ai/iphoneDetector.mjs';
-import { BallIdentityTracker, GapAwareBounceCounter, PoundControlValidator, PositionGate, evaluatePosition, geometry } from '../../lib/ai/poundCore.mjs';
+import { BALL_TRACKER_REVISION, BallIdentityTracker, GapAwareBounceCounter, PoundControlValidator, PositionGate, evaluatePosition, geometry } from '../../lib/ai/poundCore.mjs';
 import './iphone-pound-test.css';
 const DURATION=20;
 const empty={body:false,hand:false,ball:false,floor:false,owned:false};
@@ -114,7 +114,7 @@ export default function IPhonePoundTest(){
  const step=['active','review'].includes(p)?2:p==='countdown'?1:ended?3:0;
  return <main className="cs-iphone-tracker">
   <div className="cs-iphone-shell">
-   <header className="cs-iphone-header"><button type="button" onClick={()=>navigate('/lab/drill/right-hand-pound')} aria-label="Back to drill">←</button><div><span>COURTSTREAK / CAMERA LAB</span><h1>Right-Hand Pound</h1><p>20-second test · Front camera</p></div><span className="cs-iphone-version">SETUP 02</span></header>
+   <header className="cs-iphone-header"><button type="button" onClick={()=>navigate('/lab/drill/right-hand-pound')} aria-label="Back to drill">←</button><div><span>COURTSTREAK / CAMERA LAB</span><h1>Right-Hand Pound</h1><p>20-second test · Front camera</p></div><span className="cs-iphone-version">{BALL_TRACKER_REVISION}</span></header>
    <ol className="cs-iphone-steps" aria-label="Session progress">{['Position','Countdown','Train','Review'].map((label,i)=><li key={label} className={i===step?'current':i<step?'complete':''}><b>{i<step?'✓':i+1}</b>{label}</li>)}</ol>
    <section className="cs-iphone-stage" style={{aspectRatio:ratio}} aria-label="Live camera and detected basketball">
     <video ref={video} muted autoPlay playsInline aria-label="Mirrored front camera"/><canvas ref={overlay} aria-hidden="true"/>
