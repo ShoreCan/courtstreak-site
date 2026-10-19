@@ -89,8 +89,10 @@ export class PoundControlValidator {
  constructor(){this.frame=0;this.count=0;this.pending=[];this.confirmed=[];this.rejected=[];this.context=[];}
  update(proposals,measurement,person,now,deadline=Infinity){
   this.frame++;
+  const kneeY=person&&[13,14].every(i=>person.confidence[i]>=.5&&person.xy[i][0]>0&&person.xy[i][1]>0)?Math.min(person.xy[13][1],person.xy[14][1]):null;
+  this.context.push({frame:this.frame,kneeY});this.context=this.context.slice(-64);
   // Match the newer review's floor-contact timing: no pre-Go or post-deadline reps.
-  proposals.filter(p=>(p.event_timestamp_exact??p.event_time_seconds)>=0&&(p.event_timestamp_exact??p.event_time_seconds)<deadline).forEach(p=>this.pending.push({...p,proposal_frame:this.frame,best_hand_distance_ball_diameters:null,best_body_offset_units:null}));
+  proposals.filter(p=>(p.event_timestamp_exact??p.event_time_seconds)>=0&&(p.event_timestamp_exact??p.event_time_seconds)<deadline).forEach(p=>this.pending.push({...p,proposal_frame:this.frame,event_knee_y:this.context.find(c=>c.frame===p.event_frame)?.kneeY??null,best_hand_distance_ball_diameters:null,best_body_offset_units:null}));
   let hd=null,bo=null;
   if(measurement&&person&&person.confidence[10]>=.20){const [x,y,d]=measurement,p=person;
    hd=distance([x,y],p.xy[10])/Math.max(d,1);
@@ -103,6 +105,8 @@ export class PoundControlValidator {
   }
   const events=[],remaining=[];
   for(const p of this.pending){const hd=p.best_hand_distance_ball_diameters,bo=p.best_body_offset_units,down=p.down_ball_diameters,rise=p.rise_ball_diameters;
+   // An entire ball above both visible knees cannot be this player's floor bounce.
+   if(p.event_knee_y!==null&&p.bottom_center_y!=null&&p.ball_scale_pixels>0&&p.bottom_center_y+p.ball_scale_pixels*.5<p.event_knee_y){p.control_status='rejected_above_knee';this.rejected.push(p);continue;}
    const clean=p.validation_path==='clean_full_pound'&&rise>=1.5&&rise>=down*.42&&hd!==null&&hd<=2.6&&bo!==null&&bo<=2.2;
    const recovered=p.validation_path==='gap_recovered_pound'&&down>=1.25&&rise>=1.25&&hd!==null&&hd<=1.8&&bo!==null&&bo<=1.65;
    const floor=p.validation_path==='floor_anchored_pound'&&p.floor_reference&&down>=1&&rise>=1&&rise>=down*.42&&hd!==null&&hd<=1.8&&bo!==null&&bo<=1.65;

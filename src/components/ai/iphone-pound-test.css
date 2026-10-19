@@ -26,3 +26,10 @@
 .cs-iphone-review-note{margin:20px 0 0;border-top:1px solid #dce2e9;padding-top:15px}
 @media(min-width:480px){.cs-iphone-video-actions{grid-template-columns:1fr 1fr}}
 @media(prefers-reduced-motion:reduce){.cs-iphone-review{scroll-behavior:auto}}
+.cs-iphone-rep-review{margin-top:15px}
+.cs-iphone-rep-markers{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.cs-iphone-rep-markers button{min-height:44px;border:1px solid #d4dce6;border-radius:11px;background:#fff;color:#14243a;font:inherit;font-size:13px;font-weight:750;cursor:pointer}
+.cs-iphone-rep-markers button:hover{background:#e8edf3}
+.cs-iphone-evidence{margin-top:16px;border-top:1px solid #dce2e9;padding-top:14px}
+.cs-iphone-evidence summary{font-size:12px;font-weight:700;cursor:pointer;min-height:34px}
+.cs-iphone-evidence p{font-size:12px;line-height:1.7;color:#687789}
