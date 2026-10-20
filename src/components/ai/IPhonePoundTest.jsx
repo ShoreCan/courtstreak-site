@@ -201,7 +201,7 @@ export default function IPhonePoundTest(){
  }
  function saveEvidence(){
   const s=m.current;
-  const data=s.evidence.export({startedAt:s.started,baseSourceCommit:'675ee9a7a8b983ad7a54aaa98e6b5229c4dc05a2',trackerRevision:BALL_TRACKER_REVISION,cameraRevision:CAMERA_REVIEW_REVISION,controlRevision:CONTROL_REVISION,poseSideConvention:'Original physical person; detector image is mirrored',
+  const data=s.evidence.export({startedAt:s.started,baseSourceCommit:'771b2f6c3ba7b10b5f6bf2e6421884af876be395',trackerRevision:BALL_TRACKER_REVISION,cameraRevision:CAMERA_REVIEW_REVISION,controlRevision:CONTROL_REVISION,poseSideConvention:'Original physical person; detector image is mirrored',
    drillKey:'right-hand-pound',timerSeconds:DURATION,phase:s.phase,message:s.message,displayedCount:s.count,
    framesWithSelectedBall:s.detected,trainingFrames:s.total,ballCoverage:s.total?s.detected/s.total:null,
    provider:detector.current?.provider,frameSize:[frame.current?.width,frame.current?.height],
@@ -230,7 +230,7 @@ export default function IPhonePoundTest(){
  }
  return <main className="cs-iphone-tracker">
   <div className={`cs-iphone-shell ${ended?'is-review':''}`}>
-   <header className="cs-iphone-header"><button type="button" onClick={()=>navigate('/lab/drill/right-hand-pound')} aria-label="Back to drill">←</button><div><span>COURTSTREAK / CAMERA LAB</span><h1>Right-Hand Pound</h1><p>20-second test · Front camera</p></div><span className="cs-iphone-version">{CONTROL_REVISION}<br/>{VIDEO_OVERLAY_REVISION}</span></header>
+   <header className="cs-iphone-header"><button type="button" onClick={()=>navigate('/lab/drill/right-hand-pound')} aria-label="Back to drill">←</button><div><span>COURTSTREAK / CAMERA LAB</span><h1>Right-Hand Pound</h1><p>20-second test · Front camera</p></div><span className="cs-iphone-version">{BALL_TRACKER_REVISION}<br/>{VIDEO_OVERLAY_REVISION}</span></header>
    <ol className="cs-iphone-steps" aria-label="Session progress">{['Position','Countdown','Train','Review'].map((label,i)=><li key={label} className={i===step?'current':i<step?'complete':''}><b>{i<step?'✓':i+1}</b>{label}</li>)}</ol>
    <section className="cs-iphone-stage" hidden={ended} style={{aspectRatio:ratio}} aria-label="Live camera and detected basketball">
     <video ref={video} muted autoPlay playsInline aria-label="Mirrored front camera"/><canvas ref={overlay} aria-hidden="true"/>

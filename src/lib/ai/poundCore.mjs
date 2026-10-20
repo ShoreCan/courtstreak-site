@@ -1,6 +1,6 @@
 // Right-hand pound browser port of the saved CourtStreak 0.7.8 count-repair baseline.
 // All coordinates use the SAME mirrored, 1280px-wide frame as the Python engine.
-export const BALL_TRACKER_REVISION = 'BG FIX 01';
+export const BALL_TRACKER_REVISION = 'COUNT 03';
 export const median = a => percentile(a, .5);
 export function percentile(a, q) { const s = [...a].sort((a,b)=>a-b); if (!s.length) return 0; const p=(s.length-1)*q, i=Math.floor(p); return s[i]+(s[Math.ceil(p)]-s[i])*(p-i); }
 const distance=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
@@ -58,6 +58,27 @@ export class GapAwareBounceCounter {
  constructor(){this.points=[];this.next=5;this.last=null;this.count=0;this.floorSamples=[];}
  rememberControlledFloor(e){if(e.validation_path==='clean_full_pound'&&e.bottom_center_y!=null&&e.ball_scale_pixels!=null){this.floorSamples.push([e.bottom_center_y,e.ball_scale_pixels]);this.floorSamples=this.floorSamples.slice(-16);}}
  floorReference(){if(this.floorSamples.length<6)return null;const ys=this.floorSamples.map(p=>p[0]),d=median(this.floorSamples.map(p=>p[1])),y=median(ys);if(median(ys.map(v=>Math.abs(v-y)))>d*.30)return null;return {center_y:y,diameter:d,trusted_contacts:this.floorSamples.length};}
+ // A long capture interval can hide the lowest point without a null detection.
+ // Intersect the measured incoming/outgoing segments only across that interval.
+ // The existing floor/size/amplitude/hand checks still have to pass.
+ samplingGapContact(c,reference,d){
+  if(!reference)return null;
+  const a=this.points;
+  for(const left of [c-1,c]){
+   const q=a.slice(left-1,left+3);
+   if(q.length!==4||q.some(p=>!p.observed||p.reconstructed))continue;
+   const [before,entry,exit,after]=q;
+   const dtIn=entry.timestamp-before.timestamp,dtOut=after.timestamp-exit.timestamp,gap=exit.timestamp-entry.timestamp;
+   if(dtIn<=0||dtOut<=0||gap<=Math.max(dtIn,dtOut)*1.5||gap>.15)continue;
+   const down=(entry.y-before.y)/dtIn,up=(after.y-exit.y)/dtOut;
+   if(down<=0||up>=0)continue;
+   const offset=(exit.y-entry.y-up*gap)/(down-up),y=entry.y+down*offset;
+   if(offset<=0||offset>=gap||Math.abs(y-reference.center_y)>d*.45)continue;
+   return {timestamp:entry.timestamp+offset,center_y:y,gap_seconds:gap,
+    entry_frame:entry.frame,exit_frame:exit.frame,kind:'estimated_between_observed_frames'};
+  }
+  return null;
+ }
  update(now,measurement,height){
   this.points.push({frame:this.points.length+1,timestamp:now,y:measurement?.[0]??null,diameter:measurement?.[1]??null,observed:!!measurement,reconstructed:false});
   const a=this.points,end=a.length-1; let start=end-1; while(start>=0&&a[start].y===null)start--;
@@ -77,12 +98,15 @@ export class GapAwareBounceCounter {
   const clean=down>=Math.max(motion,d*1.6)&&rise>=Math.max(motion,d*1.2);
   const gapNear=a.slice(Math.max(start,c-2),Math.min(stop,c+3)).some(p=>!p.observed||p.reconstructed),fraction=window.filter(p=>p.reconstructed).length/window.length;
   const recovered=gapNear&&fraction>0&&down>=Math.max(motion*1.15,d*.58)&&rise>=Math.max(motion*1.05,d*.48);
-  const reference=this.floorReference(),anchored=reference&&p.observed&&d/reference.diameter>=.8&&d/reference.diameter<=1.2&&Math.abs(p.y-reference.center_y)<=d*.45&&down>=d&&rise>=d&&window.filter(p=>p.observed).length/window.length>=.7;
+  const reference=this.floorReference();
+  const gapContact=!clean&&!recovered&&reference&&Math.abs(p.y-reference.center_y)>d*.45?this.samplingGapContact(c,reference,d):null;
+  const anchored=reference&&p.observed&&d/reference.diameter>=.8&&d/reference.diameter<=1.2&&(Math.abs(p.y-reference.center_y)<=d*.45||gapContact!==null)&&down>=d&&rise>=d&&window.filter(p=>p.observed).length/window.length>=.7;
   if(!clean&&!recovered&&!anchored)return null;
   if(this.last!==null){const usable=a.slice(this.last+1,c).filter(p=>p.y!==null).map(p=>p.y);if(!usable.length||a[this.last].y-Math.min(...usable)<Math.max(motion*.65,Math.max(motion,d*1.2)))return null;}
   if(window.filter(p=>p.observed).length/window.length<.35)return null;
   // Preserve Python rounding: these fields are consumed by the control validator.
-  return {event_frame:p.frame,event_timestamp_exact:p.timestamp,event_time_seconds:+p.timestamp.toFixed(3),bottom_center_y:p.y,ball_scale_pixels:d,floor_reference:reference,down_ball_diameters:+(down/Math.max(d,1)).toFixed(3),rise_ball_diameters:+(rise/Math.max(d,1)).toFixed(3),validation_path:clean?'clean_full_pound':recovered?'gap_recovered_pound':'floor_anchored_pound'};
+  const eventTime=anchored&&gapContact?gapContact.timestamp:p.timestamp;
+  return {event_frame:p.frame,event_timestamp_exact:eventTime,event_time_seconds:+eventTime.toFixed(3),bottom_center_y:p.y,ball_scale_pixels:d,floor_reference:reference,down_ball_diameters:+(down/Math.max(d,1)).toFixed(3),rise_ball_diameters:+(rise/Math.max(d,1)).toFixed(3),validation_path:clean?'clean_full_pound':recovered?'gap_recovered_pound':'floor_anchored_pound',...(anchored&&gapContact?{sampling_gap_contact:gapContact}:{})};
  }
 }
 export class PoundControlValidator {
