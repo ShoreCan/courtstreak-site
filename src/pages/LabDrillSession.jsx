@@ -17,6 +17,9 @@ const RecordingLoadCheck = React.lazy(() => import('../components/ai/RecordingLo
 export default function LabDrillSession() {
   const { drillKey } = useParams();
   const location = useLocation();
+  if (drillKey === 'right-hand-pound' && new URLSearchParams(location.search).get('mode') === 'iphone-fresh-frame-test') {
+    return <React.Suspense fallback={<main className="cs-session-page">Opening on-device camera…</main>}><IPhonePoundTest key="fresh-frames" freshFrames /></React.Suspense>;
+  }
   if (drillKey === 'right-hand-pound' && new URLSearchParams(location.search).get('mode') === 'recording-load') {
     return <React.Suspense fallback={<main className="cs-session-page">Opening recording-load check…</main>}><RecordingLoadCheck /></React.Suspense>;
   }

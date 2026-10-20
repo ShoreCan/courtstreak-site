@@ -18,11 +18,11 @@ export class RoundEvidence {
     this.limit = limit; this.nextFrame = 1; this.droppedFrames = 0;
   }
   record({ capturedAt, sourceVideoTime, inputPhase, phase, roi, balls, person, selected, ms, timings, fps, poseUpdated, poseAge, positionChecks,
-    counterFrame, proposedCount, count, proposals = [], confirmed = [] }) {
+    passStartedAt, ballFrameRefreshed, counterFrame, proposedCount, count, proposals = [], confirmed = [] }) {
     const frameId = this.nextFrame++;
     this.frames.push({ frameId, capturedAt, sourceVideoTime, inputPhase, phase, roi: [...roi],
       balls: balls.map(copyDetection), person: copyDetection(person), selected: copyDetection(selected),
-      inferenceMs: ms, ...(timings?{detectorTimings:{pose:timings.pose?{...timings.pose}:null,ball:{...timings.ball}}}:{}), trackingFps: fps, poseUpdated, poseAge, positionChecks: {...positionChecks}, counterFrame, proposedCount, count });
+      inferenceMs: ms, ...(timings?{detectorTimings:{pose:timings.pose?{...timings.pose}:null,ball:{...timings.ball}}}:{}), ...(Number.isFinite(passStartedAt)?{passStartedAt,ballFrameRefreshed:!!ballFrameRefreshed}:{}), trackingFps: fps, poseUpdated, poseAge, positionChecks: {...positionChecks}, counterFrame, proposedCount, count });
     if (this.frames.length > this.limit) { this.frames.shift(); this.droppedFrames++; }
     for (const proposal of proposals) this.proposals.push({ ...proposal, proposedOnFrame: frameId });
     for (const event of confirmed) this.repEvents.push({ rep: event.count,

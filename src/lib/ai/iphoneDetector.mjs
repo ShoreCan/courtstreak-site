@@ -1,5 +1,6 @@
 import { geometry } from './poundCore.mjs';
 import { DetectorInput, LegacyDetectorInput } from './detectorInput.mjs';
+import { runDetectionPass } from './detectionPass.mjs';
 export function iou(a,b){const x=Math.max(0,Math.min(a[2],b[2])-Math.max(a[0],b[0])),y=Math.max(0,Math.min(a[3],b[3])-Math.max(a[1],b[1]));return x*y/Math.max(1,(a[2]-a[0])*(a[3]-a[1])+(b[2]-b[0])*(b[3]-b[1])-x*y);}
 export function decodeOutput(output,kind,transform){
  const {data,dims}=output;const rows=[];const [,,last]=dims;
@@ -50,5 +51,5 @@ export async function loadDetector(base,onProgress){
   try{outputs=await session.run({[session.inputNames[0]]:input});const inferred=performance.now(),value=decodeOutput(outputs[session.outputNames[0]],kind,transform);return {value,timings:{preprocessMs:prepared-began,inferenceMs:inferred-prepared,decodeMs:performance.now()-inferred}};}
   finally{input.dispose?.();if(outputs)for(const value of Object.values(outputs))value.dispose?.();}
  }
- return {provider,modelManifest:manifest,liveInputMode:'legacy',async detect(frame,roi,withPose,{inputMode='legacy'}={}){if(!['legacy','reuse'].includes(inputMode))throw new Error('Unknown diagnostic input mode.');if(inputMode==='reuse'&&!inputs)inputs={ball:new DetectorInput(manifest.ball.size),pose:new DetectorInput(manifest.pose.size)};const started=performance.now();const person=withPose?await run(pose,frame,manifest.pose.size,'pose',[0,0,frame.width,frame.height],inputMode):undefined;const balls=await run(ball,frame,manifest.ball.size,'ball',roi,inputMode);return {person:person?.value,balls:balls.value,ms:performance.now()-started,timings:{pose:person?.timings??null,ball:balls.timings}};},async close(){await ball.release();await pose.release();}};
+ return {provider,modelManifest:manifest,liveInputMode:'legacy',async detect(frame,roi,withPose,{inputMode='legacy',refreshBallFrame}={}){if(!['legacy','reuse'].includes(inputMode))throw new Error('Unknown diagnostic input mode.');if(inputMode==='reuse'&&!inputs)inputs={ball:new DetectorInput(manifest.ball.size),pose:new DetectorInput(manifest.pose.size)};return runDetectionPass({frame,roi,withPose,refreshBallFrame,runPose:source=>run(pose,source,manifest.pose.size,'pose',[0,0,source.width,source.height],inputMode),runBall:(source,crop)=>run(ball,source,manifest.ball.size,'ball',crop,inputMode)});},async close(){await ball.release();await pose.release();}};
 }

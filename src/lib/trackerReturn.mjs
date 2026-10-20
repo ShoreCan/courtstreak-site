@@ -1,6 +1,6 @@
 // Preserve the requested tracker check through login, within the existing gate.
 const path='/lab/drill/right-hand-pound/session';
-const modes=new Set(['iphone-vision-test','recorded-profile','pose-execution','recording-load']);
+const modes=new Set(['iphone-vision-test','iphone-fresh-frame-test','recorded-profile','pose-execution','recording-load']);
 export function safeTrackerReturn(value){
   if(typeof value!=='string'||!value.startsWith(path+'?')||/[\\\r\n]/.test(value))return null;
   try{const url=new URL(value,'https://courtstreak.invalid');const all=url.searchParams.getAll('mode');
