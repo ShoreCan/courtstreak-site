@@ -1,4 +1,5 @@
 import { geometry } from './poundCore.mjs';
+import { DetectorInput, LegacyDetectorInput } from './detectorInput.mjs';
 export function iou(a,b){const x=Math.max(0,Math.min(a[2],b[2])-Math.max(a[0],b[0])),y=Math.max(0,Math.min(a[3],b[3])-Math.max(a[1],b[1]));return x*y/Math.max(1,(a[2]-a[0])*(a[3]-a[1])+(b[2]-b[0])*(b[3]-b[1])-x*y);}
 export function decodeOutput(output,kind,transform){
  const {data,dims}=output;const rows=[];const [,,last]=dims;
@@ -42,16 +43,12 @@ export async function loadDetector(base,onProgress){
   }
  };
  try{await create();}catch(error){await ball?.release();await pose?.release();ball=pose=null;if(provider==='wasm')throw error;provider='wasm';try{await create();}catch(failure){await ball?.release();await pose?.release();throw failure;}}
- const canvas=document.createElement('canvas');let ctx=canvas.getContext('2d',{willReadFrequently:true});
- async function run(session,source,size,kind,roi){
-  const [x,y,x2,y2]=roi,w=x2-x,h=y2-y,scale=Math.min(size/w,size/h),dw=Math.round(w*scale),dh=Math.round(h*scale),px=Math.round((size-dw)/2-.1),py=Math.round((size-dh)/2-.1);
-  if(canvas.width!==size){canvas.width=canvas.height=size;ctx=canvas.getContext('2d',{willReadFrequently:true});}
-  ctx.fillStyle='rgb(114,114,114)';ctx.fillRect(0,0,size,size);ctx.drawImage(source,x,y,w,h,px,py,dw,dh);
-  const rgba=ctx.getImageData(0,0,size,size).data,n=size*size,data=new Float32Array(n*3);
-  for(let i=0;i<n;i++){data[i]=rgba[i*4]/255;data[n+i]=rgba[i*4+1]/255;data[n*2+i]=rgba[i*4+2]/255;}
+ const legacyInput=new LegacyDetectorInput();let inputs=null;
+ async function run(session,source,size,kind,roi,inputMode){
+  const began=performance.now(),{data,transform}=inputMode==='reuse'?inputs[kind].prepare(source,roi):legacyInput.prepare(source,size,roi),prepared=performance.now();
   const input=new ort.Tensor('float32',data,[1,3,size,size]);let outputs;
-  try{outputs=await session.run({[session.inputNames[0]]:input});return decodeOutput(outputs[session.outputNames[0]],kind,{x,y,scale,px,py});}
+  try{outputs=await session.run({[session.inputNames[0]]:input});const inferred=performance.now(),value=decodeOutput(outputs[session.outputNames[0]],kind,transform);return {value,timings:{preprocessMs:prepared-began,inferenceMs:inferred-prepared,decodeMs:performance.now()-inferred}};}
   finally{input.dispose?.();if(outputs)for(const value of Object.values(outputs))value.dispose?.();}
  }
- return {provider,async detect(frame,roi,withPose){const started=performance.now();const person=withPose?await run(pose,frame,manifest.pose.size,'pose',[0,0,frame.width,frame.height]):undefined;const balls=await run(ball,frame,manifest.ball.size,'ball',roi);return {person,balls,ms:performance.now()-started};},async close(){await ball.release();await pose.release();}};
+ return {provider,modelManifest:manifest,liveInputMode:'legacy',async detect(frame,roi,withPose,{inputMode='legacy'}={}){if(!['legacy','reuse'].includes(inputMode))throw new Error('Unknown diagnostic input mode.');if(inputMode==='reuse'&&!inputs)inputs={ball:new DetectorInput(manifest.ball.size),pose:new DetectorInput(manifest.pose.size)};const started=performance.now();const person=withPose?await run(pose,frame,manifest.pose.size,'pose',[0,0,frame.width,frame.height],inputMode):undefined;const balls=await run(ball,frame,manifest.ball.size,'ball',roi,inputMode);return {person:person?.value,balls:balls.value,ms:performance.now()-started,timings:{pose:person?.timings??null,ball:balls.timings}};},async close(){await ball.release();await pose.release();}};
 }
