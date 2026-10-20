@@ -13,9 +13,13 @@ const LocalPoundPilot = import.meta.env.DEV ? React.lazy(() => import('../compon
 const IPhonePoundTest = React.lazy(() => import('../components/ai/IPhonePoundTest.jsx'));
 const RecordedTrackerProfile = React.lazy(() => import('../components/ai/RecordedTrackerProfile.jsx'));
 const PoseExecutionCheck = React.lazy(() => import('../components/ai/PoseExecutionCheck.jsx'));
+const RecordingLoadCheck = React.lazy(() => import('../components/ai/RecordingLoadCheck.jsx'));
 export default function LabDrillSession() {
   const { drillKey } = useParams();
   const location = useLocation();
+  if (drillKey === 'right-hand-pound' && new URLSearchParams(location.search).get('mode') === 'recording-load') {
+    return <React.Suspense fallback={<main className="cs-session-page">Opening recording-load check…</main>}><RecordingLoadCheck /></React.Suspense>;
+  }
   if (drillKey === 'right-hand-pound' && new URLSearchParams(location.search).get('mode') === 'pose-execution') {
     return <React.Suspense fallback={<main className="cs-session-page">Opening saved-image check…</main>}><PoseExecutionCheck /></React.Suspense>;
   }
