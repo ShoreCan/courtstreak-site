@@ -40,3 +40,12 @@ test('replay seeks slightly before the rep and remains within a playable clip',(
   assert.equal(replayStart(2),1.65);assert.equal(replayStart(.1),0);
   assert.equal(replayStart(25,20),19.99);assert.equal(replayStart(NaN,20),0);
 });
+
+test('separate ball and pose timing records retain their values after the caller reuses them',()=>{
+  const timings={pose:{preprocessMs:3,inferenceMs:180,decodeMs:2},ball:{preprocessMs:2,inferenceMs:40,decodeMs:1}};
+  const evidence=new RoundEvidence();evidence.record(frame({timings}));
+  timings.pose.inferenceMs=999;timings.ball.preprocessMs=999;
+  const result=evidence.export({});
+  assert.equal(result.frames[0].detectorTimings.pose.inferenceMs,180);
+  assert.equal(result.frames[0].detectorTimings.ball.preprocessMs,2);
+});
