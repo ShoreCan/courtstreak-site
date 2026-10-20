@@ -6,19 +6,24 @@ import { CAMERA_REVIEW_REVISION, ReadinessClock } from '../../lib/ai/cameraReadi
 import { DrillRecording, recordingExtension } from '../../lib/ai/drillRecording.mjs';
 import { RoundEvidence, replayStart } from '../../lib/ai/roundEvidence.mjs';
 import { CONTROL_REVISION, physicalPoseSides } from '../../lib/ai/poseCoordinates.mjs';
+import { VIDEO_OVERLAY_REVISION, DisplayedCountTimeline } from '../../lib/ai/videoCountOverlay.mjs';
+import { createCountedVideo } from '../../lib/ai/countedVideoExport.mjs';
 import ShareTraining from '../ShareTraining.jsx';
 import { FiDownload, FiShare2, FiPlay } from 'react-icons/fi';
 import './iphone-pound-test.css';
 const DURATION=20;
 const empty={body:false,hand:false,ball:false,floor:false,owned:false};
 const emptyClip={status:'idle',url:'',blob:null};
+const emptyCountedClip={...emptyClip,progress:0};
 function machine(){return {phase:'idle',tracker:new BallIdentityTracker(),gate:new PositionGate(),readiness:new ReadinessClock(),counter:new GapAwareBounceCounter(),validator:new PoundControlValidator(),evidence:new RoundEvidence(),person:null,ball:null,poseAt:-Infinity,times:[],goodSince:null,progress:0,count:0,left:DURATION,countdown:5,fps:0,checks:empty,message:'Place your phone on a stable support. Landscape gives you more room; portrait works too.',lastInference:0,started:null,detected:0,total:0};}
 export default function IPhonePoundTest(){
  const navigate=useNavigate(),video=useRef(null),overlay=useRef(null),frame=useRef(null),m=useRef(machine()),detector=useRef(null),stream=useRef(null),raf=useRef(0),mounted=useRef(true),token=useRef(0),wake=useRef(null),audio=useRef(null);
  const [ui,setUI]=useState({...m.current}),[ratio,setRatio]=useState(16/9);
  const recorder=useRef(null),recordTimer=useRef(null),recordURL=useRef(''),recordVersion=useRef(0),resultPanel=useRef(null),replayVideo=useRef(null),evidenceURL=useRef('');
+ const countTimeline=useRef(new DisplayedCountTimeline()),countedURL=useRef(''),videoExport=useRef(null);
  const [clip,setClip]=useState(emptyClip),[shareMessage,setShareMessage]=useState(''),[sharing,setSharing]=useState(false);
- const publish=()=>{if(mounted.current)setUI({...m.current});};
+ const [countedClip,setCountedClip]=useState(emptyCountedClip);
+ const publish=()=>{if(mounted.current){countTimeline.current.record(m.current.count,performance.now()/1000);setUI({...m.current});}};
  const cue=(frequency=650)=>{try{const ctx=audio.current;if(!ctx||ctx.state!=='running')return;const osc=ctx.createOscillator(),gain=ctx.createGain();osc.frequency.value=frequency;gain.gain.setValueAtTime(.10,ctx.currentTime);gain.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.15);osc.connect(gain);gain.connect(ctx.destination);osc.start();osc.stop(ctx.currentTime+.16);}catch{}};
  const stopRecording=()=>{
   clearTimeout(recordTimer.current);recordTimer.current=null;
@@ -29,9 +34,11 @@ export default function IPhonePoundTest(){
  };
  const discardRecording=()=>{
   recordVersion.current++;clearTimeout(recordTimer.current);recordTimer.current=null;recorder.current?.cancel();recorder.current=null;
+  videoExport.current?.abort();videoExport.current=null;countTimeline.current=new DisplayedCountTimeline();
+  if(countedURL.current)URL.revokeObjectURL(countedURL.current);countedURL.current='';
   if(recordURL.current)URL.revokeObjectURL(recordURL.current);recordURL.current='';
   if(evidenceURL.current)URL.revokeObjectURL(evidenceURL.current);evidenceURL.current='';
-  if(mounted.current){setClip(emptyClip);setShareMessage('');}
+  if(mounted.current){setClip(emptyClip);setCountedClip(emptyCountedClip);setShareMessage('');}
  };
  const startRecording=(started)=>{
   const version=++recordVersion.current;
@@ -40,7 +47,9 @@ export default function IPhonePoundTest(){
    onReady:blob=>{if(!current())return;if(recordURL.current)URL.revokeObjectURL(recordURL.current);recordURL.current=URL.createObjectURL(blob);setClip({status:'ready',blob,url:recordURL.current});},
    onUnavailable:()=>{if(current())setClip({...emptyClip,status:'unavailable'});}
   });
+  const recordingBegan=performance.now()/1000;
   if(recorder.current.start(stream.current)){
+   countTimeline.current.start(recordingBegan);
    setClip({...emptyClip,status:'recording'});
    recordTimer.current=setTimeout(stopRecording,Math.max(0,(started+DURATION)*1000-performance.now()));
   }
@@ -157,12 +166,36 @@ export default function IPhonePoundTest(){
  useEffect(()=>{
   if(['finished','interrupted'].includes(ui.phase)){resultPanel.current?.focus({preventScroll:true});resultPanel.current?.scrollIntoView({block:'start',behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});}
  },[ui.phase]);
+ useEffect(()=>{
+  if(['finished','interrupted'].includes(ui.phase)&&clip.status==='ready')void prepareCountedVideo();
+ },[ui.phase,clip.url]);
  const p=ui.phase,live=['setup','countdown','active','review'].includes(p),ended=['finished','interrupted'].includes(p),labels=[['body','Body in frame'],['hand','Right wrist visible'],['ball','Basketball detected'],['floor','Feet + floor space']];
+ const preparing=countedClip.status==='preparing',savedClip=countedClip.status==='ready'?countedClip:clip;
  const step=['active','review'].includes(p)?2:p==='countdown'?1:ended?3:0;
  const summary=`CourtStreak · Right-Hand Pound · ${ui.count} detected reps · ${p==='finished'?'20-second round':'Incomplete attempt'}. Camera test result.`;
- const filename=`CourtStreak-right-hand-pound-${ui.count}-reps${p==='finished'?'':'-partial'}.${recordingExtension(clip.blob?.type)}`;
+ const fileStem=`CourtStreak-right-hand-pound-${ui.count}-reps${p==='finished'?'':'-partial'}`;
+ const filename=`${fileStem}${countedClip.status==='ready'?'-counted':'-original'}.${recordingExtension(savedClip.blob?.type)}`;
+ const originalFilename=`${fileStem}-original.${recordingExtension(clip.blob?.type)}`;
+ async function prepareCountedVideo(){
+  if(!clip.blob||videoExport.current)return;
+  const version=recordVersion.current,controller=new AbortController();videoExport.current=controller;
+  const current=()=>mounted.current&&version===recordVersion.current&&!controller.signal.aborted;
+  setCountedClip({...emptyCountedClip,status:'preparing'});
+  try{
+   let lastPercent=-1;
+   const result=await createCountedVideo({video:replayVideo.current,sourceURL:clip.url,
+    changes:countTimeline.current.snapshot(),finalCount:m.current.count,completed:m.current.phase==='finished',signal:controller.signal,
+    onProgress:progress=>{const percent=Math.floor(progress*100);if(current()&&percent!==lastPercent){lastPercent=percent;setCountedClip(previous=>({...previous,progress}));}}
+   });
+   if(!current())return;
+   if(countedURL.current)URL.revokeObjectURL(countedURL.current);countedURL.current=URL.createObjectURL(result.blob);
+   setCountedClip({status:'ready',url:countedURL.current,blob:result.blob,progress:1,width:result.width,height:result.height});
+  }catch(error){if(current())setCountedClip({...emptyCountedClip,status:'unavailable',message:error.message});}
+  finally{if(videoExport.current===controller)videoExport.current=null;}
+ }
+ function useOriginalVideo(){videoExport.current?.abort();videoExport.current=null;setCountedClip({...emptyCountedClip,status:'original'});}
  function jumpToRep(event){
-  const player=replayVideo.current;if(!player)return;
+  const player=replayVideo.current;if(!player||preparing)return;
   try{player.currentTime=replayStart(event.time,player.duration);void player.play().catch(()=>{});}
   catch{setShareMessage('Play the replay once, then tap a rep to review it.');}
  }
@@ -172,21 +205,24 @@ export default function IPhonePoundTest(){
    drillKey:'right-hand-pound',timerSeconds:DURATION,phase:s.phase,message:s.message,displayedCount:s.count,
    framesWithSelectedBall:s.detected,trainingFrames:s.total,ballCoverage:s.total?s.detected/s.total:null,
    provider:detector.current?.provider,frameSize:[frame.current?.width,frame.current?.height],
-   recordingAvailable:!!clip.blob,rejectedEvents:s.validator.rejected,pendingEvents:s.validator.pending});
+   recordingAvailable:!!clip.blob,videoRevision:VIDEO_OVERLAY_REVISION,countDisplayStartedAt:countTimeline.current.startedAt,
+   displayedCountTimeline:countTimeline.current.snapshot(),savedVideoStyle:countedClip.status==='ready'?'count-overlay':'original',
+   countOverlayTiming:'Display changes at live acceptance time; final card includes the post-round review. No bounce-time backdating.',
+   rejectedEvents:s.validator.rejected,pendingEvents:s.validator.pending});
   if(evidenceURL.current)URL.revokeObjectURL(evidenceURL.current);
   evidenceURL.current=URL.createObjectURL(new Blob([JSON.stringify(data)],{type:'application/json'}));
   const link=document.createElement('a');link.href=evidenceURL.current;link.download=`CourtStreak-right-hand-pound-${s.count}-reps-test-details.json`;document.body.append(link);link.click();link.remove();
  }
  async function shareVideo(saveOnly=false){
-  if(!clip.blob||sharing)return;
+  if(!savedClip.blob||sharing||preparing)return;
   setShareMessage('');setSharing(true);
   try{
-   const file=new File([clip.blob],filename,{type:clip.blob.type});
+   const file=new File([savedClip.blob],filename,{type:savedClip.blob.type});
    if(navigator.share&&navigator.canShare?.({files:[file]})){
     if(saveOnly)setShareMessage('Choose Save Video or Save to Files from your device’s options.');
     await navigator.share({files:[file],title:'My CourtStreak round',...(saveOnly?{}:{text:summary})});
    }else if(saveOnly){
-    const link=document.createElement('a');link.href=clip.url;link.download=filename;document.body.append(link);link.click();link.remove();
+    const link=document.createElement('a');link.href=savedClip.url;link.download=filename;document.body.append(link);link.click();link.remove();
     setShareMessage('Your browser opened the video download.');
    }else setShareMessage('File sharing is unavailable in this browser. Use Save video to device.');
   }catch(error){if(error.name!=='AbortError')setShareMessage('Sharing could not open. Use Download video file below, then share the saved clip.');}
@@ -194,7 +230,7 @@ export default function IPhonePoundTest(){
  }
  return <main className="cs-iphone-tracker">
   <div className={`cs-iphone-shell ${ended?'is-review':''}`}>
-   <header className="cs-iphone-header"><button type="button" onClick={()=>navigate('/lab/drill/right-hand-pound')} aria-label="Back to drill">←</button><div><span>COURTSTREAK / CAMERA LAB</span><h1>Right-Hand Pound</h1><p>20-second test · Front camera</p></div><span className="cs-iphone-version">{CONTROL_REVISION}<br/>{CAMERA_REVIEW_REVISION}</span></header>
+   <header className="cs-iphone-header"><button type="button" onClick={()=>navigate('/lab/drill/right-hand-pound')} aria-label="Back to drill">←</button><div><span>COURTSTREAK / CAMERA LAB</span><h1>Right-Hand Pound</h1><p>20-second test · Front camera</p></div><span className="cs-iphone-version">{CONTROL_REVISION}<br/>{VIDEO_OVERLAY_REVISION}</span></header>
    <ol className="cs-iphone-steps" aria-label="Session progress">{['Position','Countdown','Train','Review'].map((label,i)=><li key={label} className={i===step?'current':i<step?'complete':''}><b>{i<step?'✓':i+1}</b>{label}</li>)}</ol>
    <section className="cs-iphone-stage" hidden={ended} style={{aspectRatio:ratio}} aria-label="Live camera and detected basketball">
     <video ref={video} muted autoPlay playsInline aria-label="Mirrored front camera"/><canvas ref={overlay} aria-hidden="true"/>
@@ -223,13 +259,15 @@ export default function IPhonePoundTest(){
     <div className="cs-iphone-replay">
      <h3><FiPlay aria-hidden="true"/> Replay your round</h3>
      {clip.status==='ready'?<>
-      <video ref={replayVideo} src={clip.url} controls playsInline preload="metadata" aria-label="Replay of your recorded right-hand pound round"/>
-      {ui.evidence.repEvents.length>0&&<div className="cs-iphone-rep-review"><p>Counted reps · Tap one to replay that moment</p><div className="cs-iphone-rep-markers" role="group" aria-label="Counted rep replay markers">{ui.evidence.repEvents.map(event=><button type="button" key={event.rep} onClick={()=>jumpToRep(event)} aria-label={`Replay counted rep ${event.rep}`}>{event.rep}</button>)}</div><small>Markers show when the tracker counted a bounce. Use the replay to check whether it was a real rep.</small></div>}
+      <video ref={replayVideo} src={savedClip.url} controls={!preparing} playsInline preload="metadata" aria-label={countedClip.status==='ready'?'Replay with CourtStreak count overlay':'Original camera recording'}/>
+      {preparing?<div className="cs-iphone-export" role="status"><strong>Adding your rep counter… {Math.floor(countedClip.progress*100)}%</strong><progress value={countedClip.progress} max="1" aria-label="Preparing video with rep counter"/><p>Keep this page open. Preparing the counter and final score takes about as long as the round. Your original recording is also available below.</p><button type="button" className="cs-iphone-secondary" onClick={useOriginalVideo}>Use original video instead</button></div>:countedClip.status==='ready'?<p className="cs-iphone-video-ready">✓ Rep counter and final score included in this video.</p>:['unavailable','original'].includes(countedClip.status)&&<div className="cs-iphone-export"><p role="status">{countedClip.status==='unavailable'?countedClip.message:'Using your original video without a counter.'}</p><button type="button" className="cs-iphone-secondary" onClick={prepareCountedVideo}>Prepare video with rep counter</button></div>}
+      {ui.evidence.repEvents.length>0&&<div className="cs-iphone-rep-review"><p>Counted reps · Tap one to replay that moment</p><div className="cs-iphone-rep-markers" role="group" aria-label="Counted rep replay markers">{ui.evidence.repEvents.map(event=><button type="button" key={event.rep} onClick={()=>jumpToRep(event)} disabled={preparing} aria-label={`Replay counted rep ${event.rep}`}>{event.rep}</button>)}</div><small>Markers show when the tracker counted a bounce. The video counter changes when a rep is accepted, which can be later.</small></div>}
       <div className="cs-iphone-video-actions">
-       <button type="button" className="cs-iphone-primary" onClick={()=>shareVideo(true)} disabled={sharing}><FiDownload aria-hidden="true"/> Save video to device</button>
-       <button type="button" className="cs-iphone-secondary" onClick={()=>shareVideo()} disabled={sharing}><FiShare2 aria-hidden="true"/> {sharing?'Opening…':'Share video'}</button>
+       <button type="button" className="cs-iphone-primary" onClick={()=>shareVideo(true)} disabled={sharing||preparing}><FiDownload aria-hidden="true"/> {preparing?'Preparing counted video…':'Save video to device'}</button>
+       <button type="button" className="cs-iphone-secondary" onClick={()=>shareVideo()} disabled={sharing||preparing}><FiShare2 aria-hidden="true"/> {sharing?'Opening…':'Share video'}</button>
       </div>
-      <a className="cs-iphone-file-download" href={clip.url} download={filename}>Download video file</a>
+      {!preparing&&<a className="cs-iphone-file-download" href={savedClip.url} download={filename}>Download {countedClip.status==='ready'?'counted':'original'} video file</a>}
+      <a className="cs-iphone-file-download cs-iphone-original-download" href={clip.url} download={originalFilename}>Save original camera video</a>
       <p>On iPhone, the share sheet may also offer Save Video or Save to Files. Save the clip before leaving or starting another round.</p>
      </>:<p role="status">{clip.status==='finishing'?'Preparing your replay…':clip.status==='unavailable'?'Video recording is unavailable in this browser. Your count is still shown above.':'No drill video was recorded for this attempt.'}</p>}
      {shareMessage&&<p role="status">{shareMessage}</p>}

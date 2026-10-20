@@ -33,3 +33,10 @@
 .cs-iphone-evidence{margin-top:16px;border-top:1px solid #dce2e9;padding-top:14px}
 .cs-iphone-evidence summary{font-size:12px;font-weight:700;cursor:pointer;min-height:34px}
 .cs-iphone-evidence p{font-size:12px;line-height:1.7;color:#687789}
+.cs-iphone-export{margin-top:14px;padding:15px;border:1px solid #dce3eb;border-radius:14px;background:#fff}
+.cs-iphone-export strong{font-size:13px;color:#14243a}
+.cs-iphone-export progress{display:block;width:100%;height:7px;margin:12px 0;accent-color:#ef8641}
+.cs-iphone-export p{margin:9px 0 0}
+.cs-iphone-replay .cs-iphone-video-ready{color:#23704b;font-weight:700}
+.cs-iphone-original-download{display:block;color:#687789}
+.cs-iphone-rep-markers button:disabled{opacity:.5;cursor:wait}
