@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient.js';
 import {getHubAccount,hubHome} from '../hub/api.js';
+import { safeTrackerReturn } from '../lib/trackerReturn.mjs';
 
 export default function RequireMembership({ children }) {
   const location = useLocation();
@@ -81,7 +82,7 @@ export default function RequireMembership({ children }) {
     return (
       <Navigate
         to="/login"
-        state={{ from: location.pathname }}
+        state={{ from: safeTrackerReturn(location.pathname+location.search) || location.pathname }}
         replace
       />
     );

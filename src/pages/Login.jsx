@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient.js';
 import { getHubAccount, hubHome, safeHubNext } from '../hub/api.js';
+import { safeTrackerReturn } from '../lib/trackerReturn.mjs';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -44,7 +45,7 @@ const checkoutType = searchParams.get('checkout');
   return;
 }
 
-const next = hubNext;
+const next = hubNext || safeTrackerReturn(location.state?.from);
 if (next) { navigate(next); return; }
 try {
   const account = await getHubAccount();
