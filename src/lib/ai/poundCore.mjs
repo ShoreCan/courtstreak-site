@@ -1,7 +1,9 @@
 // Right-hand pound browser port of the saved CourtStreak 0.7.8 count-repair baseline.
 // All coordinates use the SAME mirrored, 1280px-wide frame as the Python engine.
+import {timedBallContinuation} from './ballTiming.mjs';
 export const BALL_TRACKER_REVISION = 'COUNT 03';
-export const BALL_IDENTITY_REVISION = 'LOCK 03';
+export const EXPERIMENTAL_COUNTER_REVISION = 'COUNT 04';
+export const BALL_IDENTITY_REVISION = 'LOCK 04';
 export const median = a => percentile(a, .5);
 export function percentile(a, q) { const s = [...a].sort((a,b)=>a-b); if (!s.length) return 0; const p=(s.length-1)*q, i=Math.floor(p); return s[i]+(s[Math.ceil(p)]-s[i])*(p-i); }
 const distance=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
@@ -9,12 +11,12 @@ const center=b=>[(b[0]+b[2])/2,(b[1]+b[3])/2];
 export const geometry = c => ({center:center(c.box), diameter:Math.sqrt(Math.max((c.box[2]-c.box[0])*(c.box[3]-c.box[1]),1))});
 const wrists = p => p ? [9,10].filter(i=>p.confidence[i]>=.15 && p.xy[i][0]>0 && p.xy[i][1]>0).map(i=>p.xy[i]) : [];
 export class BallIdentityTracker {
- constructor({handContinuity=false,objectBackgroundRadius=false}={}){this.handContinuity=handContinuity;this.objectBackgroundRadius=objectBackgroundRadius;this.last=null;this.velocity=[0,0];this.diameter=null;this.missed=0;this.diameters=[];this.lanes=[];this.background=[];this.frame=0;}
+ constructor({handContinuity=false,objectBackgroundRadius=false,timedContinuity=false}={}){this.handContinuity=handContinuity;this.objectBackgroundRadius=objectBackgroundRadius;this.timedContinuity=timedContinuity;this.samples=[];this.last=null;this.velocity=[0,0];this.diameter=null;this.missed=0;this.diameters=[];this.lanes=[];this.background=[];this.frame=0;}
  typical(){return this.diameters.length?median(this.diameters):this.diameter;}
  lane(){return this.lanes.length?median(this.lanes):this.last?.[0];}
  ready(){const d=this.typical(); return this.diameters.length>=12 && this.lanes.length>=12 && d>=38 && percentile(this.diameters,.9)-percentile(this.diameters,.1)<=Math.max(28,d*.55) && percentile(this.lanes,.9)-percentile(this.lanes,.1)<=Math.max(95,d*1.8);}
  roi(w,h){const x=this.lane(),d=this.typical()||72; if(x==null)return [0,0,w,h]; const half=Math.floor(Math.max(210,Math.min(w*.28,d*2.7))); return [Math.max(0,Math.floor(x)-half),Math.floor(h*.14),Math.min(w,Math.floor(x)+half),h];}
- select(candidates,person,phase,w,h){
+ select(candidates,person,phase,w,h,now=null){
   this.frame++; const hands=wrists(person); let selected=null, owned=false;
   if(phase==='setup'||!this.last){
    let best=Infinity;
@@ -24,7 +26,9 @@ export class BallIdentityTracker {
    if(selected!==null&&hands.length){const g=geometry(candidates[selected]);owned=Math.min(...hands.map(p=>distance(g.center,p)))<=Math.max(110,g.diameter*2.3);}
   }else{
    const predicted=this.last.map((v,i)=>v+this.velocity[i]*Math.min(this.missed+1,3));const typical=this.typical(),lane=this.lane(); const scored=[],reacquired=[];
+   const timed=this.timedContinuity&&phase==='drill'?timedBallContinuation(candidates,this.samples,now,typical):null;
    candidates.forEach((c,i)=>{const g=geometry(c),p=g.center,d=g.diameter;
+    const timedCandidate=timed?.index===i;
     // Preserve a nearby hand-owned continuation as well as the existing reacquisition.
     // Background memory must not alternate between rejecting and recovering a held ball.
     // The original setup-size and subsequent motion gates still apply.
@@ -36,15 +40,15 @@ export class BallIdentityTracker {
     // A large foreground ball must not enlarge the exclusion zone around a
     // smaller remembered object (for example a shoe). Keep the same .65
     // factor and 28px minimum, but anchor the opt-in radius to that object.
-    if(!recoveringAtHand&&!continuingAtHand&&this.background.some(b=>b.observations>=5&&distance(p,b.center)<=(this.objectBackgroundRadius&&phase==='drill'?Math.max(28,b.diameter*.65):Math.max(28,d*.65,b.diameter*.65))))return;
+    if(!recoveringAtHand&&!continuingAtHand&&this.background.some(b=>b.observations>=5&&distance(p,b.center)<=(this.objectBackgroundRadius&&phase==='drill'?Math.max(28,b.diameter*.65):Math.max(28,d*.65,b.diameter*.65))&&!(timedCandidate&&b.diameter<d*.75)))return;
     if(typical!=null&&(d/typical<.58||d/typical>1.68))return;
     const reference=Math.max(typical||this.diameter||d,28),handDistance=hands.length?Math.min(...hands.map(v=>distance(p,v))):Infinity;
     if(phase==='drill'&&this.missed&&handDistance<=Math.max(120,d*1.65))reacquired.push([handDistance/Math.max(d,24),i]);
-    if(distance(p,this.last)>Math.max(w*.18,reference*2.8)&&handDistance>Math.max(120,d*1.65))return;
+    if(distance(p,this.last)>Math.max(w*.18,reference*2.8)&&handDistance>Math.max(120,d*1.65)&&!timedCandidate)return;
     if(lane!=null&&Math.abs(p[0]-lane)>(phase==='drill'?Math.max(w*.46,reference*5):Math.max(145,reference*2.15)))return;
     const dx=p[0]-predicted[0],dy=p[1]-predicted[1];
     const xl=phase==='drill'?Math.max(w*.30,reference*(3.5+.45*Math.min(this.missed,3))):Math.max(125,reference*(1.65+.25*Math.min(this.missed,3)));
-    const yl=Math.max(185,reference*(3+.60*Math.min(this.missed,3)));
+    const yl=Math.max(185,reference*(3+.60*Math.min(this.missed,3)),timedCandidate?timed.envelope:0);
     if(Math.abs(dx)>xl||Math.abs(dy)>yl)return;
     scored.push([Math.abs(dx)/xl+Math.abs(dy)/yl+Math.abs(d-reference)/reference*.55-c.score*.08,i]);
    });
@@ -60,12 +64,16 @@ export class BallIdentityTracker {
   const chosen=candidates[selected],g=geometry(chosen);
   if(this.last)this.velocity=this.velocity.map((v,i)=>v*.55+(g.center[i]-this.last[i])*.45);
   this.last=g.center;this.diameter=g.diameter;this.missed=0;
+  if(this.timedContinuity&&Number.isFinite(now)){
+   if(this.samples.length&&now<=this.samples.at(-1).at)this.samples=[];
+   this.samples.push({at:now,center:[...g.center],diameter:g.diameter});this.samples=this.samples.slice(-32);
+  }
   if(owned&&['setup','countdown'].includes(phase)){this.diameters.push(g.diameter);this.diameters=this.diameters.slice(-30);this.lanes.push(g.center[0]);this.lanes=this.lanes.slice(-45);}
   return chosen;
  }
 }
 export class GapAwareBounceCounter {
- constructor(){this.points=[];this.next=5;this.last=null;this.count=0;this.floorSamples=[];}
+ constructor({directionalPeaks=false}={}){this.directionalPeaks=directionalPeaks;this.points=[];this.next=5;this.last=null;this.count=0;this.floorSamples=[];}
  rememberControlledFloor(e){if(e.validation_path==='clean_full_pound'&&e.bottom_center_y!=null&&e.ball_scale_pixels!=null){this.floorSamples.push([e.bottom_center_y,e.ball_scale_pixels]);this.floorSamples=this.floorSamples.slice(-16);}}
  floorReference(){if(this.floorSamples.length<6)return null;const ys=this.floorSamples.map(p=>p[0]),d=median(this.floorSamples.map(p=>p[1])),y=median(ys);if(median(ys.map(v=>Math.abs(v-y)))>d*.30)return null;return {center_y:y,diameter:d,trusted_contacts:this.floorSamples.length};}
  // A long capture interval can hide the lowest point without a null detection.
@@ -103,6 +111,12 @@ export class GapAwareBounceCounter {
   if(core.length!==9||core.some(p=>p.y===null||p.diameter===null))return null;
   const window=raw.filter(p=>p.y!==null&&p.diameter!==null),previous=a.slice(start,c).filter(p=>p.y!==null&&p.diameter!==null),following=a.slice(c+1,stop).filter(p=>p.y!==null&&p.diameter!==null);
   const p=a[c];if(!(p.y>=a[c-1].y&&p.y>a[c+1].y))return null;
+  if(this.directionalPeaks){
+   // A repeated position on an ascent is not a new descent/floor turn.
+   // A genuine flat floor turn still has a lower last-distinct approach.
+   let approach=c-1;while(approach>=start&&a[approach].y===p.y)approach--;
+   if(approach<start||a[approach].y===null||p.y<=a[approach].y)return null;
+  }
   const d=median(window.map(p=>p.diameter)),motion=Math.max(10,d*.35,height*.01);
   const down=p.y-Math.min(...previous.map(p=>p.y)),rise=p.y-Math.min(...following.map(p=>p.y));
   const clean=down>=Math.max(motion,d*1.6)&&rise>=Math.max(motion,d*1.2);
