@@ -19,7 +19,7 @@ export function decodeOutput(output,kind,transform){
    if(r.box.every(Number.isFinite)&&r.box[2]>r.box[0]&&r.box[3]>r.box[1])rows.push(r);
   }
  }else if(kind==='ball'&&last===6){
-  for(let i=0;i<dims[1];i++){const j=i*6;if(Math.round(data[j+5])!==32||data[j+4]<.008)continue;const box=mapBox(Array.from(data.slice(j,j+4)));if(box.every(Number.isFinite)&&box[2]>box[0]&&box[3]>box[1])rows.push({box,score:data[j+4]});}
+  for(let i=0;i<dims[1];i++){const j=i*6;if(Math.round(data[j+5])!==32||!Number.isFinite(data[j+4])||data[j+4]<.008)continue;const box=mapBox(Array.from(data.slice(j,j+4)));if(box.every(Number.isFinite)&&box[2]>box[0]&&box[3]>box[1])rows.push({box,score:data[j+4]});}
  }else throw new Error(`Unexpected ${kind} model output: ${dims.join(' × ')}. Re-export using the supplied script.`);
  rows.sort((a,b)=>b.score-a.score);const kept=[];
  for(const r of rows){if(kept.every(k=>iou(r.box,k.box)<.7))kept.push(r);if(kept.length>=50)break;}

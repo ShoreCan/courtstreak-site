@@ -2,7 +2,7 @@
 // All coordinates use the SAME mirrored, 1280px-wide frame as the Python engine.
 import {timedBallContinuation} from './ballTiming.mjs';
 export const BALL_TRACKER_REVISION = 'COUNT 03';
-export const EXPERIMENTAL_COUNTER_REVISION = 'COUNT 04';
+export const EXPERIMENTAL_COUNTER_REVISION = 'COUNT 05';
 export const BALL_IDENTITY_REVISION = 'LOCK 04';
 export const median = a => percentile(a, .5);
 export function percentile(a, q) { const s = [...a].sort((a,b)=>a-b); if (!s.length) return 0; const p=(s.length-1)*q, i=Math.floor(p); return s[i]+(s[Math.ceil(p)]-s[i])*(p-i); }
@@ -73,7 +73,7 @@ export class BallIdentityTracker {
  }
 }
 export class GapAwareBounceCounter {
- constructor({directionalPeaks=false}={}){this.directionalPeaks=directionalPeaks;this.points=[];this.next=5;this.last=null;this.count=0;this.floorSamples=[];}
+ constructor({directionalPeaks=false,timeWindows=false}={}){this.timeWindows=timeWindows;this.directionalPeaks=directionalPeaks;this.points=[];this.next=5;this.last=null;this.count=0;this.floorSamples=[];}
  rememberControlledFloor(e){if(e.validation_path==='clean_full_pound'&&e.bottom_center_y!=null&&e.ball_scale_pixels!=null){this.floorSamples.push([e.bottom_center_y,e.ball_scale_pixels]);this.floorSamples=this.floorSamples.slice(-16);}}
  floorReference(){if(this.floorSamples.length<6)return null;const ys=this.floorSamples.map(p=>p[0]),d=median(this.floorSamples.map(p=>p[1])),y=median(ys);if(median(ys.map(v=>Math.abs(v-y)))>d*.30)return null;return {center_y:y,diameter:d,trusted_contacts:this.floorSamples.length};}
  // A long capture interval can hide the lowest point without a null detection.
@@ -102,12 +102,17 @@ export class GapAwareBounceCounter {
   const a=this.points,end=a.length-1; let start=end-1; while(start>=0&&a[start].y===null)start--;
   const gap=end-start-1;
   if(a[end].y!==null&&start>=0&&gap>0&&gap<=5){for(let i=1;i<=gap;i++){const p=a[start+i],f=i/(gap+1);p.y=a[start].y+f*(a[end].y-a[start].y);p.diameter=a[start].diameter+f*(a[end].diameter-a[start].diameter);p.reconstructed=true;}}
+  // Keep the original eight-frame minimum. In the experimental path, also
+  // wait for half a second of measured return motion: eight high-rate frames
+  // alone cover too little of a slow bounce. No synthetic observations added.
   const events=[];const latest=a.length-3-5-1;
-  while(this.next<=latest){const e=this.evaluate(this.next,height);if(e){e.count=++this.count;events.push(e);this.last=this.next;}this.next++;}
+  while(this.next<=latest){if(this.timeWindows&&now-a[this.next].timestamp<.5)break;const e=this.evaluate(this.next,height);if(e){e.count=++this.count;events.push(e);this.last=this.next;}this.next++;}
   return events;
  }
  evaluate(c,height){
-  const a=this.points,start=Math.max(0,c-8),stop=c+9,raw=a.slice(start,stop),core=a.slice(c-5,c+4);
+  const a=this.points;let start=Math.max(0,c-8),stop=c+9;
+  if(this.timeWindows){while(start>0&&a[c].timestamp-a[start-1].timestamp<=.5)start--;while(stop<a.length&&a[stop].timestamp-a[c].timestamp<=.5)stop++;}
+  const raw=a.slice(start,stop),core=a.slice(c-5,c+4);
   if(core.length!==9||core.some(p=>p.y===null||p.diameter===null))return null;
   const window=raw.filter(p=>p.y!==null&&p.diameter!==null),previous=a.slice(start,c).filter(p=>p.y!==null&&p.diameter!==null),following=a.slice(c+1,stop).filter(p=>p.y!==null&&p.diameter!==null);
   const p=a[c];if(!(p.y>=a[c-1].y&&p.y>a[c+1].y))return null;
