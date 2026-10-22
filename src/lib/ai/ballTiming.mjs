@@ -38,3 +38,24 @@ export function timedBallContinuation(candidates,samples,now,reference){
  // Two plausible balls do not establish which is the owned ball.
  return matches.length===1?matches[0]:null;
 }
+
+// A strong existing detection can continue an already-owned moving ball across
+// a small remembered background object. This is not general reacquisition.
+export function strongBallContinuation(candidates,samples,now,reference,velocity,missed){
+ if(missed!==0||!Number.isFinite(now)||!Number.isFinite(reference)||reference<=0||samples.length<8)return null;
+ const last=samples.at(-1),gap=now-last.at,vy=velocity?.[1];
+ if(!Number.isFinite(gap)||gap<=0||gap>.1||!Number.isFinite(vy)||Math.abs(vy)<reference*.05)return null;
+ if(!last.center?.every(Number.isFinite)||!Number.isFinite(last.diameter)||last.diameter<=0)return null;
+ const matches=[];
+ candidates.forEach((candidate,index)=>{
+  if(!Array.isArray(candidate.box)||candidate.box.length!==4)return;
+  const [x1,y1,x2,y2]=candidate.box;
+  if(![x1,y1,x2,y2,candidate.score].every(Number.isFinite)||candidate.score<.5||x2<=x1||y2<=y1)return;
+  const diameter=Math.sqrt((x2-x1)*(y2-y1)),center=[(x1+x2)/2,(y1+y2)/2];
+  if(diameter/reference<.58||diameter/reference>1.68||diameter/last.diameter<.8||diameter/last.diameter>1.2)return;
+  const dx=center[0]-last.center[0],dy=center[1]-last.center[1];
+  if(Math.abs(dx)>Math.max(28,diameter*.5)||Math.abs(dy)<diameter*.35||dy*vy<=0||distance(center,last.center)>diameter*1.25)return;
+  matches.push(index);
+ });
+ return matches.length===1?matches[0]:null;
+}

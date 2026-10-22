@@ -2,10 +2,10 @@ import fs from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import {BallIdentityTracker,GapAwareBounceCounter,PoundControlValidator,geometry} from '../src/lib/ai/poundCore.mjs';
 
-export function replayBallLock(data,{handContinuity=false,objectBackgroundRadius=false,timedContinuity=false,directionalPeaks=false,timeWindows=false}={}){
+export function replayBallLock(data,{handContinuity=false,objectBackgroundRadius=false,timedContinuity=false,directionalPeaks=false,timeWindows=false,strongContinuity=false}={}){
  if(data.droppedFrameRecords)throw new Error('Early inputs were discarded; an exact identity replay is unavailable.');
  if(!Array.isArray(data.frames)||!Array.isArray(data.frameSize))throw new Error('Expected a CourtStreak round-evidence JSON.');
- const tracker=new BallIdentityTracker({handContinuity,objectBackgroundRadius,timedContinuity});
+ const tracker=new BallIdentityTracker({handContinuity,objectBackgroundRadius,timedContinuity,strongContinuity});
  let counter=new GapAwareBounceCounter({directionalPeaks,timeWindows}),validator=new PoundControlValidator(),previous=0;
  const changedFrames=[],restoredFrames=[],lostFrames=[],events=[];
  let selectionMatches=0,selectedFrames=0,roiMismatches=0;
@@ -38,6 +38,6 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
  for(const path of process.argv.slice(2)){
   const data=JSON.parse(fs.readFileSync(path,'utf8'));
   console.log(JSON.stringify({file:path,savedDisplay:data.displayedCount,recordedEvents:data.countedReps?.length,
-   baseline:replayBallLock(data,{handContinuity:true,objectBackgroundRadius:true,timedContinuity:true,directionalPeaks:true}),candidate:replayBallLock(data,{handContinuity:true,objectBackgroundRadius:true,timedContinuity:true,directionalPeaks:true,timeWindows:true})},null,2));
+   baseline:replayBallLock(data,{handContinuity:true,objectBackgroundRadius:true,timedContinuity:true,directionalPeaks:true,timeWindows:true}),candidate:replayBallLock(data,{handContinuity:true,objectBackgroundRadius:true,timedContinuity:true,directionalPeaks:true,timeWindows:true,strongContinuity:true})},null,2));
  }
 }

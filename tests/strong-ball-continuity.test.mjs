@@ -1,0 +1,25 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {strongBallContinuation} from '../src/lib/ai/ballTiming.mjs';
+import {BallIdentityTracker} from '../src/lib/ai/poundCore.mjs';
+const ball=(x=700,y=1180,d=160,score=.9)=>({box:[x-d/2,y-d/2,x+d/2,y+d/2],score});
+const history=()=>Array.from({length:8},(_,i)=>({at:i*.03,center:[700,720+i*40],diameter:160}));
+const choose=(c=[ball()],h=history(),now=.25,ref=160,v=[0,40],missed=0)=>strongBallContinuation(c,h,now,ref,v,missed);
+test('a strong size-consistent detection continues a recently owned descending ball',()=>assert.equal(choose(),0));
+for(const missed of [1,2,8])test(`the exception cannot reacquire a lost track (${missed} misses)`,()=>assert.equal(choose(undefined,undefined,undefined,undefined,undefined,missed),null));
+for(const now of [null,NaN,Infinity,.2,.21,.311])test(`invalid, duplicate, reversed, or stale time ${now} cannot bypass the veto`,()=>assert.equal(choose(undefined,undefined,now),null));
+for(const score of [.49,NaN,Infinity,-Infinity])test(`insufficient detector confidence ${score} cannot bypass the veto`,()=>assert.equal(choose([ball(700,1180,160,score)]),null));
+test('a newly created track has insufficient history',()=>assert.equal(choose(undefined,history().slice(-7)),null));
+test('a stationary track does not justify a motion exception',()=>assert.equal(choose(undefined,undefined,undefined,undefined,[0,0]),null));
+test('a reversal contradicting the tracked direction is unresolved',()=>assert.equal(choose([ball(700,820)]),null));
+test('large lateral displacement cannot take over the track',()=>assert.equal(choose([ball(850)]),null));
+test('a large jump cannot bypass the existing spatial bound',()=>assert.equal(choose([ball(700,1240)]),null));
+test('a small stationary detection cannot substitute for the ball',()=>assert.equal(choose([ball(700,1180,60)]),null));
+test('an unexpectedly enlarged ball-sized object cannot take over',()=>assert.equal(choose([ball(700,1180,200)]),null));
+test('small position noise does not establish continuation',()=>assert.equal(choose([ball(700,1010)]),null));
+test('two equally plausible moving balls leave the exception disabled',()=>assert.equal(choose([ball(),ball(710,1170)]),null));
+test('an irrelevant tiny second object does not discard the one plausible continuation',()=>assert.equal(choose([ball(),ball(760,1150,50)]),0));
+function tracker(bg=50){const t=new BallIdentityTracker({handContinuity:true,objectBackgroundRadius:true,timedContinuity:true,strongContinuity:true});t.samples=history();t.last=[700,1000];t.diameter=160;t.velocity=[0,40];t.diameters=Array(12).fill(160);t.lanes=Array(12).fill(700);t.background=[{center:[700,1180],diameter:bg,observations:20}];return t;}
+test('integration preserves a real continuation overlapping a much smaller remembered object',()=>assert.ok(tracker().select([ball()],null,'drill',1280,1800,.25)));
+test('a ball-sized remembered object retains the background veto',()=>assert.equal(tracker(160).select([ball()],null,'drill',1280,1800,.25),null));
+test('the setup/countdown path retains its original veto',()=>assert.equal(tracker().select([ball()],null,'countdown',1280,1800,.25),null));
+test('the exception stays disabled in ordinary tracking by default',()=>{const t=tracker();t.strongContinuity=false;assert.equal(t.select([ball()],null,'drill',1280,1800,.25),null);});
