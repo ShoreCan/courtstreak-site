@@ -2,8 +2,17 @@
 // All coordinates use the SAME mirrored, 1280px-wide frame as the Python engine.
 import {timedBallContinuation,strongBallContinuation} from './ballTiming.mjs';
 export const BALL_TRACKER_REVISION = 'COUNT 03';
-export const EXPERIMENTAL_COUNTER_REVISION = 'COUNT 05';
+export const EXPERIMENTAL_COUNTER_REVISION = 'COUNT 06';
 export const BALL_IDENTITY_REVISION = 'LOCK 05';
+// Both live initialization/reset and cached-input replay must resolve the same settings.
+export function poundCounterOptions(revision) {
+ if(revision==='COUNT 03')return {directionalPeaks:false,timeWindows:false};
+ if(revision==='COUNT 04')return {directionalPeaks:true,timeWindows:false};
+ if(revision==='COUNT 05')return {directionalPeaks:true,timeWindows:true};
+ if(revision==='COUNT 06')return {directionalPeaks:true,timeWindows:true,earlyConfirmation:true};
+ throw new Error(`Unsupported counter revision: ${String(revision)}. Exact replay is unavailable.`);
+}
+export function createPoundCounter(revision){return new GapAwareBounceCounter(poundCounterOptions(revision));}
 export const median = a => percentile(a, .5);
 export function percentile(a, q) { const s = [...a].sort((a,b)=>a-b); if (!s.length) return 0; const p=(s.length-1)*q, i=Math.floor(p); return s[i]+(s[Math.ceil(p)]-s[i])*(p-i); }
 const distance=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
@@ -74,7 +83,7 @@ export class BallIdentityTracker {
  }
 }
 export class GapAwareBounceCounter {
- constructor({directionalPeaks=false,timeWindows=false}={}){this.timeWindows=timeWindows;this.directionalPeaks=directionalPeaks;this.points=[];this.next=5;this.last=null;this.count=0;this.floorSamples=[];}
+ constructor({directionalPeaks=false,timeWindows=false,earlyConfirmation=false}={}){this.earlyConfirmation=earlyConfirmation;this.timeWindows=timeWindows;this.directionalPeaks=directionalPeaks;this.points=[];this.next=5;this.last=null;this.count=0;this.floorSamples=[];}
  rememberControlledFloor(e){if(e.validation_path==='clean_full_pound'&&e.bottom_center_y!=null&&e.ball_scale_pixels!=null){this.floorSamples.push([e.bottom_center_y,e.ball_scale_pixels]);this.floorSamples=this.floorSamples.slice(-16);}}
  floorReference(){if(this.floorSamples.length<6)return null;const ys=this.floorSamples.map(p=>p[0]),d=median(this.floorSamples.map(p=>p[1])),y=median(ys);if(median(ys.map(v=>Math.abs(v-y)))>d*.30)return null;return {center_y:y,diameter:d,trusted_contacts:this.floorSamples.length};}
  // A long capture interval can hide the lowest point without a null detection.
@@ -107,7 +116,21 @@ export class GapAwareBounceCounter {
   // wait for half a second of measured return motion: eight high-rate frames
   // alone cover too little of a slow bounce. No synthetic observations added.
   const events=[];const latest=a.length-3-5-1;
-  while(this.next<=latest){if(this.timeWindows&&now-a[this.next].timestamp<.5)break;const e=this.evaluate(this.next,height);if(e){e.count=++this.count;events.push(e);this.last=this.next;}this.next++;}
+  while(this.next<=latest){
+   const waiting=this.timeWindows&&now-a[this.next].timestamp<.5;
+   if(waiting&&!this.earlyConfirmation)break;
+   const c=this.next,p=a[c];
+   // Non-turns cannot become contacts when more return samples arrive.
+   // Discard only fully observed, structurally impossible floor peaks early.
+   const observedTurn=a[c-1]?.observed&&p.observed&&a[c+1]?.observed;
+   if(waiting&&observedTurn&&!(p.y>=a[c-1].y&&p.y>a[c+1].y)){this.next++;continue;}
+   const e=this.evaluate(c,height);
+   // Keep the full slow-motion window unless enough clean return motion
+   // already satisfies the validator's amplitude rules. Never lower gates.
+   if(waiting&&(!e||e.validation_path!=='clean_full_pound'||e.rise_ball_diameters<1.5||e.rise_ball_diameters<e.down_ball_diameters*.42))break;
+   if(e){e.count=++this.count;events.push(e);this.last=c;}
+   this.next++;
+  }
   return events;
  }
  evaluate(c,height){
@@ -204,3 +227,4 @@ export class PositionGate {
   return span>=1.7?Math.min(1,(now-this.since)/2.25):Math.min(.75,(now-this.since)/2.25);
  }
 }
+

@@ -1,6 +1,6 @@
 import {GapAwareBounceCounter} from '../../src/lib/ai/poundCore.mjs';
-export function simulate({fps=30,period=.8,scale=1,phase=0,jitter=0,cadenceJitter=0,periods=null,pause=0,held=false,missing=()=>false,timeWindows=true}={}){
- const c=new GapAwareBounceCounter({directionalPeaks:true,timeWindows});
+export function simulate({fps=30,period=.8,scale=1,phase=0,jitter=0,cadenceJitter=0,periods=null,pause=0,held=false,missing=()=>false,timeWindows=true,earlyConfirmation=false}={}){
+ const c=new GapAwareBounceCounter({directionalPeaks:true,timeWindows,earlyConfirmation});
  const durations=periods??Array(8).fill(period),cycles=[];let end=0;
  durations.forEach((duration,i)=>{if(i===4)end+=pause;cycles.push({start:end,duration,contact:end+duration/2});end+=duration;});
  const events=[];let t=-1+phase,i=0;
@@ -15,3 +15,4 @@ export function simulate({fps=30,period=.8,scale=1,phase=0,jitter=0,cadenceJitte
  }
  return {counter:c,events,contacts:held?[]:cycles.map(c=>c.contact),durations,jitter};
 }
+

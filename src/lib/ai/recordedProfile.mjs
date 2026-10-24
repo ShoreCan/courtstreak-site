@@ -1,4 +1,4 @@
-import { GapAwareBounceCounter, PoundControlValidator, BALL_TRACKER_REVISION, geometry, percentile } from './poundCore.mjs';
+import { createPoundCounter, PoundControlValidator, geometry, percentile } from './poundCore.mjs';
 import { shareVideoLayout, RESULT_CARD_SECONDS } from './videoCountOverlay.mjs';
 
 export const RECORDED_PROFILE_REVISION='PROFILE 01';
@@ -76,15 +76,17 @@ export function compareProfileOutputs(a,b) {
 export function replayProfileCounter(data) {
   if(data.droppedFrameRecords)return {available:false,reason:'The old log discarded early counter inputs.'};
   try{
-    let counter=new GapAwareBounceCounter(),validator=new PoundControlValidator(),previous=0,updates=0;
-    for(const f of data.frames){const cf=f.counterFrame;if(cf==null||cf===previous)continue;if(cf<previous){counter=new GapAwareBounceCounter();validator=new PoundControlValidator();previous=0;}
+    const revision=data.trackerRevision;
+    let counter=createPoundCounter(revision),validator=new PoundControlValidator(),previous=0,updates=0;
+    const confirmationDelays=[];
+    for(const f of data.frames){const cf=f.counterFrame;if(cf==null||cf===previous)continue;if(cf<previous){counter=createPoundCounter(revision);validator=new PoundControlValidator();previous=0;}
       if(cf!==previous+1)throw new Error('The saved counter inputs are incomplete.');
       const g=f.selected?geometry(f.selected):null,m=g?[...g.center,g.diameter]:null;
       const events=counter.update(f.elapsed,m?[m[1],m[2]]:null,data.frameSize[1]);
-      validator.update(events,m,f.person,f.elapsed,20).forEach(e=>counter.rememberControlledFloor(e));previous=cf;updates++;
+      validator.update(events,m,f.person,f.elapsed,data.timerSeconds??20).forEach(e=>{counter.rememberControlledFloor(e);confirmationDelays.push((f.elapsed-(e.event_timestamp_exact??e.event_time_seconds))*1000);});previous=cf;updates++;
     }
-    const logged=data.countedReps??[],times=validator.confirmed.map(e=>e.event_timestamp_exact);
-    return {available:true,replayRevision:BALL_TRACKER_REVISION,sourceTrackerRevision:data.trackerRevision,updates,accepted:validator.count,proposals:counter.count,rejected:validator.rejected.length,matchesRecordedAcceptedEvents:times.length===logged.length&&times.every((t,i)=>Math.abs(t-logged[i].time)<1e-8),savedDisplayCount:data.displayedCount,recordedAcceptedEvents:logged.length,unrecordedDisplayedEvents:Math.max(0,data.displayedCount-logged.length),limit:'Cached-input counter check only. This does not count the newly decoded video or establish real-dribble accuracy.'};
+    const hasLog=Array.isArray(data.countedReps),logged=data.countedReps??[],times=validator.confirmed.map(e=>e.event_timestamp_exact);
+    return {available:true,replayRevision:revision,sourceTrackerRevision:data.trackerRevision,updates,accepted:validator.count,proposals:counter.count,rejected:validator.rejected.length,confirmationDelayMs:distribution(confirmationDelays),matchesRecordedAcceptedEvents:hasLog?times.length===logged.length&&times.every((t,i)=>Math.abs(t-logged[i].time)<1e-8):null,savedDisplayCount:data.displayedCount,recordedAcceptedEvents:hasLog?logged.length:null,unrecordedDisplayedEvents:hasLog?Math.max(0,data.displayedCount-logged.length):null,limit:'Cached-input counter check only. This does not count the newly decoded video or establish real-dribble accuracy.'};
   }catch(error){return {available:false,reason:error.message};}
 }
 
@@ -122,3 +124,4 @@ export async function runRecordedProfile({detector,evidence,geometry:videoGeomet
   guard();
   return {schema:'courtstreak-recorded-profile-v1',revision:RECORDED_PROFILE_REVISION,completed:true,baselineSourceRevision:'850e140a57bde88b7c031bef47142e42e03f08e6',liveDefaultInputMode:detector.liveInputMode,provider:detector.provider,modelManifest:detector.modelManifest,protocol:{sampling:'Uniform active-log frame indices',pairCount:PROFILE_PAIR_COUNT,warmupPairs:1,alternatingOrder:true,sameFrozenFramePerPair:true,sameCropAndPosePerPair:true,tolerances:PROFILE_TOLERANCES},videoGeometry,summary:summarizeProfilePairs(pairs),counterReplay:replayProfileCounter(evidence),pairs,limitations:['Saved-video decoding, seeking and snapshot preparation are measured separately from detector execution.','The media-element time is the seek position; the exact decoded frame presentation timestamp is not available from this check. Each comparison uses one frozen canvas.','Compressed/count-overlay exports have fewer and different pixels than original live camera inputs. This is not a replay of original detector predictions.','No live camera, recording encoder, countdown or live timing watchdog ran. Live FPS, full-round completion and real-dribble accuracy were not measured.','Model-run timing includes tensor creation, execution-provider submission/wait and output transfer; it is not GPU-kernel time alone.','A paired microbenchmark can isolate processing costs but does not reproduce live camera/encoder contention or establish thermal cause.']};
 }
+

@@ -1,13 +1,13 @@
 import fs from 'node:fs';
 import {pathToFileURL} from 'node:url';
-import {BallIdentityTracker,GapAwareBounceCounter,PoundControlValidator,geometry} from '../src/lib/ai/poundCore.mjs';
+import {BallIdentityTracker,GapAwareBounceCounter,PoundControlValidator,geometry,percentile} from '../src/lib/ai/poundCore.mjs';
 
-export function replayBallLock(data,{handContinuity=false,objectBackgroundRadius=false,timedContinuity=false,directionalPeaks=false,timeWindows=false,strongContinuity=false}={}){
+export function replayBallLock(data,{handContinuity=false,objectBackgroundRadius=false,timedContinuity=false,directionalPeaks=false,timeWindows=false,strongContinuity=false,earlyConfirmation=false}={}){
  if(data.droppedFrameRecords)throw new Error('Early inputs were discarded; an exact identity replay is unavailable.');
  if(!Array.isArray(data.frames)||!Array.isArray(data.frameSize))throw new Error('Expected a CourtStreak round-evidence JSON.');
  const tracker=new BallIdentityTracker({handContinuity,objectBackgroundRadius,timedContinuity,strongContinuity});
- let counter=new GapAwareBounceCounter({directionalPeaks,timeWindows}),validator=new PoundControlValidator(),previous=0;
- const changedFrames=[],restoredFrames=[],lostFrames=[],events=[];
+ let counter=new GapAwareBounceCounter({directionalPeaks,timeWindows,earlyConfirmation}),validator=new PoundControlValidator(),previous=0;
+ const changedFrames=[],restoredFrames=[],lostFrames=[],events=[],confirmationDelays=[];
  let selectionMatches=0,selectedFrames=0,roiMismatches=0;
  for(const f of data.frames){
   const active=['active','review'].includes(f.inputPhase),phase=active?'drill':f.inputPhase;
@@ -21,15 +21,15 @@ export function replayBallLock(data,{handContinuity=false,objectBackgroundRadius
   if(!ball&&f.selected)lostFrames.push(f.frameId);
   const cf=f.counterFrame;
   if(cf==null||cf===previous)continue;
-  if(cf<previous){counter=new GapAwareBounceCounter({directionalPeaks,timeWindows});validator=new PoundControlValidator();previous=0;}
+  if(cf<previous){counter=new GapAwareBounceCounter({directionalPeaks,timeWindows,earlyConfirmation});validator=new PoundControlValidator();previous=0;}
   if(cf!==previous+1)throw new Error(`Missing counter input at frame ${f.frameId}.`);
   const g=ball?geometry(ball):null,measurement=g?[...g.center,g.diameter]:null;
   const proposals=counter.update(f.elapsed,measurement?measurement.slice(1):null,data.frameSize[1]);
-  validator.update(proposals,measurement,f.person,f.elapsed,data.timerSeconds??20).forEach(e=>counter.rememberControlledFloor(e));
+  validator.update(proposals,measurement,f.person,f.elapsed,data.timerSeconds??20).forEach(e=>{counter.rememberControlledFloor(e);confirmationDelays.push((f.elapsed-(e.event_timestamp_exact??e.event_time_seconds))*1000);});
   previous=cf;
  }
  for(const e of validator.confirmed)events.push({time:e.event_timestamp_exact??e.event_time_seconds,path:e.validation_path});
- return {handContinuity,objectBackgroundRadius,timedContinuity,directionalPeaks,frames:data.frames.length,selectionMatches,selectedFrames,changedFrames,restoredFrames,lostFrames,roiMismatches,proposed:counter.count,accepted:validator.count,events,
+ return {handContinuity,objectBackgroundRadius,timedContinuity,directionalPeaks,frames:data.frames.length,selectionMatches,selectedFrames,changedFrames,restoredFrames,lostFrames,roiMismatches,proposed:counter.count,accepted:validator.count,events,confirmationDelayMs:confirmationDelays.length?{samples:confirmationDelays.length,median:percentile(confirmationDelays,.5),p95:percentile(confirmationDelays,.95)}:null,
   limit:'Cached detections and poses only; no new model execution, live FPS, automatic labels, or device accuracy measurement.'};
 }
 
@@ -41,3 +41,4 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
    baseline:replayBallLock(data,{handContinuity:true,objectBackgroundRadius:true,timedContinuity:true,directionalPeaks:true,timeWindows:true}),candidate:replayBallLock(data,{handContinuity:true,objectBackgroundRadius:true,timedContinuity:true,directionalPeaks:true,timeWindows:true,strongContinuity:true})},null,2));
  }
 }
+
