@@ -92,3 +92,26 @@ export function corroboratedBallContinuation(candidates,samples,now,reference,pr
   velocity:confirmed?pending.center.map((v,i)=>v-previous.center[i]):null};
 }
 
+
+// An unambiguous, strong detector proposal at the visible feet may recover a
+// same-size descending ball after a short sampling gap. No positions are invented.
+// Control validation must still verify the return before accepting a rep.
+export function floorBallContinuation(candidates,samples,now,reference,person){
+ if(!Number.isFinite(now)||!Number.isFinite(reference)||!(reference>0)||!Array.isArray(candidates)||!Array.isArray(samples)||samples.length<8||!person)return null;
+ const last=samples.at(-1),before=samples.at(-2);
+ if(!last?.center?.every(Number.isFinite)||!before?.center?.every(Number.isFinite)||!Number.isFinite(last.at)||!Number.isFinite(before.at)||!(last.diameter>0)||!Number.isFinite(last.diameter))return null;
+ const gap=now-last.at,dt=last.at-before.at;
+ if(!(gap>=.08&&gap<=.18&&dt>0&&dt<=.15)||last.center[1]-before.center[1]<reference*.05)return null;
+ const ankles=[15,16];if(!ankles.every(i=>person.confidence?.[i]>=.7&&Array.isArray(person.xy?.[i])&&person.xy[i].length===2&&person.xy[i].every(Number.isFinite)&&person.xy[i][0]>0&&person.xy[i][1]>0))return null;
+ const footY=Math.max(...ankles.map(i=>person.xy[i][1]));const matches=[];
+ candidates.forEach((c,index)=>{
+  if(!c||!Array.isArray(c.box)||c.box.length!==4||![...c.box,c.score].every(Number.isFinite)||c.score<.75)return;
+  const [x1,y1,x2,y2]=c.box;if(x2<=x1||y2<=y1)return;
+  const d=Math.sqrt((x2-x1)*(y2-y1)),p=[(x1+x2)/2,(y1+y2)/2],dy=p[1]-last.center[1];
+  if(d/reference<.85||d/reference>1.25||d/last.diameter<.85||d/last.diameter>1.25)return;
+  if(Math.abs(p[0]-last.center[0])>reference*.5||dy<reference*2||dy>reference*5)return;
+  if(p[1]<footY-d*.5||p[1]>footY+d*1.5)return;
+  matches.push({index,envelope:Math.abs(dy)+reference});
+ });
+ return matches.length===1?matches[0]:null;
+}
