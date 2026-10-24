@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loadDetector } from '../../lib/ai/iphoneDetector.mjs';
-import { BALL_TRACKER_REVISION, EXPERIMENTAL_COUNTER_REVISION, BALL_IDENTITY_REVISION, BallIdentityTracker, createPoundCounter, PoundControlValidator, geometry } from '../../lib/ai/poundCore.mjs';
+import { BALL_TRACKER_REVISION, EXPERIMENTAL_COUNTER_REVISION, BALL_IDENTITY_REVISION, BallIdentityTracker, createPoundCounter, createPoundValidator, geometry } from '../../lib/ai/poundCore.mjs';
 import { CAMERA_REVIEW_REVISION, ReadinessClock } from '../../lib/ai/cameraReadiness.mjs';
 import { DrillRecording, recordingExtension } from '../../lib/ai/drillRecording.mjs';
 import { RoundEvidence, replayStart } from '../../lib/ai/roundEvidence.mjs';
@@ -18,7 +18,7 @@ const DURATION=20;
 const empty={body:false,hand:false,ball:false,floor:false,owned:false};
 const emptyClip={status:'idle',url:'',blob:null};
 const emptyCountedClip={...emptyClip,progress:0};
-function machine(freshFrames=false){return {phase:'idle',tracker:new BallIdentityTracker({handContinuity:freshFrames,objectBackgroundRadius:freshFrames,timedContinuity:freshFrames,strongContinuity:freshFrames,corroboratedContinuity:freshFrames,floorContinuity:freshFrames}),gate:new CameraPositionGate(),readiness:new ReadinessClock(),counter:createPoundCounter(freshFrames?EXPERIMENTAL_COUNTER_REVISION:BALL_TRACKER_REVISION),validator:new PoundControlValidator(),evidence:new RoundEvidence(),poseClock:new PoseRefreshClock(),person:null,ball:null,poseAt:-Infinity,times:[],goodSince:null,progress:0,count:0,left:DURATION,countdown:5,fps:0,checks:empty,message:'Place your phone on a stable support. Landscape gives you more room; portrait works too.',lastInference:0,started:null,detected:0,total:0};}
+function machine(freshFrames=false){return {phase:'idle',tracker:new BallIdentityTracker({handContinuity:freshFrames,objectBackgroundRadius:freshFrames,timedContinuity:freshFrames,strongContinuity:freshFrames,corroboratedContinuity:freshFrames,floorContinuity:freshFrames,turnContinuity:freshFrames}),gate:new CameraPositionGate(),readiness:new ReadinessClock(),counter:createPoundCounter(freshFrames?EXPERIMENTAL_COUNTER_REVISION:BALL_TRACKER_REVISION),validator:createPoundValidator(freshFrames?EXPERIMENTAL_COUNTER_REVISION:BALL_TRACKER_REVISION),evidence:new RoundEvidence(),poseClock:new PoseRefreshClock(),person:null,ball:null,poseAt:-Infinity,times:[],goodSince:null,progress:0,count:0,left:DURATION,countdown:5,fps:0,checks:empty,message:'Place your phone on a stable support. Landscape gives you more room; portrait works too.',lastInference:0,started:null,detected:0,total:0};}
 export default function IPhonePoundTest({freshFrames=false}){
  const navigate=useNavigate(),video=useRef(null),overlay=useRef(null),frame=useRef(null),m=useRef(machine(freshFrames)),detector=useRef(null),stream=useRef(null),raf=useRef(0),mounted=useRef(true),token=useRef(0),wake=useRef(null),audio=useRef(null);
  const [ui,setUI]=useState({...m.current}),[ratio,setRatio]=useState(16/9);
@@ -116,7 +116,7 @@ export default function IPhonePoundTest({freshFrames=false}){
     if(readiness.ready)s.progress=s.gate.update(readiness.elapsed,checks,s.ball,s.tracker,speedReady);
     s.message=!checks.valid?checks.message:!speedReady?'Checking tracking speed on this phone…':!s.tracker.ready()?'Basketball found. Confirming ball lock…':s.progress<1?'Good position. Confirming your frame…':'Position locked';
     if(s.times.length>8&&completed-s.times[0]>2&&s.fps<10)s.message='Tracking is too slow to count reliably on this phone. Close other tabs and retry. The drill will wait.';
-    if(s.progress>=1&&readiness.ready){s.phase='countdown';s.readiness.reset(now);s.counter=createPoundCounter(freshFrames?EXPERIMENTAL_COUNTER_REVISION:BALL_TRACKER_REVISION);s.validator=new PoundControlValidator();s.countdownAt=now;s.countdown=5;s.message='Position locked. Stay in view until Go.';s.lastCue=5;cue();}
+    if(s.progress>=1&&readiness.ready){s.phase='countdown';s.readiness.reset(now);s.counter=createPoundCounter(freshFrames?EXPERIMENTAL_COUNTER_REVISION:BALL_TRACKER_REVISION);s.validator=createPoundValidator(freshFrames?EXPERIMENTAL_COUNTER_REVISION:BALL_TRACKER_REVISION);s.countdownAt=now;s.countdown=5;s.message='Position locked. Stay in view until Go.';s.lastCue=5;cue();}
    }else if(s.phase==='countdown'){
     const readiness=s.readiness.update(now,checks.valid&&speedReady&&s.tracker.ready());s.rechecking=!readiness.ready;
     if(readiness.reset){

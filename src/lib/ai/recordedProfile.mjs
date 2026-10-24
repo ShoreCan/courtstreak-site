@@ -1,4 +1,4 @@
-import { createPoundCounter, PoundControlValidator, geometry, percentile } from './poundCore.mjs';
+import { createPoundCounter, createPoundValidator, geometry, percentile } from './poundCore.mjs';
 import { shareVideoLayout, RESULT_CARD_SECONDS } from './videoCountOverlay.mjs';
 
 export const RECORDED_PROFILE_REVISION='PROFILE 01';
@@ -77,9 +77,9 @@ export function replayProfileCounter(data) {
   if(data.droppedFrameRecords)return {available:false,reason:'The old log discarded early counter inputs.'};
   try{
     const revision=data.trackerRevision;
-    let counter=createPoundCounter(revision),validator=new PoundControlValidator(),previous=0,updates=0;
+    let counter=createPoundCounter(revision),validator=createPoundValidator(revision),previous=0,updates=0;
     const confirmationDelays=[];
-    for(const f of data.frames){const cf=f.counterFrame;if(cf==null||cf===previous)continue;if(cf<previous){counter=createPoundCounter(revision);validator=new PoundControlValidator();previous=0;}
+    for(const f of data.frames){const cf=f.counterFrame;if(cf==null||cf===previous)continue;if(cf<previous){counter=createPoundCounter(revision);validator=createPoundValidator(revision);previous=0;}
       if(cf!==previous+1)throw new Error('The saved counter inputs are incomplete.');
       const g=f.selected?geometry(f.selected):null,m=g?[...g.center,g.diameter]:null;
       const events=counter.update(f.elapsed,m?[m[1],m[2]]:null,data.frameSize[1]);

@@ -2,11 +2,11 @@ import fs from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import {BallIdentityTracker,GapAwareBounceCounter,PoundControlValidator,geometry,percentile} from '../src/lib/ai/poundCore.mjs';
 
-export function replayBallLock(data,{handContinuity=false,objectBackgroundRadius=false,timedContinuity=false,directionalPeaks=false,timeWindows=false,strongContinuity=false,earlyConfirmation=false,corroboratedContinuity=false,floorContinuity=false}={}){
+export function replayBallLock(data,{handContinuity=false,objectBackgroundRadius=false,timedContinuity=false,directionalPeaks=false,timeWindows=false,strongContinuity=false,earlyConfirmation=false,corroboratedContinuity=false,floorContinuity=false,turnContinuity=false,lowControlledPounds=false}={}){
  if(data.droppedFrameRecords)throw new Error('Early inputs were discarded; an exact identity replay is unavailable.');
  if(!Array.isArray(data.frames)||!Array.isArray(data.frameSize))throw new Error('Expected a CourtStreak round-evidence JSON.');
- const tracker=new BallIdentityTracker({handContinuity,objectBackgroundRadius,timedContinuity,strongContinuity,corroboratedContinuity,floorContinuity});
- let counter=new GapAwareBounceCounter({directionalPeaks,timeWindows,earlyConfirmation}),validator=new PoundControlValidator(),previous=0;
+ const tracker=new BallIdentityTracker({handContinuity,objectBackgroundRadius,timedContinuity,strongContinuity,corroboratedContinuity,floorContinuity,turnContinuity});
+ let counter=new GapAwareBounceCounter({directionalPeaks,timeWindows,earlyConfirmation,lowControlledPounds}),validator=new PoundControlValidator({lowControlledPounds}),previous=0;
  const changedFrames=[],restoredFrames=[],lostFrames=[],events=[],confirmationDelays=[];
  let selectionMatches=0,selectedFrames=0,roiMismatches=0;
  for(const f of data.frames){
@@ -21,7 +21,7 @@ export function replayBallLock(data,{handContinuity=false,objectBackgroundRadius
   if(!ball&&f.selected)lostFrames.push(f.frameId);
   const cf=f.counterFrame;
   if(cf==null||cf===previous)continue;
-  if(cf<previous){counter=new GapAwareBounceCounter({directionalPeaks,timeWindows,earlyConfirmation});validator=new PoundControlValidator();previous=0;}
+  if(cf<previous){counter=new GapAwareBounceCounter({directionalPeaks,timeWindows,earlyConfirmation,lowControlledPounds});validator=new PoundControlValidator({lowControlledPounds});previous=0;}
   if(cf!==previous+1)throw new Error(`Missing counter input at frame ${f.frameId}.`);
   const g=ball?geometry(ball):null,measurement=g?[...g.center,g.diameter]:null;
   const proposals=counter.update(f.elapsed,measurement?measurement.slice(1):null,data.frameSize[1]);

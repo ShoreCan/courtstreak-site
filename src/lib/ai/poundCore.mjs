@@ -2,17 +2,19 @@
 // All coordinates use the SAME mirrored, 1280px-wide frame as the Python engine.
 import {timedBallContinuation,strongBallContinuation,corroboratedBallContinuation,floorBallContinuation} from './ballTiming.mjs';
 export const BALL_TRACKER_REVISION = 'COUNT 03';
-export const EXPERIMENTAL_COUNTER_REVISION = 'COUNT 06';
-export const BALL_IDENTITY_REVISION = 'LOCK 07';
+export const EXPERIMENTAL_COUNTER_REVISION = 'COUNT 07';
+export const BALL_IDENTITY_REVISION = 'LOCK 08';
 // Both live initialization/reset and cached-input replay must resolve the same settings.
 export function poundCounterOptions(revision) {
  if(revision==='COUNT 03')return {directionalPeaks:false,timeWindows:false};
  if(revision==='COUNT 04')return {directionalPeaks:true,timeWindows:false};
  if(revision==='COUNT 05')return {directionalPeaks:true,timeWindows:true};
  if(revision==='COUNT 06')return {directionalPeaks:true,timeWindows:true,earlyConfirmation:true};
+ if(revision==='COUNT 07')return {directionalPeaks:true,timeWindows:true,earlyConfirmation:true,lowControlledPounds:true};
  throw new Error(`Unsupported counter revision: ${String(revision)}. Exact replay is unavailable.`);
 }
 export function createPoundCounter(revision){return new GapAwareBounceCounter(poundCounterOptions(revision));}
+export function createPoundValidator(revision){return new PoundControlValidator({lowControlledPounds:!!poundCounterOptions(revision).lowControlledPounds});}
 export const median = a => percentile(a, .5);
 export function percentile(a, q) { const s = [...a].sort((a,b)=>a-b); if (!s.length) return 0; const p=(s.length-1)*q, i=Math.floor(p); return s[i]+(s[Math.ceil(p)]-s[i])*(p-i); }
 const distance=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
@@ -20,7 +22,7 @@ const center=b=>[(b[0]+b[2])/2,(b[1]+b[3])/2];
 export const geometry = c => ({center:center(c.box), diameter:Math.sqrt(Math.max((c.box[2]-c.box[0])*(c.box[3]-c.box[1]),1))});
 const wrists = p => p ? [9,10].filter(i=>p.confidence[i]>=.15 && p.xy[i][0]>0 && p.xy[i][1]>0).map(i=>p.xy[i]) : [];
 export class BallIdentityTracker {
- constructor({handContinuity=false,objectBackgroundRadius=false,timedContinuity=false,strongContinuity=false,corroboratedContinuity=false,floorContinuity=false}={}){this.floorContinuity=floorContinuity;this.corroboratedContinuity=corroboratedContinuity;this.provisionalBall=null;this.strongContinuity=strongContinuity;this.handContinuity=handContinuity;this.objectBackgroundRadius=objectBackgroundRadius;this.timedContinuity=timedContinuity;this.samples=[];this.last=null;this.velocity=[0,0];this.diameter=null;this.missed=0;this.diameters=[];this.lanes=[];this.background=[];this.frame=0;}
+ constructor({handContinuity=false,objectBackgroundRadius=false,timedContinuity=false,strongContinuity=false,corroboratedContinuity=false,floorContinuity=false,turnContinuity=false}={}){this.turnContinuity=turnContinuity;this.floorContinuity=floorContinuity;this.corroboratedContinuity=corroboratedContinuity;this.provisionalBall=null;this.strongContinuity=strongContinuity;this.handContinuity=handContinuity;this.objectBackgroundRadius=objectBackgroundRadius;this.timedContinuity=timedContinuity;this.samples=[];this.last=null;this.velocity=[0,0];this.diameter=null;this.missed=0;this.diameters=[];this.lanes=[];this.background=[];this.frame=0;}
  typical(){return this.diameters.length?median(this.diameters):this.diameter;}
  lane(){return this.lanes.length?median(this.lanes):this.last?.[0];}
  ready(){const d=this.typical(); return this.diameters.length>=12 && this.lanes.length>=12 && d>=38 && percentile(this.diameters,.9)-percentile(this.diameters,.1)<=Math.max(28,d*.55) && percentile(this.lanes,.9)-percentile(this.lanes,.1)<=Math.max(95,d*1.8);}
@@ -36,9 +38,9 @@ export class BallIdentityTracker {
   }else{
    const predicted=this.last.map((v,i)=>v+this.velocity[i]*Math.min(this.missed+1,3));const typical=this.typical(),lane=this.lane(); const scored=[],reacquired=[];
    const timed=this.timedContinuity&&phase==='drill'?timedBallContinuation(candidates,this.samples,now,typical):null;
-   const floor=this.floorContinuity&&phase==='drill'&&this.ready()?floorBallContinuation(candidates,this.samples,now,typical,person):null;
+   const floor=this.floorContinuity&&phase==='drill'&&this.ready()?floorBallContinuation(candidates,this.samples,now,typical,person,{allowApexReturn:this.turnContinuity}):null;
    const strong=this.strongContinuity&&phase==='drill'?strongBallContinuation(candidates,this.samples,now,typical,this.velocity,this.missed):null;
-   corroboratedRecovery=this.corroboratedContinuity&&phase==='drill'&&this.ready()?corroboratedBallContinuation(candidates,this.samples,now,typical,this.provisionalBall):null;
+   corroboratedRecovery=this.corroboratedContinuity&&phase==='drill'&&this.ready()?corroboratedBallContinuation(candidates,this.samples,now,typical,this.provisionalBall,{movingRecovery:this.turnContinuity,person}):null;
    this.provisionalBall=corroboratedRecovery?.pending??null;
    candidates.forEach((c,i)=>{const g=geometry(c),p=g.center,d=g.diameter;
     const floorCandidate=floor?.index===i,timedCandidate=timed?.index===i||floorCandidate,corroboratedCandidate=corroboratedRecovery?.index===i;
@@ -53,7 +55,10 @@ export class BallIdentityTracker {
     // A large foreground ball must not enlarge the exclusion zone around a
     // smaller remembered object (for example a shoe). Keep the same .65
     // factor and 28px minimum, but anchor the opt-in radius to that object.
-    if(!recoveringAtHand&&!continuingAtHand&&this.background.some(b=>b.observations>=5&&distance(p,b.center)<=(this.objectBackgroundRadius&&phase==='drill'?Math.max(28,b.diameter*.65):Math.max(28,d*.65,b.diameter*.65))&&!((timedCandidate||strong===i||corroboratedCandidate)&&b.diameter<d*.75)))return;
+    // Two strong proposals must demonstrate motion near the feet before the
+    // new path can cross a remembered object of comparable size. A larger
+    // remembered object still vetoes selection.
+    if(!recoveringAtHand&&!continuingAtHand&&this.background.some(b=>b.observations>=5&&distance(p,b.center)<=(this.objectBackgroundRadius&&phase==='drill'?Math.max(28,b.diameter*.65):Math.max(28,d*.65,b.diameter*.65))&&!(((timedCandidate||strong===i||corroboratedCandidate)&&b.diameter<d*.75)||(corroboratedCandidate&&corroboratedRecovery.moving&&b.diameter<=d*1.25))))return;
     if(typical!=null&&(d/typical<.58||d/typical>1.68))return;
     const reference=Math.max(typical||this.diameter||d,28),handDistance=hands.length?Math.min(...hands.map(v=>distance(p,v))):Infinity;
     if(phase==='drill'&&this.missed&&handDistance<=Math.max(120,d*1.65))reacquired.push([handDistance/Math.max(d,24),i]);
@@ -87,8 +92,8 @@ export class BallIdentityTracker {
  }
 }
 export class GapAwareBounceCounter {
- constructor({directionalPeaks=false,timeWindows=false,earlyConfirmation=false}={}){this.earlyConfirmation=earlyConfirmation;this.timeWindows=timeWindows;this.directionalPeaks=directionalPeaks;this.points=[];this.next=5;this.last=null;this.count=0;this.floorSamples=[];}
- rememberControlledFloor(e){if(e.validation_path==='clean_full_pound'&&e.bottom_center_y!=null&&e.ball_scale_pixels!=null){this.floorSamples.push([e.bottom_center_y,e.ball_scale_pixels]);this.floorSamples=this.floorSamples.slice(-16);}}
+ constructor({directionalPeaks=false,timeWindows=false,earlyConfirmation=false,lowControlledPounds=false}={}){this.lowControlledPounds=lowControlledPounds;this.earlyConfirmation=earlyConfirmation;this.timeWindows=timeWindows;this.directionalPeaks=directionalPeaks;this.points=[];this.next=5;this.last=null;this.count=0;this.floorSamples=[];}
+ rememberControlledFloor(e){if(this.lowControlledPounds&&e.validation_path==='controlled_low_pound')this.last=Math.max(this.last??-1,e.event_frame-1);if((e.validation_path==='clean_full_pound'||e.validation_path==='controlled_low_pound')&&e.bottom_center_y!=null&&e.ball_scale_pixels!=null){this.floorSamples.push([e.bottom_center_y,e.ball_scale_pixels]);this.floorSamples=this.floorSamples.slice(-16);}}
  floorReference(){if(this.floorSamples.length<6)return null;const ys=this.floorSamples.map(p=>p[0]),d=median(this.floorSamples.map(p=>p[1])),y=median(ys);if(median(ys.map(v=>Math.abs(v-y)))>d*.30)return null;return {center_y:y,diameter:d,trusted_contacts:this.floorSamples.length};}
  // A long capture interval can hide the lowest point without a null detection.
  // Intersect the measured incoming/outgoing segments only across that interval.
@@ -131,8 +136,8 @@ export class GapAwareBounceCounter {
    const e=this.evaluate(c,height);
    // Keep the full slow-motion window unless enough clean return motion
    // already satisfies the validator's amplitude rules. Never lower gates.
-   if(waiting&&(!e||e.validation_path!=='clean_full_pound'||e.rise_ball_diameters<1.5||e.rise_ball_diameters<e.down_ball_diameters*.42))break;
-   if(e){e.count=++this.count;events.push(e);this.last=c;}
+   if(waiting&&!(e&&(e.validation_path==='controlled_low_pound'||(e.validation_path==='clean_full_pound'&&e.rise_ball_diameters>=1.5&&e.rise_ball_diameters>=e.down_ball_diameters*.42))))break;
+   if(e){e.count=++this.count;events.push(e);if(e.validation_path!=='controlled_low_pound')this.last=c;}
    this.next++;
   }
   return events;
@@ -158,20 +163,36 @@ export class GapAwareBounceCounter {
   const reference=this.floorReference();
   const gapContact=!clean&&!recovered&&reference&&Math.abs(p.y-reference.center_y)>d*.45?this.samplingGapContact(c,reference,d):null;
   const anchored=reference&&p.observed&&d/reference.diameter>=.8&&d/reference.diameter<=1.2&&(Math.abs(p.y-reference.center_y)<=d*.45||gapContact!==null)&&down>=d&&rise>=d&&window.filter(p=>p.observed).length/window.length>=.7;
-  if(!clean&&!recovered&&!anchored)return null;
-  if(this.last!==null){const usable=a.slice(this.last+1,c).filter(p=>p.y!==null).map(p=>p.y);if(!usable.length||a[this.last].y-Math.min(...usable)<Math.max(motion*.65,Math.max(motion,d*1.2)))return null;}
+  let low=null;
+  if(this.lowControlledPounds&&!clean&&!recovered&&!anchored&&p.observed&&!p.reconstructed){
+   let left=c,right=c;
+   while(left>start&&a[left-1].observed&&!a[left-1].reconstructed&&a[left-1].y<=a[left].y)left--;
+   while(right+1<stop&&a[right+1].observed&&!a[right+1].reconstructed&&a[right+1].y<=a[right].y)right++;
+   const localDown=p.y-a[left].y,localRise=p.y-a[right].y;
+   if(c-left>=2&&right-c>=2&&localDown>=d*.6&&localRise>=d*.6
+    &&a.slice(left,right+1).every(q=>q.observed&&!q.reconstructed&&q.diameter/d>=.8&&q.diameter/d<=1.25)){
+    low={start:a[left].timestamp,end:a[right].timestamp,down:localDown/d,rise:localRise/d};
+   }
+  }
+  if(!clean&&!recovered&&!anchored&&!low)return null;
+  if(this.last!==null){const usable=a.slice(this.last+1,c).filter(p=>p.y!==null).map(p=>p.y);
+   const shortReturn=low||(this.lowControlledPounds&&anchored);
+   const peak=shortReturn?Math.max(a[this.last].y,p.y):a[this.last].y,minimum=shortReturn?d*.6:Math.max(motion*.65,Math.max(motion,d*1.2));
+   if(!usable.length||peak-Math.min(...usable)<minimum)return null;
+  }
   if(window.filter(p=>p.observed).length/window.length<.35)return null;
   // Preserve Python rounding: these fields are consumed by the control validator.
-  const eventTime=anchored&&gapContact?gapContact.timestamp:p.timestamp;
-  return {event_frame:p.frame,event_timestamp_exact:eventTime,event_time_seconds:+eventTime.toFixed(3),bottom_center_y:p.y,ball_scale_pixels:d,floor_reference:reference,down_ball_diameters:+(down/Math.max(d,1)).toFixed(3),rise_ball_diameters:+(rise/Math.max(d,1)).toFixed(3),validation_path:clean?'clean_full_pound':recovered?'gap_recovered_pound':'floor_anchored_pound',...(anchored&&gapContact?{sampling_gap_contact:gapContact}:{})};
+  const eventTime=!low&&anchored&&gapContact?gapContact.timestamp:p.timestamp;
+  return {event_frame:p.frame,event_timestamp_exact:eventTime,event_time_seconds:+eventTime.toFixed(3),bottom_center_y:p.y,ball_scale_pixels:d,floor_reference:reference,down_ball_diameters:+(down/Math.max(d,1)).toFixed(3),rise_ball_diameters:+(rise/Math.max(d,1)).toFixed(3),validation_path:clean?'clean_full_pound':recovered?'gap_recovered_pound':low?'controlled_low_pound':'floor_anchored_pound',...(low?{low_control_window:low}:{}),...(anchored&&gapContact?{sampling_gap_contact:gapContact}:{})};
  }
 }
 export class PoundControlValidator {
- constructor(){this.frame=0;this.count=0;this.pending=[];this.confirmed=[];this.rejected=[];this.context=[];}
+ constructor({lowControlledPounds=false}={}){this.lowControlledPounds=lowControlledPounds;this.frame=0;this.count=0;this.pending=[];this.confirmed=[];this.rejected=[];this.context=[];}
  update(proposals,measurement,person,now,deadline=Infinity){
   this.frame++;
   const kneeY=person&&[13,14].every(i=>person.confidence[i]>=.5&&person.xy[i][0]>0&&person.xy[i][1]>0)?Math.min(person.xy[13][1],person.xy[14][1]):null;
-  this.context.push({frame:this.frame,kneeY});this.context=this.context.slice(-64);
+  const visibleFeet=person&&[15,16].every(i=>person.confidence[i]>=.7&&Array.isArray(person.xy[i])&&person.xy[i].length===2&&person.xy[i].every(Number.isFinite)&&person.xy[i][0]>0&&person.xy[i][1]>0);
+  this.context.push({frame:this.frame,kneeY,time:now,measurement:measurement?[...measurement]:null,feetY:visibleFeet?Math.max(person.xy[15][1],person.xy[16][1]):null,handDistance:null,bodyOffset:null});this.context=this.context.slice(-64);
   // Match the newer review's floor-contact timing: no pre-Go or post-deadline reps.
   proposals.filter(p=>(p.event_timestamp_exact??p.event_time_seconds)>=0&&(p.event_timestamp_exact??p.event_time_seconds)<deadline).forEach(p=>this.pending.push({...p,proposal_frame:this.frame,event_knee_y:this.context.find(c=>c.frame===p.event_frame)?.kneeY??null,best_hand_distance_ball_diameters:null,best_body_offset_units:null}));
   let hd=null,bo=null;
@@ -181,6 +202,7 @@ export class PoundControlValidator {
    const bw=Math.max(sw,(p.box[2]-p.box[0])*.28,d);
    bo=p.confidence[11]>=.20&&p.confidence[12]>=.20?Math.abs(x-(p.xy[11][0]+p.xy[12][0])/2)/Math.max(bw,1):99;
   }
+  Object.assign(this.context.at(-1),{handDistance:hd,bodyOffset:bo});
   for(const item of this.pending){
    if(hd!==null&&(item.best_hand_distance_ball_diameters===null||hd<item.best_hand_distance_ball_diameters)){item.best_hand_distance_ball_diameters=hd;item.best_body_offset_units=bo;}
   }
@@ -191,7 +213,18 @@ export class PoundControlValidator {
    const clean=p.validation_path==='clean_full_pound'&&rise>=1.5&&rise>=down*.42&&hd!==null&&hd<=2.6&&bo!==null&&bo<=2.2;
    const recovered=p.validation_path==='gap_recovered_pound'&&down>=1.25&&rise>=1.25&&hd!==null&&hd<=1.8&&bo!==null&&bo<=1.65;
    const floor=p.validation_path==='floor_anchored_pound'&&p.floor_reference&&down>=1&&rise>=1&&rise>=down*.42&&hd!==null&&hd<=1.8&&bo!==null&&bo<=1.65;
-   if(clean||recovered||floor){p.count=++this.count;p.control_status='confirmed';events.push(p);this.confirmed.push(p);}
+   let low=false;
+   if(this.lowControlledPounds&&p.validation_path==='controlled_low_pound'&&p.low_control_window){
+    const contact=this.context.find(c=>c.frame===p.event_frame),d=p.ball_scale_pixels,w=p.low_control_window;
+    const known=p.floor_reference&&d/p.floor_reference.diameter>=.8&&d/p.floor_reference.diameter<=1.2&&Math.abs(p.bottom_center_y-p.floor_reference.center_y)<=d*.3;
+    const feet=contact?.feetY!=null&&p.bottom_center_y>=contact.feetY-d*.25&&p.bottom_center_y<=contact.feetY+d*.9;
+    const owned=c=>c.measurement&&c.handDistance!==null&&c.handDistance<=1.1&&c.bodyOffset!==null&&c.bodyOffset<=2.2&&c.measurement[1]<=p.bottom_center_y-d*.6;
+    const time=p.event_timestamp_exact??p.event_time_seconds;
+    const handBefore=this.context.some(c=>c.time>=w.start-.04&&c.time<time&&owned(c));
+    const handAfter=this.context.some(c=>c.time>time&&c.time<=w.end+.04&&owned(c));
+    low=!!(contact?.measurement&&(known||feet)&&w.down>=.6&&w.rise>=.6&&handBefore&&handAfter);
+   }
+   if(clean||recovered||floor||low){p.count=++this.count;p.control_status='confirmed';events.push(p);this.confirmed.push(p);}
    else if(this.frame-p.proposal_frame>=14){p.control_status='rejected_mishandle';this.rejected.push(p);}else remaining.push(p);
   }
   this.pending=remaining;return events;

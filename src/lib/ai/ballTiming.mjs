@@ -62,7 +62,7 @@ export function strongBallContinuation(candidates,samples,now,reference,velocity
 
 // Reacquire only an observed downward continuation corroborated on two
 // consecutive detector passes. This never extrapolates a position or creates a bounce.
-export function corroboratedBallContinuation(candidates,samples,now,reference,previous){
+export function corroboratedBallContinuation(candidates,samples,now,reference,previous,{movingRecovery=false,person=null}={}){
  if(!Number.isFinite(now)||!Number.isFinite(reference)||!(reference>0)||samples.length<8)return null;
  const last=samples.at(-1),before=samples.at(-2),gap=now-last.at;
  if(!last?.center?.every(Number.isFinite)||!before?.center?.every(Number.isFinite)
@@ -82,26 +82,43 @@ export function corroboratedBallContinuation(candidates,samples,now,reference,pr
  });
  if(matches.length!==1)return null;
  const pending=matches[0],dt=previous?now-previous.at:0;
+ // Unlike ordinary corroboration, this stricter proof requires two strong
+ // observations with substantial downward motion close to the visible feet.
+ const moving=movingRecovery&&previous&&Array.isArray(previous.center)&&previous.center.length===2&&previous.center.every(Number.isFinite)&&previous.score>=.9&&pending.score>=.9
+  &&dt>0&&dt<=.08&&pending.diameter/previous.diameter>=.9&&pending.diameter/previous.diameter<=1.1
+  &&Math.abs(pending.center[0]-previous.center[0])<=reference*.2
+  &&pending.center[1]-previous.center[1]>=reference*.4
+  &&distance(pending.center,previous.center)<=reference*1.5
+  &&[15,16].every(i=>person?.confidence?.[i]>=.7&&Array.isArray(person.xy?.[i])&&person.xy[i].length===2&&person.xy[i].every(Number.isFinite)&&person.xy[i][0]>0&&person.xy[i][1]>0)
+  &&pending.center[1]>=Math.max(person.xy[15][1],person.xy[16][1])-pending.diameter*.5
+  &&pending.center[1]<=Math.max(person.xy[15][1],person.xy[16][1])+pending.diameter*1.5;
  const confirmed=previous&&previous.center?.every(Number.isFinite)&&Number.isFinite(previous.diameter)&&previous.diameter>0
   &&previous.score>=.1&&dt>0&&dt<=.12&&pending.score>=.4
   &&pending.diameter/previous.diameter>=.8&&pending.diameter/previous.diameter<=1.2
   &&Math.abs(pending.center[0]-previous.center[0])<=reference*.35
   &&pending.center[1]>=previous.center[1]-reference*.08
   &&distance(pending.center,previous.center)<=reference*1.2;
- return {pending,index:confirmed?pending.index:null,
-  velocity:confirmed?pending.center.map((v,i)=>v-previous.center[i]):null};
+ return {pending,index:(confirmed||moving)?pending.index:null,moving:!!moving,
+  velocity:(confirmed||moving)?pending.center.map((v,i)=>v-previous.center[i]):null};
 }
 
 
 // An unambiguous, strong detector proposal at the visible feet may recover a
-// same-size descending ball after a short sampling gap. No positions are invented.
+// same-size ball after a short sampling gap. The opt-in apex return also needs
+// a recent observed floor position and an ascent ending near the right wrist.
+// No positions are invented.
 // Control validation must still verify the return before accepting a rep.
-export function floorBallContinuation(candidates,samples,now,reference,person){
+export function floorBallContinuation(candidates,samples,now,reference,person,{allowApexReturn=false}={}){
  if(!Number.isFinite(now)||!Number.isFinite(reference)||!(reference>0)||!Array.isArray(candidates)||!Array.isArray(samples)||samples.length<8||!person)return null;
  const last=samples.at(-1),before=samples.at(-2);
  if(!last?.center?.every(Number.isFinite)||!before?.center?.every(Number.isFinite)||!Number.isFinite(last.at)||!Number.isFinite(before.at)||!(last.diameter>0)||!Number.isFinite(last.diameter))return null;
  const gap=now-last.at,dt=last.at-before.at;
- if(!(gap>=.08&&gap<=.18&&dt>0&&dt<=.15)||last.center[1]-before.center[1]<reference*.05)return null;
+ if(!(gap>=.08&&gap<=.18&&dt>0&&dt<=(allowApexReturn ? .2 : .15)))return null;
+ const descending=dt<=.15&&last.center[1]-before.center[1]>=reference*.05;
+ const wrist=person.xy?.[10];
+ const apex=allowApexReturn&&last.center[1]-before.center[1]<=-reference*.2&&person.confidence?.[10]>=.7
+  &&Array.isArray(wrist)&&wrist.every(Number.isFinite)&&distance(last.center,wrist)<=reference*1.2;
+ if(!descending&&!apex)return null;
  const ankles=[15,16];if(!ankles.every(i=>person.confidence?.[i]>=.7&&Array.isArray(person.xy?.[i])&&person.xy[i].length===2&&person.xy[i].every(Number.isFinite)&&person.xy[i][0]>0&&person.xy[i][1]>0))return null;
  const footY=Math.max(...ankles.map(i=>person.xy[i][1]));const matches=[];
  candidates.forEach((c,index)=>{
@@ -111,6 +128,10 @@ export function floorBallContinuation(candidates,samples,now,reference,person){
   if(d/reference<.85||d/reference>1.25||d/last.diameter<.85||d/last.diameter>1.25)return;
   if(Math.abs(p[0]-last.center[0])>reference*.5||dy<reference*2||dy>reference*5)return;
   if(p[1]<footY-d*.5||p[1]>footY+d*1.5)return;
+  if(!descending){
+   const prior=samples.some(q=>Number.isFinite(q?.at)&&Array.isArray(q.center)&&q.center.length===2&&last.at-q.at>0&&last.at-q.at<=.6&&q.center?.every(Number.isFinite)&&q.diameter/reference>=.85&&q.diameter/reference<=1.25&&q.center[1]-last.center[1]>=reference*1.2&&Math.abs(q.center[1]-p[1])<=reference*.5&&Math.abs(q.center[0]-p[0])<=reference*.5);
+   if(c.score<.9||!prior)return;
+  }
   matches.push({index,envelope:Math.abs(dy)+reference});
  });
  return matches.length===1?matches[0]:null;
