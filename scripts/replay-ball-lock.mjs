@@ -2,10 +2,10 @@ import fs from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import {BallIdentityTracker,GapAwareBounceCounter,PoundControlValidator,geometry,percentile} from '../src/lib/ai/poundCore.mjs';
 
-export function replayBallLock(data,{handContinuity=false,objectBackgroundRadius=false,timedContinuity=false,directionalPeaks=false,timeWindows=false,strongContinuity=false,earlyConfirmation=false}={}){
+export function replayBallLock(data,{handContinuity=false,objectBackgroundRadius=false,timedContinuity=false,directionalPeaks=false,timeWindows=false,strongContinuity=false,earlyConfirmation=false,corroboratedContinuity=false}={}){
  if(data.droppedFrameRecords)throw new Error('Early inputs were discarded; an exact identity replay is unavailable.');
  if(!Array.isArray(data.frames)||!Array.isArray(data.frameSize))throw new Error('Expected a CourtStreak round-evidence JSON.');
- const tracker=new BallIdentityTracker({handContinuity,objectBackgroundRadius,timedContinuity,strongContinuity});
+ const tracker=new BallIdentityTracker({handContinuity,objectBackgroundRadius,timedContinuity,strongContinuity,corroboratedContinuity});
  let counter=new GapAwareBounceCounter({directionalPeaks,timeWindows,earlyConfirmation}),validator=new PoundControlValidator(),previous=0;
  const changedFrames=[],restoredFrames=[],lostFrames=[],events=[],confirmationDelays=[];
  let selectionMatches=0,selectedFrames=0,roiMismatches=0;

@@ -1,9 +1,9 @@
 // Right-hand pound browser port of the saved CourtStreak 0.7.8 count-repair baseline.
 // All coordinates use the SAME mirrored, 1280px-wide frame as the Python engine.
-import {timedBallContinuation,strongBallContinuation} from './ballTiming.mjs';
+import {timedBallContinuation,strongBallContinuation,corroboratedBallContinuation} from './ballTiming.mjs';
 export const BALL_TRACKER_REVISION = 'COUNT 03';
 export const EXPERIMENTAL_COUNTER_REVISION = 'COUNT 06';
-export const BALL_IDENTITY_REVISION = 'LOCK 05';
+export const BALL_IDENTITY_REVISION = 'LOCK 06';
 // Both live initialization/reset and cached-input replay must resolve the same settings.
 export function poundCounterOptions(revision) {
  if(revision==='COUNT 03')return {directionalPeaks:false,timeWindows:false};
@@ -20,13 +20,13 @@ const center=b=>[(b[0]+b[2])/2,(b[1]+b[3])/2];
 export const geometry = c => ({center:center(c.box), diameter:Math.sqrt(Math.max((c.box[2]-c.box[0])*(c.box[3]-c.box[1]),1))});
 const wrists = p => p ? [9,10].filter(i=>p.confidence[i]>=.15 && p.xy[i][0]>0 && p.xy[i][1]>0).map(i=>p.xy[i]) : [];
 export class BallIdentityTracker {
- constructor({handContinuity=false,objectBackgroundRadius=false,timedContinuity=false,strongContinuity=false}={}){this.strongContinuity=strongContinuity;this.handContinuity=handContinuity;this.objectBackgroundRadius=objectBackgroundRadius;this.timedContinuity=timedContinuity;this.samples=[];this.last=null;this.velocity=[0,0];this.diameter=null;this.missed=0;this.diameters=[];this.lanes=[];this.background=[];this.frame=0;}
+ constructor({handContinuity=false,objectBackgroundRadius=false,timedContinuity=false,strongContinuity=false,corroboratedContinuity=false}={}){this.corroboratedContinuity=corroboratedContinuity;this.provisionalBall=null;this.strongContinuity=strongContinuity;this.handContinuity=handContinuity;this.objectBackgroundRadius=objectBackgroundRadius;this.timedContinuity=timedContinuity;this.samples=[];this.last=null;this.velocity=[0,0];this.diameter=null;this.missed=0;this.diameters=[];this.lanes=[];this.background=[];this.frame=0;}
  typical(){return this.diameters.length?median(this.diameters):this.diameter;}
  lane(){return this.lanes.length?median(this.lanes):this.last?.[0];}
  ready(){const d=this.typical(); return this.diameters.length>=12 && this.lanes.length>=12 && d>=38 && percentile(this.diameters,.9)-percentile(this.diameters,.1)<=Math.max(28,d*.55) && percentile(this.lanes,.9)-percentile(this.lanes,.1)<=Math.max(95,d*1.8);}
  roi(w,h){const x=this.lane(),d=this.typical()||72; if(x==null)return [0,0,w,h]; const half=Math.floor(Math.max(210,Math.min(w*.28,d*2.7))); return [Math.max(0,Math.floor(x)-half),Math.floor(h*.14),Math.min(w,Math.floor(x)+half),h];}
  select(candidates,person,phase,w,h,now=null){
-  this.frame++; const hands=wrists(person); let selected=null, owned=false;
+  this.frame++; const hands=wrists(person); let selected=null, owned=false,corroboratedRecovery=null;
   if(phase==='setup'||!this.last){
    let best=Infinity;
    candidates.forEach((c,i)=>{const g=geometry(c);let score=hands.length?Math.min(...hands.map(p=>distance(g.center,p)))/Math.max(g.diameter,24)-c.score*.35:distance(g.center,[w*.5,h*.48])/Math.max(w,h)-c.score*.15;
@@ -37,8 +37,10 @@ export class BallIdentityTracker {
    const predicted=this.last.map((v,i)=>v+this.velocity[i]*Math.min(this.missed+1,3));const typical=this.typical(),lane=this.lane(); const scored=[],reacquired=[];
    const timed=this.timedContinuity&&phase==='drill'?timedBallContinuation(candidates,this.samples,now,typical):null;
    const strong=this.strongContinuity&&phase==='drill'?strongBallContinuation(candidates,this.samples,now,typical,this.velocity,this.missed):null;
+   corroboratedRecovery=this.corroboratedContinuity&&phase==='drill'&&this.ready()?corroboratedBallContinuation(candidates,this.samples,now,typical,this.provisionalBall):null;
+   this.provisionalBall=corroboratedRecovery?.pending??null;
    candidates.forEach((c,i)=>{const g=geometry(c),p=g.center,d=g.diameter;
-    const timedCandidate=timed?.index===i;
+    const timedCandidate=timed?.index===i,corroboratedCandidate=corroboratedRecovery?.index===i;
     // Preserve a nearby hand-owned continuation as well as the existing reacquisition.
     // Background memory must not alternate between rejecting and recovering a held ball.
     // The original setup-size and subsequent motion gates still apply.
@@ -50,15 +52,15 @@ export class BallIdentityTracker {
     // A large foreground ball must not enlarge the exclusion zone around a
     // smaller remembered object (for example a shoe). Keep the same .65
     // factor and 28px minimum, but anchor the opt-in radius to that object.
-    if(!recoveringAtHand&&!continuingAtHand&&this.background.some(b=>b.observations>=5&&distance(p,b.center)<=(this.objectBackgroundRadius&&phase==='drill'?Math.max(28,b.diameter*.65):Math.max(28,d*.65,b.diameter*.65))&&!((timedCandidate||strong===i)&&b.diameter<d*.75)))return;
+    if(!recoveringAtHand&&!continuingAtHand&&this.background.some(b=>b.observations>=5&&distance(p,b.center)<=(this.objectBackgroundRadius&&phase==='drill'?Math.max(28,b.diameter*.65):Math.max(28,d*.65,b.diameter*.65))&&!((timedCandidate||strong===i||corroboratedCandidate)&&b.diameter<d*.75)))return;
     if(typical!=null&&(d/typical<.58||d/typical>1.68))return;
     const reference=Math.max(typical||this.diameter||d,28),handDistance=hands.length?Math.min(...hands.map(v=>distance(p,v))):Infinity;
     if(phase==='drill'&&this.missed&&handDistance<=Math.max(120,d*1.65))reacquired.push([handDistance/Math.max(d,24),i]);
-    if(distance(p,this.last)>Math.max(w*.18,reference*2.8)&&handDistance>Math.max(120,d*1.65)&&!timedCandidate)return;
+    if(distance(p,this.last)>Math.max(w*.18,reference*2.8)&&handDistance>Math.max(120,d*1.65)&&!timedCandidate&&!corroboratedCandidate)return;
     if(lane!=null&&Math.abs(p[0]-lane)>(phase==='drill'?Math.max(w*.46,reference*5):Math.max(145,reference*2.15)))return;
     const dx=p[0]-predicted[0],dy=p[1]-predicted[1];
     const xl=phase==='drill'?Math.max(w*.30,reference*(3.5+.45*Math.min(this.missed,3))):Math.max(125,reference*(1.65+.25*Math.min(this.missed,3)));
-    const yl=Math.max(185,reference*(3+.60*Math.min(this.missed,3)),timedCandidate?timed.envelope:0);
+    const yl=Math.max(185,reference*(3+.60*Math.min(this.missed,3)),timedCandidate?timed.envelope:0,corroboratedCandidate?Math.abs(p[1]-this.last[1])+reference:0);
     if(Math.abs(dx)>xl||Math.abs(dy)>yl)return;
     scored.push([Math.abs(dx)/xl+Math.abs(dy)/yl+Math.abs(d-reference)/reference*.55-c.score*.08,i]);
    });
@@ -72,9 +74,10 @@ export class BallIdentityTracker {
   });
   if(selected===null){this.missed++;this.velocity=this.velocity.map(v=>v*.72);return null;}
   const chosen=candidates[selected],g=geometry(chosen);
-  if(this.last)this.velocity=this.velocity.map((v,i)=>v*.55+(g.center[i]-this.last[i])*.45);
+  if(corroboratedRecovery?.index===selected)this.velocity=[...corroboratedRecovery.velocity];
+  else if(this.last)this.velocity=this.velocity.map((v,i)=>v*.55+(g.center[i]-this.last[i])*.45);
   this.last=g.center;this.diameter=g.diameter;this.missed=0;
-  if((this.timedContinuity||this.strongContinuity)&&Number.isFinite(now)){
+  if((this.timedContinuity||this.strongContinuity||this.corroboratedContinuity)&&Number.isFinite(now)){
    if(this.samples.length&&now<=this.samples.at(-1).at)this.samples=[];
    this.samples.push({at:now,center:[...g.center],diameter:g.diameter});this.samples=this.samples.slice(-32);
   }

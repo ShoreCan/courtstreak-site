@@ -59,3 +59,36 @@ export function strongBallContinuation(candidates,samples,now,reference,velocity
  });
  return matches.length===1?matches[0]:null;
 }
+
+// Reacquire only an observed downward continuation corroborated on two
+// consecutive detector passes. This never extrapolates a position or creates a bounce.
+export function corroboratedBallContinuation(candidates,samples,now,reference,previous){
+ if(!Number.isFinite(now)||!Number.isFinite(reference)||!(reference>0)||samples.length<8)return null;
+ const last=samples.at(-1),before=samples.at(-2),gap=now-last.at;
+ if(!last?.center?.every(Number.isFinite)||!before?.center?.every(Number.isFinite)
+  ||!Number.isFinite(last.at)||!Number.isFinite(before.at)||!(last.diameter>0)||!Number.isFinite(last.diameter)
+  ||gap<=0||gap>.4||last.at-before.at<=0||last.at-before.at>.15
+  ||last.center[1]-before.center[1]<reference*.05)return null;
+ const matches=[];
+ candidates.forEach((c,index)=>{
+  if(!Array.isArray(c.box)||c.box.length!==4)return;
+  const [x1,y1,x2,y2]=c.box;
+  if(![x1,y1,x2,y2,c.score].every(Number.isFinite)||c.score<.1||x2<=x1||y2<=y1)return;
+  const diameter=Math.sqrt((x2-x1)*(y2-y1)),center=[(x1+x2)/2,(y1+y2)/2];
+  if(diameter/reference<.85||diameter/reference>1.3||diameter/last.diameter<.8||diameter/last.diameter>1.25)return;
+  if(Math.abs(center[0]-last.center[0])>Math.max(28,reference*.6)
+   ||center[1]-last.center[1]<reference*.6||distance(center,last.center)>reference*5.5)return;
+  matches.push({index,center,diameter,score:c.score,at:now});
+ });
+ if(matches.length!==1)return null;
+ const pending=matches[0],dt=previous?now-previous.at:0;
+ const confirmed=previous&&previous.center?.every(Number.isFinite)&&Number.isFinite(previous.diameter)&&previous.diameter>0
+  &&previous.score>=.1&&dt>0&&dt<=.12&&pending.score>=.4
+  &&pending.diameter/previous.diameter>=.8&&pending.diameter/previous.diameter<=1.2
+  &&Math.abs(pending.center[0]-previous.center[0])<=reference*.35
+  &&pending.center[1]>=previous.center[1]-reference*.08
+  &&distance(pending.center,previous.center)<=reference*1.2;
+ return {pending,index:confirmed?pending.index:null,
+  velocity:confirmed?pending.center.map((v,i)=>v-previous.center[i]):null};
+}
+
