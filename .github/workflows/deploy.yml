@@ -3,12 +3,12 @@ name: Deploy CourtStreak
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 jobs:
   build:
@@ -19,6 +19,7 @@ jobs:
         with:
           node-version: 20
       - run: npm ci
+      - run: npm run test:tracker
       - run: npm run build
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
@@ -29,6 +30,10 @@ jobs:
           path: dist
 
   deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
     runs-on: ubuntu-latest

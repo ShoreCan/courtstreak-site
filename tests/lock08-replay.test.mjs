@@ -1,6 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';
 import {replayBallLock} from '../scripts/replay-ball-lock.mjs';
 import {BALL_IDENTITY_REVISION,EXPERIMENTAL_COUNTER_REVISION} from '../src/lib/ai/poundCore.mjs';
+import {createPoundTrackingState} from '../src/lib/ai/poundTrackingState.mjs';
 const read=n=>JSON.parse(fs.readFileSync(new URL(`./fixtures/ball-lock/${n}.json`,import.meta.url)));
 const options={handContinuity:true,objectBackgroundRadius:true,timedContinuity:true,strongContinuity:true,corroboratedContinuity:true,floorContinuity:true,directionalPeaks:true,timeWindows:true,earlyConfirmation:true};
 const fast=read('oct24-lock07-fast35');
@@ -29,5 +30,5 @@ for(const mode of ['missing wrist','no controlled return'])test(`observed turn r
  const r=replayBallLock(d,{...options,turnContinuity:true});assert.ok(r.proposed>0);assert.equal(r.accepted,0);
 });
 test('the live experimental machine and every reset enable the tested LOCK 08 option',()=>{
- const text=fs.readFileSync(new URL('../src/components/ai/IPhonePoundTest.jsx',import.meta.url),'utf8');assert.equal(BALL_IDENTITY_REVISION,'LOCK 08');assert.ok(['COUNT 06','COUNT 07'].includes(EXPERIMENTAL_COUNTER_REVISION));assert.match(text,/turnContinuity:freshFrames/);assert.match(text,/m\.current=machine\(freshFrames\)/);assert.match(text,/\.\.\.machine\(freshFrames\)/);
+ const text=fs.readFileSync(new URL('../src/components/ai/IPhonePoundTest.jsx',import.meta.url),'utf8');assert.equal(BALL_IDENTITY_REVISION,'LOCK 08');assert.ok(['COUNT 06','COUNT 07'].includes(EXPERIMENTAL_COUNTER_REVISION));assert.equal(createPoundTrackingState().tracker.turnContinuity,true);assert.match(text,/m\.current=machine\(freshFrames\)/);assert.match(text,/\.\.\.machine\(freshFrames\)/);
 });

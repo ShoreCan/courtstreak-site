@@ -3,6 +3,7 @@ import usePreviewNavigate from '../lib/usePreviewNavigate.js';
 import { PREVIEW_DRILLS } from '../data/previewDrills.js';
 import DrillGuide from '../components/DrillGuide.jsx';
 import FrontCameraCheck from '../components/ai/FrontCameraCheck.jsx';
+import { CURRENT_POUND_SESSION_PATH } from '../lib/ai/trackerConfiguration.mjs';
 import '../cs-mobile-drill-fix.css';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -207,7 +208,7 @@ export default function LabDrillDetail({ previewOnly = false }) {
                 <strong>How would you like to track?</strong>
                 <p>Choose the experimental front-camera counter or the standard manual timer.</p>
               </div>
-              <button className="cs-iphone-entry-ai" type="button" onClick={() => navigate('/lab/drill/right-hand-pound/session?mode=iphone-vision-test')}>
+              <button className="cs-iphone-entry-ai" type="button" onClick={() => navigate(CURRENT_POUND_SESSION_PATH)}>
                 <span><b>Try AI camera tracking</b><small>Front camera · 20-second counting test</small></span><span aria-hidden="true">→</span>
               </button>
               <button className="cs-iphone-entry-manual" type="button" onClick={() => navigate('/lab/drill/right-hand-pound/session')}>

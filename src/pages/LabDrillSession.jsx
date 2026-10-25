@@ -8,6 +8,7 @@ import { FiArrowLeft, FiCheck, FiPlay } from 'react-icons/fi';
 import { supabase } from '../lib/supabaseClient.js';
 import { requireTrainingAccess } from '../lib/trainingAccess.js';
 import DrillGuide from '../components/DrillGuide.jsx';
+import { isPoundCameraMode } from '../lib/ai/trackerConfiguration.mjs';
 
 const LocalPoundPilot = import.meta.env.DEV ? React.lazy(() => import('../components/ai/LocalPoundPilot.jsx')) : null;
 const IPhonePoundTest = React.lazy(() => import('../components/ai/IPhonePoundTest.jsx'));
@@ -17,7 +18,7 @@ const RecordingLoadCheck = React.lazy(() => import('../components/ai/RecordingLo
 export default function LabDrillSession() {
   const { drillKey } = useParams();
   const location = useLocation();
-  if (drillKey === 'right-hand-pound' && new URLSearchParams(location.search).get('mode') === 'iphone-fresh-frame-test') {
+  if (drillKey === 'right-hand-pound' && isPoundCameraMode(new URLSearchParams(location.search).get('mode'))) {
     return <React.Suspense fallback={<main className="cs-session-page">Opening on-device camera…</main>}><IPhonePoundTest key="fresh-frames" freshFrames /></React.Suspense>;
   }
   if (drillKey === 'right-hand-pound' && new URLSearchParams(location.search).get('mode') === 'recording-load') {
@@ -28,9 +29,6 @@ export default function LabDrillSession() {
   }
   if (drillKey === 'right-hand-pound' && new URLSearchParams(location.search).get('mode') === 'recorded-profile') {
     return <React.Suspense fallback={<main className="cs-session-page">Opening saved-video check…</main>}><RecordedTrackerProfile /></React.Suspense>;
-  }
-  if (drillKey === 'right-hand-pound' && new URLSearchParams(location.search).get('mode') === 'iphone-vision-test') {
-    return <React.Suspense fallback={<main className="cs-session-page">Opening on-device camera…</main>}><IPhonePoundTest /></React.Suspense>;
   }
   if (import.meta.env.DEV && ['localhost', '127.0.0.1'].includes(window.location.hostname) && drillKey === 'right-hand-pound' && new URLSearchParams(location.search).get('mode') === 'ai-test') {
     return <React.Suspense fallback={<main className="cs-session-page">Opening camera test…</main>}><LocalPoundPilot /></React.Suspense>;

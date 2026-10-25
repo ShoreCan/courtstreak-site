@@ -22,18 +22,20 @@ const center=b=>[(b[0]+b[2])/2,(b[1]+b[3])/2];
 export const geometry = c => ({center:center(c.box), diameter:Math.sqrt(Math.max((c.box[2]-c.box[0])*(c.box[3]-c.box[1]),1))});
 const wrists = p => p ? [9,10].filter(i=>p.confidence[i]>=.15 && p.xy[i][0]>0 && p.xy[i][1]>0).map(i=>p.xy[i]) : [];
 export class BallIdentityTracker {
- constructor({handContinuity=false,objectBackgroundRadius=false,timedContinuity=false,strongContinuity=false,corroboratedContinuity=false,floorContinuity=false,turnContinuity=false}={}){this.turnContinuity=turnContinuity;this.floorContinuity=floorContinuity;this.corroboratedContinuity=corroboratedContinuity;this.provisionalBall=null;this.strongContinuity=strongContinuity;this.handContinuity=handContinuity;this.objectBackgroundRadius=objectBackgroundRadius;this.timedContinuity=timedContinuity;this.samples=[];this.last=null;this.velocity=[0,0];this.diameter=null;this.missed=0;this.diameters=[];this.lanes=[];this.background=[];this.frame=0;}
+ constructor({handContinuity=false,objectBackgroundRadius=false,timedContinuity=false,strongContinuity=false,corroboratedContinuity=false,floorContinuity=false,turnContinuity=false,diagnostics=false}={}){this.diagnostics=diagnostics;this.decisions=[];this.turnContinuity=turnContinuity;this.floorContinuity=floorContinuity;this.corroboratedContinuity=corroboratedContinuity;this.provisionalBall=null;this.strongContinuity=strongContinuity;this.handContinuity=handContinuity;this.objectBackgroundRadius=objectBackgroundRadius;this.timedContinuity=timedContinuity;this.samples=[];this.last=null;this.velocity=[0,0];this.diameter=null;this.missed=0;this.diameters=[];this.lanes=[];this.background=[];this.frame=0;}
+ decision(index,status,reason){if(this.diagnostics)this.decisions[index]={candidateIndex:index,status,reason};}
  typical(){return this.diameters.length?median(this.diameters):this.diameter;}
  lane(){return this.lanes.length?median(this.lanes):this.last?.[0];}
  ready(){const d=this.typical(); return this.diameters.length>=12 && this.lanes.length>=12 && d>=38 && percentile(this.diameters,.9)-percentile(this.diameters,.1)<=Math.max(28,d*.55) && percentile(this.lanes,.9)-percentile(this.lanes,.1)<=Math.max(95,d*1.8);}
  roi(w,h){const x=this.lane(),d=this.typical()||72; if(x==null)return [0,0,w,h]; const half=Math.floor(Math.max(210,Math.min(w*.28,d*2.7))); return [Math.max(0,Math.floor(x)-half),Math.floor(h*.14),Math.min(w,Math.floor(x)+half),h];}
  select(candidates,person,phase,w,h,now=null){
+  this.decisions=this.diagnostics?candidates.map((_,i)=>({candidateIndex:i,status:'not_selected',reason:'ranking'})):[];
   this.frame++; const hands=wrists(person); let selected=null, owned=false,corroboratedRecovery=null;
   if(phase==='setup'||!this.last){
    let best=Infinity;
    candidates.forEach((c,i)=>{const g=geometry(c);let score=hands.length?Math.min(...hands.map(p=>distance(g.center,p)))/Math.max(g.diameter,24)-c.score*.35:distance(g.center,[w*.5,h*.48])/Math.max(w,h)-c.score*.15;
     if(g.center[1]>h*.88)score+=3; if(score<best){best=score;selected=i;}});
-   if(hands.length&&best>2.75)selected=null;
+   if(hands.length&&best>2.75){if(selected!==null)this.decision(selected,'rejected','setup_hand_distance');selected=null;}
    if(selected!==null&&hands.length){const g=geometry(candidates[selected]);owned=Math.min(...hands.map(p=>distance(g.center,p)))<=Math.max(110,g.diameter*2.3);}
   }else{
    const predicted=this.last.map((v,i)=>v+this.velocity[i]*Math.min(this.missed+1,3));const typical=this.typical(),lane=this.lane(); const scored=[],reacquired=[];
@@ -58,20 +60,20 @@ export class BallIdentityTracker {
     // Two strong proposals must demonstrate motion near the feet before the
     // new path can cross a remembered object of comparable size. A larger
     // remembered object still vetoes selection.
-    if(!recoveringAtHand&&!continuingAtHand&&this.background.some(b=>b.observations>=5&&distance(p,b.center)<=(this.objectBackgroundRadius&&phase==='drill'?Math.max(28,b.diameter*.65):Math.max(28,d*.65,b.diameter*.65))&&!(((timedCandidate||strong===i||corroboratedCandidate)&&b.diameter<d*.75)||(corroboratedCandidate&&corroboratedRecovery.moving&&b.diameter<=d*1.25))))return;
-    if(typical!=null&&(d/typical<.58||d/typical>1.68))return;
+    if(!recoveringAtHand&&!continuingAtHand&&this.background.some(b=>b.observations>=5&&distance(p,b.center)<=(this.objectBackgroundRadius&&phase==='drill'?Math.max(28,b.diameter*.65):Math.max(28,d*.65,b.diameter*.65))&&!(((timedCandidate||strong===i||corroboratedCandidate)&&b.diameter<d*.75)||(corroboratedCandidate&&corroboratedRecovery.moving&&b.diameter<=d*1.25))))return void this.decision(i,'rejected','background_memory');
+    if(typical!=null&&(d/typical<.58||d/typical>1.68))return void this.decision(i,'rejected','size_ratio');
     const reference=Math.max(typical||this.diameter||d,28),handDistance=hands.length?Math.min(...hands.map(v=>distance(p,v))):Infinity;
     if(phase==='drill'&&this.missed&&handDistance<=Math.max(120,d*1.65))reacquired.push([handDistance/Math.max(d,24),i]);
-    if(distance(p,this.last)>Math.max(w*.18,reference*2.8)&&handDistance>Math.max(120,d*1.65)&&!timedCandidate&&!corroboratedCandidate)return;
-    if(lane!=null&&Math.abs(p[0]-lane)>(phase==='drill'?Math.max(w*.46,reference*5):Math.max(145,reference*2.15)))return;
+    if(distance(p,this.last)>Math.max(w*.18,reference*2.8)&&handDistance>Math.max(120,d*1.65)&&!timedCandidate&&!corroboratedCandidate)return void this.decision(i,'rejected','jump_from_last');
+    if(lane!=null&&Math.abs(p[0]-lane)>(phase==='drill'?Math.max(w*.46,reference*5):Math.max(145,reference*2.15)))return void this.decision(i,'rejected','horizontal_lane');
     const dx=p[0]-predicted[0],dy=p[1]-predicted[1];
     const xl=phase==='drill'?Math.max(w*.30,reference*(3.5+.45*Math.min(this.missed,3))):Math.max(125,reference*(1.65+.25*Math.min(this.missed,3)));
     const yl=Math.max(185,reference*(3+.60*Math.min(this.missed,3)),timedCandidate?(timed?.index===i?timed.envelope:floor.envelope):0,corroboratedCandidate?Math.abs(p[1]-this.last[1])+reference:0);
-    if(Math.abs(dx)>xl||Math.abs(dy)>yl)return;
+    if(Math.abs(dx)>xl||Math.abs(dy)>yl)return void this.decision(i,'rejected','prediction_envelope');
     scored.push([Math.abs(dx)/xl+Math.abs(dy)/yl+Math.abs(d-reference)/reference*.55-c.score*.08,i]);
    });
    const best=(reacquired.length?reacquired:scored).sort((a,b)=>a[0]-b[0])[0];
-   if(best&&(reacquired.length||best[0]<=2.35)){selected=best[1];owned=true;}
+   if(best&&(reacquired.length||best[0]<=2.35)){selected=best[1];owned=true;}else if(best)this.decision(best[1],'rejected','ranking_score_limit');
   }
   candidates.forEach((c,i)=>{if(i===selected)return;const g=geometry(c);if(this.last&&distance(g.center,this.last)<=Math.max(115,g.diameter*1.75))return;
    let b=this.background.find(b=>distance(g.center,b.center)<=Math.max(24,g.diameter*.35));
@@ -79,6 +81,7 @@ export class BallIdentityTracker {
    else{b.center=b.center.map((v,j)=>v*.8+g.center[j]*.2);b.diameter=b.diameter*.8+g.diameter*.2;b.observations++;}
   });
   if(selected===null){this.missed++;this.velocity=this.velocity.map(v=>v*.72);return null;}
+  this.decision(selected,'selected',owned?'owned_continuation':'acquisition');
   const chosen=candidates[selected],g=geometry(chosen);
   if(corroboratedRecovery?.index===selected)this.velocity=[...corroboratedRecovery.velocity];
   else if(this.last)this.velocity=this.velocity.map((v,i)=>v*.55+(g.center[i]-this.last[i])*.45);

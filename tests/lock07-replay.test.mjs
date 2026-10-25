@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {replayBallLock} from '../scripts/replay-ball-lock.mjs';
 import {BALL_IDENTITY_REVISION,EXPERIMENTAL_COUNTER_REVISION} from '../src/lib/ai/poundCore.mjs';
+import {createPoundTrackingState} from '../src/lib/ai/poundTrackingState.mjs';
 const read=name=>JSON.parse(fs.readFileSync(new URL(`./fixtures/ball-lock/${name}.json`,import.meta.url)));
 const options={handContinuity:true,objectBackgroundRadius:true,timedContinuity:true,strongContinuity:true,corroboratedContinuity:true,directionalPeaks:true,timeWindows:true,earlyConfirmation:true};
 const fast=read('oct24-lock06-fast15');
@@ -31,7 +32,7 @@ for(const name of ['19-reps','20-reps','21-reps','5-reps','oct22-count05-fast25'
 test('live experimental initialization and resets enable the tested recovery and identify LOCK 07',()=>{
  const source=fs.readFileSync(new URL('../src/components/ai/IPhonePoundTest.jsx',import.meta.url),'utf8');
  assert.ok(['LOCK 07','LOCK 08'].includes(BALL_IDENTITY_REVISION));assert.ok(['COUNT 06','COUNT 07'].includes(EXPERIMENTAL_COUNTER_REVISION));
- assert.match(source,/floorContinuity:freshFrames/);assert.match(source,/m\.current=machine\(freshFrames\)/);assert.match(source,/\.\.\.machine\(freshFrames\)/);
+ assert.equal(createPoundTrackingState().tracker.floorContinuity,true);assert.match(source,/m\.current=machine\(freshFrames\)/);assert.match(source,/\.\.\.machine\(freshFrames\)/);
 });
 for(const mode of ['missing wrist','no controlled return'])test(`floor recovery still rejects reps with ${mode}`,()=>{
  const d=structuredClone(fast);
