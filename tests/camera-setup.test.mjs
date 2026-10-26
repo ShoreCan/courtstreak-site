@@ -73,3 +73,13 @@ test('brief lost visibility pauses progress and sustained loss still requires a 
   const lost=clock.update(4,true);assert.equal(lost.reset,true);
   gate.reset();assert.equal(gate.update(lost.elapsed,{valid:true},ball(),ready,true),0);
 });
+
+test('floor-level directions distinguish phone angle from missing detection',()=>{
+  const p=person();p.confidence[0]=0;
+  assert.match(evaluateCameraSetup(p,ball(),W,H).message,/Look toward the phone briefly; keep your position/);
+  const feet=person();feet.xy[15][1]=H*.97;
+  assert.match(evaluateCameraSetup(feet,ball(),W,H).message,/Tilt the phone down/);
+  assert.match(evaluateCameraSetup(person(),null,W,H).message,/Body framing is good/);
+  const high=person();high.xy[15][1]=H*.3;high.xy[16][1]=H*.3;
+  assert.match(evaluateCameraSetup(high,ball(),W,H).message,/Tilt the phone up/);
+});
