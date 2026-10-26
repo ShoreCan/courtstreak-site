@@ -34,6 +34,11 @@ export function shareVideoLayout(width, height) {
 }
 
 const navy = '#101e31', orange = '#ffa46b', white = '#f5f7fb', muted = '#a5b6cb';
+export function drawCameraPicture(ctx,source,picture){
+  const p=picture;
+  if(typeof source.draw==='function')source.draw(ctx,p.x,p.y,p.width,p.height);
+  else ctx.drawImage(source,p.x,p.y,p.width,p.height);
+}
 function text(ctx, value, x, y, size, weight = 600, color = white, align = 'left') {
   ctx.fillStyle = color; ctx.font = `${weight} ${size}px system-ui, -apple-system, sans-serif`;
   ctx.textAlign = align; ctx.textBaseline = 'alphabetic'; ctx.fillText(String(value), x, y);
@@ -45,7 +50,7 @@ export function drawCountedVideo(ctx, source, layout, { time = 0, changes = [], 
   const { width: w, height: h, picture: p, unit: u, top } = layout;
   const pad = 26 * u, cx = w / 2;
   ctx.save(); ctx.fillStyle = navy; ctx.fillRect(0, 0, w, h);
-  ctx.drawImage(source, p.x, p.y, p.width, p.height);
+  drawCameraPicture(ctx,source,p);
   if (result) {
     ctx.fillStyle = 'rgba(10,22,39,.94)'; ctx.fillRect(0, 0, w, h);
     const cy = h / 2;

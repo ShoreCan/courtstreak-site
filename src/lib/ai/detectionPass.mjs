@@ -1,4 +1,4 @@
-export const LIVE_FRAME_REVISION = 'FRAME 01';
+export const LIVE_FRAME_REVISION = 'FRAME 02';
 
 // A pose pass can take much longer than a ball pass. For the live camera only,
 // refresh the ball pixels after pose finishes instead of detecting an image
