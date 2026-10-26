@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loadDetector } from '../../lib/ai/iphoneDetector.mjs';
+import { TRACKER_BUILD_INFO } from '../../lib/ai/trackerBuildInfo.mjs';
 import { sha256 } from '../../lib/ai/poseExecution.mjs';
 import { RECORDING_CHECK_REVISION, createRecordingLoad, runRecordingLoadCheck, validateRecordingInputs } from '../../lib/ai/recordingLoadCheck.mjs';
 import './iphone-pound-test.css';
@@ -53,7 +54,7 @@ export default function RecordingLoadCheck(){
       hashing.width=hashing.height=1;
       const frame=document.createElement('canvas');frame.width=1280;frame.height=2276;const ctx=frame.getContext('2d');
       const capture=s=>{const began=performance.now();restore(ctx,images.get(s.frameId),pack.sourceRect);return {frame,ms:performance.now()-began,pixelSha256:pixelHashes.get(s.frameId)};};
-      stage='model loading';detector=await loadDetector(import.meta.env.BASE_URL,text=>{if(usable())setMessage(text);});check();
+      stage='model loading';detector=await loadDetector(import.meta.env.BASE_URL,text=>{if(usable())setMessage(text);},{inputMode:'legacy'});check();
       if(detector.provider!=='webgpu'||Object.entries(modelHashes).some(([kind,hash])=>detector.modelManifest?.[kind]?.sha256!==hash))throw new Error('The provider or model manifest differs from the frozen comparison.');
       const ort=await import('onnxruntime-web/webgpu'),gpu=ort.env.webgpu.device;check();
       if(!gpu)throw new Error('The WebGPU device is unavailable.');
@@ -63,7 +64,7 @@ export default function RecordingLoadCheck(){
       stage='comparison';
       const result=await runRecordingLoadCheck({detector,samples,capture,load,signal:job.signal,isActive:usable,yieldFrame:nextFrame,onProgress:p=>{if(usable()){setProgress(p);setMessage(p.stage==='warmup'?'Warming the unchanged ball and body models…':p.stage==='settle'?`Preparing block ${p.block+1} of 4: recording ${p.recording?'ON':'OFF'}…`:`Saved-frame check ${p.completed} of ${p.total}: recording ${p.recording?'ON':'OFF'}. Keep the phone steady.`);}}});
       check();stage='cleanup';await load.end();await detector.close();detector=null;stream.getTracks().forEach(t=>t.stop());stream=null;if(camera.current)camera.current.srcObject=null;check();
-      result.baselineCommit='99c25f934d15c04bf048d0ebc7604a6c82ad9f62';result.sourceInputs={name:file.name,bytes:file.size,sha256:inputSha,pixelHashesComputedBeforeMeasurement:true};result.device=device;result.startedAt=startedAt;result.completedAt=new Date().toISOString();result.diagnosticModule=import.meta.url;
+      result.baselineCommit=TRACKER_BUILD_INFO.sourceCommit;result.buildInfo=TRACKER_BUILD_INFO;result.sourceInputs={name:file.name,bytes:file.size,sha256:inputSha,pixelHashesComputedBeforeMeasurement:true};result.device=device;result.startedAt=startedAt;result.completedAt=new Date().toISOString();result.diagnosticModule=import.meta.url;
       if(mounted.current){setReport(result);setMessage('Check complete. Save processing details and send that file for review.');}
     }catch(error){if(mounted.current){const reason=failure||(error.name==='AbortError'?'Cancelled or moved off screen.':error.message);setReport({schema:'courtstreak-recording-load-stopped-v1',revision:RECORDING_CHECK_REVISION,completed:false,stage,error:reason,startedAt,stoppedAt:new Date().toISOString(),device,liveTrackerChanged:false});setMessage(`Check stopped: ${reason} Save stopped-check details for review.`);}}
     finally{

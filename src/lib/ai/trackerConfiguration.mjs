@@ -1,14 +1,14 @@
 import { BALL_TRACKER_REVISION, EXPERIMENTAL_COUNTER_REVISION, BALL_IDENTITY_REVISION, poundCounterOptions } from './poundCore.mjs';
 import { LIVE_FRAME_REVISION } from './detectionPass.mjs';
 
-export const TRACKER_CHECK_REVISION = 'CHECK 01';
+export const TRACKER_CHECK_REVISION = 'CHECK 02';
 export const CURRENT_POUND_MODE = 'iphone-fresh-frame-test';
 export const CURRENT_POUND_SESSION_PATH = `/lab/drill/right-hand-pound/session?mode=${CURRENT_POUND_MODE}`;
 export const isPoundCameraMode = mode => [CURRENT_POUND_MODE, 'iphone-vision-test'].includes(mode);
 
 const identityOptions = rank => Object.freeze({
   handContinuity:rank>=2, objectBackgroundRadius:rank>=3, timedContinuity:rank>=4,
-  strongContinuity:rank>=5, corroboratedContinuity:rank>=6, floorContinuity:rank>=7, turnContinuity:rank>=8,
+  strongContinuity:rank>=5, corroboratedContinuity:rank>=6, floorContinuity:rank>=7, turnContinuity:rank>=8, ...(rank>=9?{weakContinuity:true}:{}),
 });
 const configuration = (counterRevision, identityRevision, rank, liveFrameRevision) => Object.freeze({
   id:`${counterRevision.replaceAll(' ','')}/${identityRevision?.replaceAll(' ','')??'legacy'}/${liveFrameRevision.replaceAll(' ','')}`,
@@ -16,7 +16,7 @@ const configuration = (counterRevision, identityRevision, rank, liveFrameRevisio
   identityOptions:identityOptions(rank), counterOptions:Object.freeze({...poundCounterOptions(counterRevision)}),
 });
 
-export const CURRENT_POUND_CONFIGURATION = configuration(EXPERIMENTAL_COUNTER_REVISION, BALL_IDENTITY_REVISION, 8, LIVE_FRAME_REVISION);
+export const CURRENT_POUND_CONFIGURATION = configuration(EXPERIMENTAL_COUNTER_REVISION, BALL_IDENTITY_REVISION, 9, LIVE_FRAME_REVISION);
 export const LEGACY_POUND_CONFIGURATION = configuration(BALL_TRACKER_REVISION, null, 1, 'FRAME 00');
 
 // A missing historical identity revision cannot be guessed from the counter.
@@ -25,7 +25,7 @@ export function configurationForEvidence(data) {
   const counterRevision=data?.trackerRevision;
   poundCounterOptions(counterRevision);
   const identityRevision=data.ballIdentityRevision;
-  const match=/^LOCK 0([2-8])$/.exec(identityRevision??'');
+  const match=/^LOCK 0([2-9])$/.exec(identityRevision??'');
   if(!match)throw new Error('The saved identity revision is missing or unsupported; exact identity configuration is unavailable.');
   const result=configuration(counterRevision,identityRevision,Number(match[1]),data.liveFrameRevision??'unrecorded');
   if(data.trackerConfiguration){

@@ -19,6 +19,7 @@ export class DetectorInput {
     for (let i=0;i<n;i++) { data[i]=rgba[i*4]/255; data[n+i]=rgba[i*4+1]/255; data[n*2+i]=rgba[i*4+2]/255; }
     return { data, transform:{x,y,scale,px,py} };
   }
+  release() { this.canvas.width=this.canvas.height=0; this.data=null; this.context=null; }
 }
 
 // Published live preprocessing, retained verbatim for the paired diagnostic.
@@ -38,4 +39,5 @@ export class LegacyDetectorInput {
     for(let i=0;i<n;i++){data[i]=rgba[i*4]/255;data[n+i]=rgba[i*4+1]/255;data[n*2+i]=rgba[i*4+2]/255;}
     return {data,transform:{x,y,scale,px,py}};
   }
+  release() { this.canvas.width=this.canvas.height=0; this.context=null; }
 }

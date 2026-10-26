@@ -30,5 +30,5 @@ for(const mode of ['missing wrist','no controlled return'])test(`observed turn r
  const r=replayBallLock(d,{...options,turnContinuity:true});assert.ok(r.proposed>0);assert.equal(r.accepted,0);
 });
 test('the live experimental machine and every reset enable the tested LOCK 08 option',()=>{
- const text=fs.readFileSync(new URL('../src/components/ai/IPhonePoundTest.jsx',import.meta.url),'utf8');assert.equal(BALL_IDENTITY_REVISION,'LOCK 08');assert.ok(['COUNT 06','COUNT 07'].includes(EXPERIMENTAL_COUNTER_REVISION));assert.equal(createPoundTrackingState().tracker.turnContinuity,true);assert.match(text,/m\.current=machine\(freshFrames\)/);assert.match(text,/\.\.\.machine\(freshFrames\)/);
+ const text=fs.readFileSync(new URL('../src/components/ai/IPhonePoundTest.jsx',import.meta.url),'utf8');assert.ok(['LOCK 08','LOCK 09'].includes(BALL_IDENTITY_REVISION));assert.ok(['COUNT 06','COUNT 07','COUNT 08'].includes(EXPERIMENTAL_COUNTER_REVISION));assert.equal(createPoundTrackingState().tracker.turnContinuity,true);assert.match(text,/m\.current=machine\(freshFrames\)/);assert.match(text,/\.\.\.machine\(freshFrames\)/);
 });

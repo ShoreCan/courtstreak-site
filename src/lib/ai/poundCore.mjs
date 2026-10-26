@@ -1,9 +1,10 @@
 // Right-hand pound browser port of the saved CourtStreak 0.7.8 count-repair baseline.
 // All coordinates use the SAME mirrored, 1280px-wide frame as the Python engine.
 import {timedBallContinuation,strongBallContinuation,corroboratedBallContinuation,floorBallContinuation} from './ballTiming.mjs';
+import {ORDINARY_BALL_SCORE} from './ballProposalPolicy.mjs';
 export const BALL_TRACKER_REVISION = 'COUNT 03';
-export const EXPERIMENTAL_COUNTER_REVISION = 'COUNT 07';
-export const BALL_IDENTITY_REVISION = 'LOCK 08';
+export const EXPERIMENTAL_COUNTER_REVISION = 'COUNT 08';
+export const BALL_IDENTITY_REVISION = 'LOCK 09';
 // Both live initialization/reset and cached-input replay must resolve the same settings.
 export function poundCounterOptions(revision) {
  if(revision==='COUNT 03')return {directionalPeaks:false,timeWindows:false};
@@ -11,6 +12,7 @@ export function poundCounterOptions(revision) {
  if(revision==='COUNT 05')return {directionalPeaks:true,timeWindows:true};
  if(revision==='COUNT 06')return {directionalPeaks:true,timeWindows:true,earlyConfirmation:true};
  if(revision==='COUNT 07')return {directionalPeaks:true,timeWindows:true,earlyConfirmation:true,lowControlledPounds:true};
+ if(revision==='COUNT 08')return {directionalPeaks:true,timeWindows:true,earlyConfirmation:true,lowControlledPounds:true,earlySampling:true,symmetricReturns:true};
  throw new Error(`Unsupported counter revision: ${String(revision)}. Exact replay is unavailable.`);
 }
 export function createPoundCounter(revision){return new GapAwareBounceCounter(poundCounterOptions(revision));}
@@ -22,7 +24,7 @@ const center=b=>[(b[0]+b[2])/2,(b[1]+b[3])/2];
 export const geometry = c => ({center:center(c.box), diameter:Math.sqrt(Math.max((c.box[2]-c.box[0])*(c.box[3]-c.box[1]),1))});
 const wrists = p => p ? [9,10].filter(i=>p.confidence[i]>=.15 && p.xy[i][0]>0 && p.xy[i][1]>0).map(i=>p.xy[i]) : [];
 export class BallIdentityTracker {
- constructor({handContinuity=false,objectBackgroundRadius=false,timedContinuity=false,strongContinuity=false,corroboratedContinuity=false,floorContinuity=false,turnContinuity=false,diagnostics=false}={}){this.diagnostics=diagnostics;this.decisions=[];this.turnContinuity=turnContinuity;this.floorContinuity=floorContinuity;this.corroboratedContinuity=corroboratedContinuity;this.provisionalBall=null;this.strongContinuity=strongContinuity;this.handContinuity=handContinuity;this.objectBackgroundRadius=objectBackgroundRadius;this.timedContinuity=timedContinuity;this.samples=[];this.last=null;this.velocity=[0,0];this.diameter=null;this.missed=0;this.diameters=[];this.lanes=[];this.background=[];this.frame=0;}
+ constructor({handContinuity=false,objectBackgroundRadius=false,timedContinuity=false,strongContinuity=false,corroboratedContinuity=false,floorContinuity=false,turnContinuity=false,weakContinuity=false,diagnostics=false}={}){this.weakContinuity=weakContinuity;this.diagnostics=diagnostics;this.decisions=[];this.turnContinuity=turnContinuity;this.floorContinuity=floorContinuity;this.corroboratedContinuity=corroboratedContinuity;this.provisionalBall=null;this.strongContinuity=strongContinuity;this.handContinuity=handContinuity;this.objectBackgroundRadius=objectBackgroundRadius;this.timedContinuity=timedContinuity;this.samples=[];this.last=null;this.velocity=[0,0];this.diameter=null;this.missed=0;this.diameters=[];this.lanes=[];this.background=[];this.frame=0;}
  decision(index,status,reason){if(this.diagnostics)this.decisions[index]={candidateIndex:index,status,reason};}
  typical(){return this.diameters.length?median(this.diameters):this.diameter;}
  lane(){return this.lanes.length?median(this.lanes):this.last?.[0];}
@@ -34,6 +36,7 @@ export class BallIdentityTracker {
   if(phase==='setup'||!this.last){
    let best=Infinity;
    candidates.forEach((c,i)=>{const g=geometry(c);let score=hands.length?Math.min(...hands.map(p=>distance(g.center,p)))/Math.max(g.diameter,24)-c.score*.35:distance(g.center,[w*.5,h*.48])/Math.max(w,h)-c.score*.15;
+    if(this.weakContinuity&&c.score<ORDINARY_BALL_SCORE)return void this.decision(i,'rejected','weak_acquisition');
     if(g.center[1]>h*.88)score+=3; if(score<best){best=score;selected=i;}});
    if(hands.length&&best>2.75){if(selected!==null)this.decision(selected,'rejected','setup_hand_distance');selected=null;}
    if(selected!==null&&hands.length){const g=geometry(candidates[selected]);owned=Math.min(...hands.map(p=>distance(g.center,p)))<=Math.max(110,g.diameter*2.3);}
@@ -45,6 +48,7 @@ export class BallIdentityTracker {
    corroboratedRecovery=this.corroboratedContinuity&&phase==='drill'&&this.ready()?corroboratedBallContinuation(candidates,this.samples,now,typical,this.provisionalBall,{movingRecovery:this.turnContinuity,person}):null;
    this.provisionalBall=corroboratedRecovery?.pending??null;
    candidates.forEach((c,i)=>{const g=geometry(c),p=g.center,d=g.diameter;
+    if(this.weakContinuity&&c.score<ORDINARY_BALL_SCORE&&(!this.ready()||phase!=='drill'||d/typical<.58||d/typical>1.68||Math.abs(p[0]-lane)>Math.max(28,typical*.75)))return void this.decision(i,'rejected','weak_geometry');
     const floorCandidate=floor?.index===i,timedCandidate=timed?.index===i||floorCandidate,corroboratedCandidate=corroboratedRecovery?.index===i;
     // Preserve a nearby hand-owned continuation as well as the existing reacquisition.
     // Background memory must not alternate between rejecting and recovering a held ball.
@@ -72,10 +76,18 @@ export class BallIdentityTracker {
     if(Math.abs(dx)>xl||Math.abs(dy)>yl)return void this.decision(i,'rejected','prediction_envelope');
     scored.push([Math.abs(dx)/xl+Math.abs(dy)/yl+Math.abs(d-reference)/reference*.55-c.score*.08,i]);
    });
-   const best=(reacquired.length?reacquired:scored).sort((a,b)=>a[0]-b[0])[0];
-   if(best&&(reacquired.length||best[0]<=2.35)){selected=best[1];owned=true;}else if(best)this.decision(best[1],'rejected','ranking_score_limit');
+   let pool=reacquired.length?reacquired:scored,viaHand=reacquired.length>0;
+   if(this.weakContinuity){
+    const ordinaryHand=reacquired.filter(q=>candidates[q[1]].score>=ORDINARY_BALL_SCORE),ordinary=scored.filter(q=>candidates[q[1]].score>=ORDINARY_BALL_SCORE),weak=scored.filter(q=>candidates[q[1]].score<ORDINARY_BALL_SCORE);
+    if(ordinaryHand.length){pool=ordinaryHand;viaHand=true;}
+    else if(ordinary.length){pool=ordinary;viaHand=false;}
+    else if(weak.length===1){pool=weak;viaHand=reacquired.some(q=>q[1]===weak[0][1]);}
+    else{pool=[];viaHand=false;weak.forEach(q=>this.decision(q[1],'rejected','weak_ambiguous'));}
+   }
+   const best=pool.sort((a,b)=>a[0]-b[0])[0];
+   if(best&&(viaHand||best[0]<=2.35)){selected=best[1];owned=true;}else if(best)this.decision(best[1],'rejected','ranking_score_limit');
   }
-  candidates.forEach((c,i)=>{if(i===selected)return;const g=geometry(c);if(this.last&&distance(g.center,this.last)<=Math.max(115,g.diameter*1.75))return;
+  candidates.forEach((c,i)=>{if(i===selected||(this.weakContinuity&&c.score<ORDINARY_BALL_SCORE))return;const g=geometry(c);if(this.last&&distance(g.center,this.last)<=Math.max(115,g.diameter*1.75))return;
    let b=this.background.find(b=>distance(g.center,b.center)<=Math.max(24,g.diameter*.35));
    if(!b)this.background.push({center:[...g.center],diameter:g.diameter,observations:1});
    else{b.center=b.center.map((v,j)=>v*.8+g.center[j]*.2);b.diameter=b.diameter*.8+g.diameter*.2;b.observations++;}
@@ -95,7 +107,7 @@ export class BallIdentityTracker {
  }
 }
 export class GapAwareBounceCounter {
- constructor({directionalPeaks=false,timeWindows=false,earlyConfirmation=false,lowControlledPounds=false}={}){this.lowControlledPounds=lowControlledPounds;this.earlyConfirmation=earlyConfirmation;this.timeWindows=timeWindows;this.directionalPeaks=directionalPeaks;this.points=[];this.next=5;this.last=null;this.count=0;this.floorSamples=[];}
+ constructor({directionalPeaks=false,timeWindows=false,earlyConfirmation=false,lowControlledPounds=false,earlySampling=false,symmetricReturns=false}={}){this.earlySampling=earlySampling;this.symmetricReturns=symmetricReturns;this.lowControlledPounds=lowControlledPounds;this.earlyConfirmation=earlyConfirmation;this.timeWindows=timeWindows;this.directionalPeaks=directionalPeaks;this.points=[];this.next=5;this.last=null;this.count=0;this.floorSamples=[];}
  rememberControlledFloor(e){if(this.lowControlledPounds&&e.validation_path==='controlled_low_pound')this.last=Math.max(this.last??-1,e.event_frame-1);if((e.validation_path==='clean_full_pound'||e.validation_path==='controlled_low_pound')&&e.bottom_center_y!=null&&e.ball_scale_pixels!=null){this.floorSamples.push([e.bottom_center_y,e.ball_scale_pixels]);this.floorSamples=this.floorSamples.slice(-16);}}
  floorReference(){if(this.floorSamples.length<6)return null;const ys=this.floorSamples.map(p=>p[0]),d=median(this.floorSamples.map(p=>p[1])),y=median(ys);if(median(ys.map(v=>Math.abs(v-y)))>d*.30)return null;return {center_y:y,diameter:d,trusted_contacts:this.floorSamples.length};}
  // A long capture interval can hide the lowest point without a null detection.
@@ -124,10 +136,10 @@ export class GapAwareBounceCounter {
   const a=this.points,end=a.length-1; let start=end-1; while(start>=0&&a[start].y===null)start--;
   const gap=end-start-1;
   if(a[end].y!==null&&start>=0&&gap>0&&gap<=5){for(let i=1;i<=gap;i++){const p=a[start+i],f=i/(gap+1);p.y=a[start].y+f*(a[end].y-a[start].y);p.diameter=a[start].diameter+f*(a[end].diameter-a[start].diameter);p.reconstructed=true;}}
-  // Keep the original eight-frame minimum. In the experimental path, also
-  // wait for half a second of measured return motion: eight high-rate frames
-  // alone cover too little of a slow bounce. No synthetic observations added.
-  const events=[];const latest=a.length-3-5-1;
+  // Historical revisions keep eight future observations. COUNT 08 can
+  // evaluate the existing three-sample return core sooner; the half-second
+  // window and clean return/control gates still apply. No samples are added.
+  const events=[];const latest=this.earlySampling?a.length-4:a.length-3-5-1;
   while(this.next<=latest){
    const waiting=this.timeWindows&&now-a[this.next].timestamp<.5;
    if(waiting&&!this.earlyConfirmation)break;
@@ -138,15 +150,16 @@ export class GapAwareBounceCounter {
    if(waiting&&observedTurn&&!(p.y>=a[c-1].y&&p.y>a[c+1].y)){this.next++;continue;}
    const e=this.evaluate(c,height);
    // Keep the full slow-motion window unless enough clean return motion
-   // already satisfies the validator's amplitude rules. Never lower gates.
-   if(waiting&&!(e&&(e.validation_path==='controlled_low_pound'||(e.validation_path==='clean_full_pound'&&e.rise_ball_diameters>=1.5&&e.rise_ball_diameters>=e.down_ball_diameters*.42))))break;
+   // already satisfies the validator's amplitude rules. A partial high return
+   // can resemble a low pound, so COUNT 08 waits the full window for low paths.
+   if(waiting&&!(e&&((!this.earlySampling&&e.validation_path==='controlled_low_pound')||(e.validation_path==='clean_full_pound'&&e.rise_ball_diameters>=1.5&&e.rise_ball_diameters>=e.down_ball_diameters*.42))))break;
    if(e){e.count=++this.count;events.push(e);if(e.validation_path!=='controlled_low_pound')this.last=c;}
    this.next++;
   }
   return events;
  }
  evaluate(c,height){
-  const a=this.points;let start=Math.max(0,c-8),stop=c+9;
+  const a=this.points;let start=Math.max(0,c-8),stop=Math.min(a.length,c+9);
   if(this.timeWindows){while(start>0&&a[c].timestamp-a[start-1].timestamp<=.5)start--;while(stop<a.length&&a[stop].timestamp-a[c].timestamp<=.5)stop++;}
   const raw=a.slice(start,stop),core=a.slice(c-5,c+4);
   if(core.length!==9||core.some(p=>p.y===null||p.diameter===null))return null;
@@ -180,7 +193,7 @@ export class GapAwareBounceCounter {
   if(!clean&&!recovered&&!anchored&&!low)return null;
   if(this.last!==null){const usable=a.slice(this.last+1,c).filter(p=>p.y!==null).map(p=>p.y);
    const shortReturn=low||(this.lowControlledPounds&&anchored);
-   const peak=shortReturn?Math.max(a[this.last].y,p.y):a[this.last].y,minimum=shortReturn?d*.6:Math.max(motion*.65,Math.max(motion,d*1.2));
+   const peak=shortReturn||this.symmetricReturns?Math.max(a[this.last].y,p.y):a[this.last].y,minimum=shortReturn?d*.6:Math.max(motion*.65,Math.max(motion,d*1.2));
    if(!usable.length||peak-Math.min(...usable)<minimum)return null;
   }
   if(window.filter(p=>p.observed).length/window.length<.35)return null;
