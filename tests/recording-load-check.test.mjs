@@ -41,11 +41,11 @@ test('the previous pose/profile file and changed crop schedule cannot replace th
  const p={schema:'courtstreak-recording-inputs-v1',sourceVideoSha256:'da12257452a24ba7965ee28fdf133bd7c00733c589726cf881af162c336d8fa6',frameSize:[1280,2276],sourceRect:[0,50,464,824],samples:samples.map(s=>({...s,pngBase64:'abc'}))};assert.equal(validateRecordingInputs(p).length,12);p.samples[0].roi=[0,0,1280,2276];assert.throws(()=>validateRecordingInputs(p),/crop/);
  assert.equal(safeTrackerReturn('/lab/drill/right-hand-pound/session?mode=recording-load'),'/lab/drill/right-hand-pound/session?mode=recording-load');
 });
-test('the unchanged native recorder verifies real bytes and releases temporary blobs without stopping camera tracks',async()=>{
+test('the native recorder reports its selected codec, verifies real bytes and releases temporary blobs without stopping camera tracks',async()=>{
  let cameraStopped=false;
  class Recorder{static isTypeSupported(){return true;}constructor(stream,{mimeType}){this.state='inactive';this.mimeType=mimeType;}start(){this.state='recording';}stop(){this.state='inactive';queueMicrotask(()=>{this.ondataavailable({data:new Blob(['real bytes'],{type:this.mimeType})});this.onstop();});}}
  const track={readyState:'live',enabled:true,muted:false,getSettings:()=>({width:720,height:1280,frameRate:30}),stop(){cameraStopped=true;}};
  const load=createRecordingLoad({getVideoTracks:()=>[track]},{Recorder});await load.begin(false);assert.equal(load.snapshot().recording,false);assert.equal(await load.end(),null);
- await load.begin(true);assert.equal(load.snapshot().recording,true);const result=await load.end();assert.equal(result.bytes,10);assert.equal(result.mimeType,'video/mp4');assert.equal(cameraStopped,false);assert.deepEqual(await load.end(),result);
+ await load.begin(true);assert.equal(load.snapshot().recording,true);const result=await load.end();assert.equal(result.bytes,10);assert.equal(result.mimeType,'video/mp4;codecs=avc1.42001f');assert.equal(cameraStopped,false);assert.deepEqual(await load.end(),result);
  await load.begin(true);await load.end();assert.equal(load.snapshot().recording,false);
 });

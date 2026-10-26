@@ -17,7 +17,10 @@ export class DrillRecording {
     if (this.recorder) return false;
     const Recorder = this.Recorder;
     if (!Recorder) { this.onUnavailable(); return false; }
-    const types = ['video/mp4', 'video/webm;codecs=vp8', 'video/webm'];
+    // Prefer an explicit, portable H.264 camera source. Chromium can choose
+    // VP9 inside generic MP4 with level metadata that native playback accepts
+    // but WebCodecs rejects, making a later frame-accurate export impossible.
+    const types = ['video/mp4;codecs=avc1.42001f', 'video/mp4', 'video/webm;codecs=vp8', 'video/webm'];
     const supported = types.filter(type => Recorder.isTypeSupported?.(type));
     // If an advertised codec cannot start, let the browser choose its default.
     for (const type of [...supported, null]) {

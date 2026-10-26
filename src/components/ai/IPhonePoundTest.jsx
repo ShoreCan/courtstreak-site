@@ -11,7 +11,8 @@ import { DrillRecording, recordingExtension } from '../../lib/ai/drillRecording.
 import { RoundEvidence, replayStart } from '../../lib/ai/roundEvidence.mjs';
 import { CONTROL_REVISION, physicalPoseSides } from '../../lib/ai/poseCoordinates.mjs';
 import { VIDEO_OVERLAY_REVISION, DisplayedCountTimeline } from '../../lib/ai/videoCountOverlay.mjs';
-import { createCountedVideo } from '../../lib/ai/countedVideoExport.mjs';
+import { createQualityCountedVideo } from '../../lib/ai/createQualityCountedVideo.mjs';
+import { RECORDING_TAIL_REVISION, recordingTailSeconds } from '../../lib/ai/recordingTail.mjs';
 import { POSE_SCHEDULE_REVISION, PoseRefreshClock } from '../../lib/ai/poseRefreshClock.mjs';
 import { CAMERA_SETUP_REVISION, CameraPositionGate, evaluateCameraSetup } from '../../lib/ai/cameraSetup.mjs';
 import { LIVE_FRAME_REVISION } from '../../lib/ai/detectionPass.mjs';
@@ -58,7 +59,14 @@ export default function IPhonePoundTest({freshFrames=true}){
   if(recorder.current.start(stream.current)){
    countTimeline.current.start(recordingBegan);
    setClip({...emptyClip,status:'recording'});
-   recordTimer.current=setTimeout(stopRecording,Math.max(0,(started+DURATION)*1000-performance.now()));
+   recordTimer.current=setTimeout(()=>{
+    const s=m.current;
+    if(s.phase==='recording-only'){
+     s.phase='interrupted';s.left=0;s.recordedUntil=performance.now()/1000-s.started;
+     s.message=`${s.interruptionReason} The remaining camera video was preserved; the count is partial.`;
+     stopCamera();publish();
+    }else stopRecording();
+   },Math.max(0,(started+DURATION)*1000-performance.now()));
   }
  };
  const stopCamera=()=>{stopRecording();stream.current?.getTracks().forEach(t=>t.stop());stream.current=null;wake.current?.release().catch(()=>{});wake.current=null;};
@@ -66,7 +74,18 @@ export default function IPhonePoundTest({freshFrames=true}){
  const toSetup=(message='Hold the ball comfortably in either hand. Keep your body and feet in view.')=>{
   const previous=m.current;if(['active','review'].includes(previous.phase))discardRecording();m.current={...machine(freshFrames),phase:'setup',lastInference:previous.lastInference,sized:previous.sized,cameraSettingsAtStart:previous.cameraSettingsAtStart,message};publish();
  };
- const interrupt=(message)=>{const s=m.current;if(['active','review'].includes(s.phase)){s.phase='interrupted';s.message=message;s.incomplete=true;stopCamera();publish();}else if(['setup','countdown'].includes(s.phase)){s.gate.reset();s.progress=0;s.phase='setup';s.message=message;publish();}};
+ const interrupt=(message,{preserveVideo=false}={})=>{
+  const s=m.current;
+  if(['active','review','recording-only'].includes(s.phase)){
+   s.incomplete=true;s.interruptionReason=message;s.countingStoppedAt??=performance.now()/1000-s.started;
+   const remaining=preserveVideo?recordingTailSeconds({phase:s.phase,started:s.started,now:performance.now()/1000,duration:DURATION,recorderState:recorder.current?.recorder?.state}):0;
+   if(remaining>0){
+    s.phase='recording-only';s.message='Counting paused because tracking became unreliable. Keep training: your camera video continues until Time.';
+    s.ball=null;s.person=null;draw();publish();return;
+   }
+   s.phase='interrupted';s.message=message;stopCamera();publish();
+  }else if(['setup','countdown'].includes(s.phase)){s.gate.reset();s.progress=0;s.phase='setup';s.message=message;publish();}
+ };
  const draw=()=>{
   const canvas=overlay.current,s=m.current;if(!canvas)return;const c=canvas.getContext('2d'),w=canvas.width,h=canvas.height;c.clearRect(0,0,w,h);
   if(s.person){c.strokeStyle='rgba(255,255,255,.45)';c.lineWidth=w/450;const [x,y,x2,y2]=s.person.box;c.strokeRect(x,y,x2-x,y2-y);}
@@ -74,7 +93,7 @@ export default function IPhonePoundTest({freshFrames=true}){
  };
  const loop=async()=>{
   const currentToken=token.current,s=m.current,v=video.current,d=detector.current;
-  if(!mounted.current||!d||!v||!stream.current||['finished','error','interrupted'].includes(s.phase))return;
+  if(!mounted.current||!d||!v||!stream.current||['finished','error','interrupted','recording-only'].includes(s.phase))return;
   if(v.readyState<2||v.paused){raf.current=requestAnimationFrame(loop);return;}
   if(v.currentTime===s.videoTime){raf.current=requestAnimationFrame(loop);return;}
   s.videoTime=v.currentTime;
@@ -90,7 +109,7 @@ export default function IPhonePoundTest({freshFrames=true}){
   try{
    const inputPhase=s.phase,withPose=s.poseClock.shouldRun(now,!!s.person),roi=['active','review'].includes(s.phase)?s.tracker.roi(w,h):[0,0,w,h];
    const result=await d.detect(f,roi,withPose,freshFrames?{minimumBallScore:ballProposalMinimumScore({phase:s.phase,calibrated:s.tracker.ready(),weakContinuity:s.tracker.weakContinuity}),refreshBallFrame:()=>{
-    if(!mounted.current||currentToken!==token.current||s!==m.current||!stream.current||['error','interrupted','finished'].includes(s.phase))return null;
+    if(!mounted.current||currentToken!==token.current||s!==m.current||!stream.current||['error','interrupted','finished','recording-only'].includes(s.phase))return null;
     if(v.readyState<2||v.paused)return null;
     if(v.videoWidth/v.videoHeight!==rawRatio){toSetup('Camera orientation changed. Stay in view while we check your new framing.');return null;}
     // Do not assign a newer timestamp to unchanged video pixels.
@@ -101,7 +120,7 @@ export default function IPhonePoundTest({freshFrames=true}){
    }}:undefined);
    if(!mounted.current||currentToken!==token.current)return;
    if(s!==m.current){raf.current=requestAnimationFrame(loop);return;}
-   if(['error','interrupted','finished'].includes(s.phase))return;
+   if(['error','interrupted','finished','recording-only'].includes(s.phase))return;
    if(result.cancelled){raf.current=requestAnimationFrame(loop);return;}
    if(result.ballFrameRefreshed){now=result.capturedAt;s.videoTime=result.sourceVideoTime;}
    const completed=performance.now()/1000;s.lastInference=completed;
@@ -140,7 +159,7 @@ export default function IPhonePoundTest({freshFrames=true}){
    if(s.phase==='countdown'){const g=s.ball?geometry(s.ball):null,t=now-(s.countdownAt+5);const proposals=s.counter.update(t,g?[g.center[1],g.diameter]:null,h);s.validator.update(proposals,g?[...g.center,g.diameter]:null,s.person,t,DURATION);frameProposals=proposals;}
    if(['active','review'].includes(s.phase)){
     const elapsed=now-s.started;s.go=elapsed<.8;
-    if(completed-passStartedAt>.5){recordEvidence();interrupt('Tracking stalled during this attempt. Recheck positioning and try again.');return;}
+    if(completed-passStartedAt>.5){recordEvidence();interrupt('Tracking stalled during this attempt.',{preserveVideo:true});return;}
     if(elapsed>=DURATION&&s.phase==='active'){stopRecording();s.phase='review';s.message='Time. Hold the ball while we confirm the last return.';cue(400);}
     const measurement=s.ball?(()=>{const g=geometry(s.ball);return [...g.center,g.diameter];})():null;
     if(elapsed>=0&&elapsed<DURATION){s.total++;if(measurement)s.detected++;}
@@ -149,17 +168,17 @@ export default function IPhonePoundTest({freshFrames=true}){
     frameProposals=proposals;frameConfirmed=confirmed;
     if(s.ball)s.lostAt=null;else s.lostAt??=completed;
     s.message=s.phase==='review'?'Time. Confirming the last controlled return…':s.lostAt&&completed-s.lostAt>.35?'Ball lost — counting waits for the same ball.': 'Tracking your basketball';
-    if(s.lostAt&&completed-s.lostAt>2){recordEvidence();interrupt('The ball was lost for more than two seconds. This attempt is incomplete. Reposition and try again.');return;}
-    if(s.times.length>12&&s.fps<8){recordEvidence();interrupt('Tracking became too slow to count reliably. This attempt is incomplete.');return;}
+    if(s.lostAt&&completed-s.lostAt>2){recordEvidence();interrupt('The ball was lost for more than two seconds.',{preserveVideo:true});return;}
+    if(s.times.length>12&&s.fps<8){recordEvidence();interrupt('Tracking became too slow to count reliably.',{preserveVideo:true});return;}
     if(elapsed>=DURATION+2){s.phase='finished';s.message='Test complete. Compare this count with the dribbles you performed.';stopCamera();}
    }
    recordEvidence();
    draw();publish();
   }catch(error){if(currentToken===token.current&&mounted.current)fail(`Tracking stopped: ${error.message}`);return;}
-  if(mounted.current&&!['finished','error','interrupted'].includes(m.current.phase))raf.current=requestAnimationFrame(loop);
+  if(mounted.current&&!['finished','error','interrupted','recording-only'].includes(m.current.phase))raf.current=requestAnimationFrame(loop);
  };
  async function open(){
-  if(['loading','setup','countdown','active','review'].includes(m.current.phase))return;
+  if(['loading','setup','countdown','active','review','recording-only'].includes(m.current.phase))return;
   const id=++token.current;stopCamera();discardRecording();m.current=machine(freshFrames);m.current.phase='loading';m.current.message='Requesting your front camera…';publish();
   try{
    const Audio=window.AudioContext||window.webkitAudioContext;if(Audio){audio.current??=new Audio();void audio.current.resume();}
@@ -183,18 +202,18 @@ export default function IPhonePoundTest({freshFrames=true}){
  useEffect(()=>{
   mounted.current=true;
   const hidden=()=>{if(document.hidden){interrupt('CourtStreak went into the background. Return and enable the camera for a fresh setup check.');if(['loading','setup','countdown'].includes(m.current.phase)){token.current++;m.current.phase='interrupted';m.current.message='Return to CourtStreak and enable the camera again.';stopCamera();publish();}}};
-  const rotate=()=>{if(['setup','countdown','active','review'].includes(m.current.phase))toSetup('Phone rotated. Hold the ball comfortably while we check your new framing.');};
+  const rotate=()=>{if(m.current.phase==='recording-only'){interrupt('Phone rotated while preserving the partial attempt.');return;}if(['setup','countdown','active','review'].includes(m.current.phase))toSetup('Phone rotated. Hold the ball comfortably while we check your new framing.');};
   window.addEventListener('orientationchange',rotate);screen.orientation?.addEventListener('change',rotate);
-  const watchdog=setInterval(()=>{const s=m.current;if(s.lastInference&&performance.now()/1000-s.lastInference>.8&&['countdown','active','review'].includes(s.phase)){interrupt('Camera tracking paused. We need fresh frames before continuing.');}},200);
+  const watchdog=setInterval(()=>{const s=m.current;if(s.phase==='recording-only'){s.left=Math.max(0,Math.ceil(DURATION-(performance.now()/1000-s.started)));publish();return;}if(s.lastInference&&performance.now()/1000-s.lastInference>.8&&['countdown','active','review'].includes(s.phase)){interrupt('Camera tracking paused. We need fresh frames before continuing.',{preserveVideo:true});}},200);
   document.addEventListener('visibilitychange',hidden);
   return()=>{mounted.current=false;token.current++;clearInterval(watchdog);window.removeEventListener('orientationchange',rotate);screen.orientation?.removeEventListener('change',rotate);document.removeEventListener('visibilitychange',hidden);cancelAnimationFrame(raf.current);discardRecording();stopCamera();void detector.current?.close();detector.current=null;void audio.current?.close();audio.current=null;};
  },[]);
  useEffect(()=>{
   if(['finished','interrupted'].includes(ui.phase)){resultPanel.current?.focus({preventScroll:true});resultPanel.current?.scrollIntoView({block:'start',behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});}
  },[ui.phase]);
- const p=ui.phase,live=['setup','countdown','active','review'].includes(p),ended=['finished','interrupted'].includes(p),labels=[['body','Body in frame'],['hand','Right wrist visible'],['ball','Basketball detected'],['floor','Feet + floor space']];
+ const p=ui.phase,live=['setup','countdown','active','review','recording-only'].includes(p),ended=['finished','interrupted'].includes(p),labels=[['body','Body in frame'],['hand','Right wrist visible'],['ball','Basketball detected'],['floor','Feet + floor space']];
  const preparing=countedClip.status==='preparing',canSave=['ready','original'].includes(countedClip.status),savedClip=countedClip.status==='ready'?countedClip:clip;
- const step=['active','review'].includes(p)?2:p==='countdown'?1:ended?3:0;
+ const step=['active','review','recording-only'].includes(p)?2:p==='countdown'?1:ended?3:0;
  const summary=`CourtStreak · Right-Hand Pound · ${ui.count} detected reps · ${p==='finished'?'20-second round':'Incomplete attempt'}. Camera test result.`;
  const fileStem=`CourtStreak-right-hand-pound-${ui.count}-reps${p==='finished'?'':'-partial'}`;
  const filename=`${fileStem}${countedClip.status==='ready'?'-counted':'-original'}.${recordingExtension(savedClip.blob?.type)}`;
@@ -206,13 +225,13 @@ export default function IPhonePoundTest({freshFrames=true}){
   setCountedClip({...emptyCountedClip,status:'preparing'});
   try{
    let lastPercent=-1;
-   const result=await createCountedVideo({video:replayVideo.current,sourceURL:clip.url,
+   const result=await createQualityCountedVideo({blob:clip.blob,
     changes:countTimeline.current.snapshot(),finalCount:m.current.count,completed:m.current.phase==='finished',signal:controller.signal,
     onProgress:progress=>{const percent=Math.floor(progress*100);if(current()&&percent!==lastPercent){lastPercent=percent;setCountedClip(previous=>({...previous,progress}));}}
    });
    if(!current())return;
    if(countedURL.current)URL.revokeObjectURL(countedURL.current);countedURL.current=URL.createObjectURL(result.blob);
-   setCountedClip({status:'ready',url:countedURL.current,blob:result.blob,progress:1,width:result.width,height:result.height});
+   setCountedClip({status:'ready',url:countedURL.current,blob:result.blob,progress:1,width:result.width,height:result.height,exportInfo:result.exportInfo});
   }catch(error){if(current())setCountedClip({...emptyCountedClip,status:'unavailable',message:error.message});}
   finally{if(videoExport.current===controller)videoExport.current=null;}
  }
@@ -231,7 +250,7 @@ export default function IPhonePoundTest({freshFrames=true}){
    drillKey:'right-hand-pound',timerSeconds:DURATION,phase:s.phase,message:s.message,displayedCount:s.count,
    framesWithSelectedBall:s.detected,trainingFrames:s.total,ballCoverage:s.total?s.detected/s.total:null,
    provider:detector.current?.provider,detectorInputRevision:detector.current?.inputRevision,ballProposalPolicyRevision:BALL_PROPOSAL_POLICY_REVISION,detectorResources:detector.current?.resourceSummary,modelManifest:detector.current?.modelManifest,runtime:{userAgent:navigator.userAgent,hardwareConcurrency:navigator.hardwareConcurrency??null},cameraSettingsAtStart:s.cameraSettingsAtStart,frameSize:[frame.current?.width,frame.current?.height],
-   recordingAvailable:!!clip.blob,videoRevision:VIDEO_OVERLAY_REVISION,countDisplayStartedAt:countTimeline.current.startedAt,
+   recordingAvailable:!!clip.blob,videoRevision:VIDEO_OVERLAY_REVISION,recordingRevision:RECORDING_TAIL_REVISION,countingStoppedAt:s.countingStoppedAt??null,recordedUntil:s.recordedUntil??null,interruptionReason:s.interruptionReason??null,videoExport:countedClip.exportInfo??null,countDisplayStartedAt:countTimeline.current.startedAt,
    displayedCountTimeline:countTimeline.current.snapshot(),savedVideoStyle:countedClip.status==='ready'?'count-overlay':'original',
    countOverlayTiming:'Display changes at live acceptance time; final card includes the post-round review. No bounce-time backdating.',
    rejectedEvents:s.validator.rejected,pendingEvents:s.validator.pending});
@@ -264,7 +283,7 @@ export default function IPhonePoundTest({freshFrames=true}){
     {live&&<span className={`cs-iphone-lock ${ui.ball?'found':''}`}>{ui.ball?(m.current.tracker.ready()?'● Ball locked':'● Ball detected'):'○ Finding basketball'}</span>}
     {p==='countdown'&&<div className="cs-iphone-countdown"><strong>{ui.countdown}</strong><span>{ui.rechecking?'Rechecking · Countdown paused':'Stay in view · Wait for Go'}</span></div>}
     {p==='active'&&ui.go&&<div className="cs-iphone-countdown cs-iphone-go"><strong>GO</strong><span>Start dribbling</span></div>}
-    {['active','review'].includes(p)&&<div className="cs-iphone-live"><div><span>COUNTED REPS</span><strong>{ui.count}</strong></div><div><span>{p==='review'?'REVIEWING':'SECONDS LEFT'}</span><strong>{ui.left}</strong></div></div>}
+    {['active','review','recording-only'].includes(p)&&<div className="cs-iphone-live"><div><span>{p==='recording-only'?'PARTIAL COUNT · PAUSED':'COUNTED REPS'}</span><strong>{ui.count}</strong></div><div><span>{p==='review'?'REVIEWING':'SECONDS LEFT'}</span><strong>{ui.left}</strong></div></div>}
    </section>
    <section className="cs-iphone-controls">
     <p className="cs-iphone-status" role="status" aria-live="polite">{ui.message}</p>
@@ -287,7 +306,7 @@ export default function IPhonePoundTest({freshFrames=true}){
      <h3><FiPlay aria-hidden="true"/> Replay your round</h3>
      {clip.status==='ready'?<>
       <video ref={replayVideo} src={savedClip.url} controls={!preparing} playsInline preload="metadata" aria-label={countedClip.status==='ready'?'Replay with CourtStreak count overlay':'Original camera recording'}/>
-      {preparing?<div className="cs-iphone-export" role="status"><strong>Adding your rep counter… {Math.floor(countedClip.progress*100)}%</strong><progress value={countedClip.progress} max="1" aria-label="Preparing video with rep counter"/><p>Keep this page open. Preparing the counter and final score takes about as long as the round. Your original recording is also available below.</p><button type="button" className="cs-iphone-secondary" onClick={useOriginalVideo}>Use original video (no counter)</button></div>:countedClip.status==='ready'?<p className="cs-iphone-video-ready">✓ Rep counter and final score included in this video.</p>:<div className="cs-iphone-export"><p role="status">{countedClip.status==='unavailable'?countedClip.message:countedClip.status==='original'?'Original selected: this video has no rep counter.':'Your counted replay prepares automatically. Keep this page open.'}</p><button type="button" className="cs-iphone-secondary" onClick={prepareCountedVideo}>Prepare counted video</button><button type="button" className="cs-iphone-secondary" onClick={useOriginalVideo}>Use original video (no counter)</button></div>}
+      {preparing?<div className="cs-iphone-export" role="status"><strong>Adding your rep counter… {Math.floor(countedClip.progress*100)}%</strong><progress value={countedClip.progress} max="1" aria-label="Preparing video with rep counter"/><p>Keep this page open. We preserve the camera frames and prepare your counted MP4 after tracking stops. Export time varies by device. Your original recording is also available below.</p><button type="button" className="cs-iphone-secondary" onClick={useOriginalVideo}>Use original video (no counter)</button></div>:countedClip.status==='ready'?<p className="cs-iphone-video-ready">✓ Counted MP4 ready · {countedClip.width} × {countedClip.height} · Original frame timing preserved.</p>:<div className="cs-iphone-export"><p role="status">{countedClip.status==='unavailable'?countedClip.message:countedClip.status==='original'?'Original selected: this video has no rep counter.':'Your counted replay prepares automatically. Keep this page open.'}</p><button type="button" className="cs-iphone-secondary" onClick={prepareCountedVideo}>Prepare counted video</button><button type="button" className="cs-iphone-secondary" onClick={useOriginalVideo}>Use original video (no counter)</button></div>}
       {ui.evidence.repEvents.length>0&&<div className="cs-iphone-rep-review"><p>Counted reps · Tap one to replay that moment</p><div className="cs-iphone-rep-markers" role="group" aria-label="Counted rep replay markers">{ui.evidence.repEvents.map(event=><button type="button" key={event.rep} onClick={()=>jumpToRep(event)} disabled={preparing} aria-label={`Replay counted rep ${event.rep}`}>{event.rep}</button>)}</div><small>Markers show when the tracker counted a bounce. The video counter changes when a rep is accepted, which can be later.</small></div>}
       <div className="cs-iphone-video-actions">
        <button type="button" className="cs-iphone-primary" onClick={()=>shareVideo(true)} disabled={sharing||!canSave}><FiDownload aria-hidden="true"/> {countedClip.status==='ready'?'Save counted video':countedClip.status==='original'?'Save original video (no counter)':countedClip.status==='unavailable'?'Counted video unavailable':'Preparing counted video…'}</button>

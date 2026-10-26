@@ -59,3 +59,11 @@ test('empty recording does not create an unusable replay', () => {
   let unavailable=0;const recording=new DrillRecording({Recorder:Empty,onUnavailable:()=>unavailable++});
   recording.start({});recording.stop();assert.equal(unavailable,1);
 });
+
+test('an explicit portable H.264 camera recording is preferred when supported',()=>{
+ class Portable extends FakeRecorder {
+  static isTypeSupported(type){return type==='video/mp4;codecs=avc1.42001f'||type==='video/mp4';}
+ }
+ const r=new DrillRecording({Recorder:Portable});assert.equal(r.start({}),true);
+ assert.equal(r.recorder.mimeType,'video/mp4;codecs=avc1.42001f');r.cancel();
+});
