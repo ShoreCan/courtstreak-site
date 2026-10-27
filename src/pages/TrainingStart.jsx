@@ -104,8 +104,8 @@ export default function TrainingStart({ previewOnly = false }) {
             <span className="cs-training-choice-label">02 / PRACTICE A SKILL</span>
             <div className="cs-training-choice-icon cs-training-choice-icon--skill" aria-hidden="true">
               <svg viewBox="0 0 100 100" width="100%" height="100%">
-                <circle cx="50" cy="50" r="33" fill="none" stroke="#d9e6f5" strokeWidth="4"/>
-                <path d="M50 17V83 M17 50H83 M28 22Q70 50 28 78 M72 22Q30 50 72 78" fill="none" stroke="#d9e6f5" strokeWidth="4" opacity=".95"/>
+                <circle cx="50" cy="50" r="33" fill="none" stroke="var(--cs-theme-copy)" strokeWidth="4"/>
+                <path d="M50 17V83 M17 50H83 M28 22Q70 50 28 78 M72 22Q30 50 72 78" fill="none" stroke="var(--cs-theme-copy)" strokeWidth="4" opacity=".95"/>
               </svg>
             </div>
           </div>

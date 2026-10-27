@@ -1,0 +1,8 @@
+.cs-appearance-options{display:flex;gap:8px;flex-wrap:wrap}
+.cs-appearance-options>button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px;flex:1;padding:11px 14px;border-radius:10px;border:1px solid var(--cs-look-line);background:var(--cs-look-bg);color:var(--cs-look-text);font:600 14px/1.4 Inter,system-ui,sans-serif;cursor:pointer}
+.cs-appearance-options>button[aria-pressed=true]{border-color:var(--cs-look-accent);box-shadow:inset 0 0 0 1px var(--cs-look-accent)}
+.cs-appearance-check{color:var(--cs-look-accent)}
+.cs-appearance-options svg{flex-shrink:0}
+.cs-appearance-options button:focus-visible{outline:3px solid var(--cs-look-accent);outline-offset:4px}
+.cs-appearance-settings .cs-appearance-options{max-width:360px}
+.cs-appearance-settings>p{font-size:13px!important;color:var(--cs-look-muted)!important;line-height:1.6}

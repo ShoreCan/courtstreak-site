@@ -17,10 +17,7 @@ import { POSE_EXECUTION_REVISION, poseForFrame } from '../../lib/ai/poseWorkerCl
 import { POSE_SCHEDULE_REVISION, PoseRefreshClock } from '../../lib/ai/poseRefreshClock.mjs';
 import { CAMERA_SETUP_REVISION, CameraPositionGate, evaluateCameraSetup } from '../../lib/ai/cameraSetup.mjs';
 import { LIVE_FRAME_REVISION } from '../../lib/ai/detectionPass.mjs';
-import ShareTraining from '../ShareTraining.jsx';
-import CountedReplay from './CountedReplay.jsx';
-import { FiDownload, FiShare2, FiPlay } from 'react-icons/fi';
-import './iphone-pound-test.css';
+import PoundSessionView,{TRACKER_PRESENTATION_REVISION} from './PoundSessionView.jsx';
 const DURATION=20;
 const empty={body:false,hand:false,ball:false,floor:false,owned:false};
 const emptyClip={status:'idle',url:'',blob:null};
@@ -231,10 +228,9 @@ export default function IPhonePoundTest({freshFrames=true}){
  useEffect(()=>{
   if(['finished','interrupted'].includes(ui.phase)){resultPanel.current?.focus({preventScroll:true});resultPanel.current?.scrollIntoView({block:'start',behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});}
  },[ui.phase]);
- const p=ui.phase,live=['setup','countdown','active','review','recording-only'].includes(p),ended=['finished','interrupted'].includes(p),labels=[['body','Body in frame'],['hand','Right wrist visible'],['ball','Basketball detected'],['floor','Feet + floor space']];
+ const p=ui.phase,live=['setup','countdown','active','review','recording-only'].includes(p),ended=['finished','interrupted'].includes(p);
  const replayChanges=useMemo(()=>ended?countTimeline.current.snapshot():[],[ended,clip.url,clip.status,ui.count]);
  const preparing=countedClip.status==='preparing',canSave=['ready','original'].includes(countedClip.status),savedClip=countedClip.status==='ready'?countedClip:clip;
- const step=['active','review','recording-only'].includes(p)?2:p==='countdown'?1:ended?3:0;
  const summary=`CourtStreak · Right-Hand Pound · ${ui.count} detected reps · ${p==='finished'?'20-second round':'Incomplete attempt'}. Camera test result.`;
  const fileStem=`CourtStreak-right-hand-pound-${ui.count}-reps${p==='finished'?'':'-partial'}`;
  const filename=`${fileStem}${countedClip.status==='ready'?'-counted':'-original'}.${recordingExtension(savedClip.blob?.type)}`;
@@ -264,7 +260,7 @@ export default function IPhonePoundTest({freshFrames=true}){
  function saveEvidence(){
   const s=m.current;
   const data=s.evidence.export({startedAt:s.started,baseSourceCommit:TRACKER_BUILD_INFO.sourceCommit,buildInfo:TRACKER_BUILD_INFO,trackerCheckRevision:TRACKER_CHECK_REVISION,trackerConfiguration:s.configuration,trackerRevision:s.configuration.counterRevision,...(s.configuration.identityRevision?{ballIdentityRevision:s.configuration.identityRevision}:{}),cameraRevision:CAMERA_SETUP_REVISION,readinessRevision:CAMERA_REVIEW_REVISION,detectorInputMode:detector.current?.liveInputMode??'legacy',controlRevision:CONTROL_REVISION,poseScheduleRevision:POSE_SCHEDULE_REVISION,poseExecutionRevision:detector.current?.poseWorker?POSE_EXECUTION_REVISION:'sequential',poseMode:detector.current?.poseMode??'sequential',liveFrameRevision:freshFrames?LIVE_FRAME_REVISION:'FRAME 00',poseSideConvention:'Original physical person; detector image is mirrored',
-   drillKey:'right-hand-pound',timerSeconds:DURATION,phase:s.phase,message:s.message,displayedCount:s.count,
+   drillKey:'right-hand-pound',timerSeconds:DURATION,phase:s.phase,message:s.message,displayedCount:s.count,presentationRevision:TRACKER_PRESENTATION_REVISION,
    framesWithSelectedBall:s.detected,trainingFrames:s.total,ballCoverage:s.total?s.detected/s.total:null,
    provider:detector.current?.provider,detectorInputRevision:detector.current?.inputRevision,ballProposalPolicyRevision:BALL_PROPOSAL_POLICY_REVISION,detectorResources:detector.current?.resourceSummary,modelManifest:detector.current?.modelManifest,runtime:{userAgent:navigator.userAgent,hardwareConcurrency:navigator.hardwareConcurrency??null},cameraSettingsAtStart:s.cameraSettingsAtStart,frameSize:[frame.current?.width,frame.current?.height],
    recordingAvailable:!!clip.blob,videoRevision:VIDEO_OVERLAY_REVISION,recordingRevision:RECORDING_TAIL_REVISION,countingStoppedAt:s.countingStoppedAt??null,recordedUntil:s.recordedUntil??null,interruptionReason:s.interruptionReason??null,videoExport:countedClip.exportInfo??null,countDisplayStartedAt:countTimeline.current.startedAt,
@@ -290,59 +286,15 @@ export default function IPhonePoundTest({freshFrames=true}){
   }catch(error){if(error.name!=='AbortError')setShareMessage('Sharing could not open. Use Download video file below, then share the saved clip.');}
   finally{if(mounted.current)setSharing(false);}
  }
- return <main className="cs-iphone-tracker">
-  <div className={`cs-iphone-shell ${ended?'is-review':''}`}>
-   <header className="cs-iphone-header"><button type="button" onClick={()=>navigate('/lab/drill/right-hand-pound')} aria-label="Back to drill">←</button><div><span>COURTSTREAK / CAMERA LAB</span><h1>Right-Hand Pound</h1><p>20-second test · Front camera</p></div><span className="cs-iphone-version">{freshFrames?EXPERIMENTAL_COUNTER_REVISION:BALL_TRACKER_REVISION}<br/>{CAMERA_SETUP_REVISION}{freshFrames&&<><br/>{LIVE_FRAME_REVISION}<br/>{BALL_IDENTITY_REVISION}</>}<br/>{TRACKER_CHECK_REVISION}</span></header>
-   <ol className="cs-iphone-steps" aria-label="Session progress">{['Position','Countdown','Train','Review'].map((label,i)=><li key={label} className={i===step?'current':i<step?'complete':''}><b>{i<step?'✓':i+1}</b>{label}</li>)}</ol>
-   <section className="cs-iphone-stage" hidden={ended} style={{aspectRatio:ratio}} aria-label="Live camera and detected basketball">
-    <video ref={video} muted autoPlay playsInline aria-label="Mirrored front camera"/><canvas ref={overlay} aria-hidden="true"/>
-    {!live&&p!=='loading'&&<div className="cs-iphone-placeholder"><div className="cs-iphone-ball">◉</div><strong>{ended?'Your attempt':'Find your frame'}</strong><p>Landscape recommended. Portrait supported.<br/>Show your body, ball, feet, and floor space.</p></div>}
-    {live&&<span className={`cs-iphone-lock ${ui.ball?'found':''}`}>{ui.ball?(m.current.tracker.ready()?'● Ball locked':'● Ball detected'):'○ Finding basketball'}</span>}
-    {p==='countdown'&&<div className="cs-iphone-countdown"><strong>{ui.countdown}</strong><span>{ui.rechecking?'Rechecking · Countdown paused':'Stay in view · Wait for Go'}</span></div>}
-    {p==='active'&&ui.go&&<div className="cs-iphone-countdown cs-iphone-go"><strong>GO</strong><span>Start dribbling</span></div>}
-    {['active','review','recording-only'].includes(p)&&<div className="cs-iphone-live"><div><span>{p==='recording-only'?'PARTIAL COUNT · PAUSED':'COUNTED REPS'}</span><strong>{ui.count}</strong></div><div><span>{p==='review'?'REVIEWING':'SECONDS LEFT'}</span><strong>{ui.left}</strong></div></div>}
-   </section>
-   <section className="cs-iphone-controls">
-    <p className="cs-iphone-status" role="status" aria-live="polite">{ui.message}</p>
-    {['idle','error'].includes(p)&&<button type="button" className="cs-iphone-primary" onClick={open}>{p==='idle'?'Enable camera & check position':'Check position & try again'}</button>}
-    {p==='loading'&&<div className="cs-iphone-loading">Preparing your camera and detectors…</div>}
-    {['setup','countdown'].includes(p)&&<><div className="cs-iphone-checks">{labels.map(([key,label])=><span key={key} className={ui.checks[key]?'pass':''}><b>{ui.checks[key]?'✓':'○'}</b>{label}</span>)}</div><div className="cs-iphone-progress"><span style={{width:`${ui.progress*100}%`}}/></div><small>Countdown starts automatically after a stable ball lock and position check.</small></>}
-    {live&&<button type="button" className="cs-iphone-secondary" onClick={()=>{token.current++;cancelAnimationFrame(raf.current);m.current.phase='interrupted';m.current.message='Attempt stopped. Recheck your position when ready.';stopCamera();publish();}}>Stop test</button>}
-   </section>
-   {ended&&<section className="cs-iphone-review" ref={resultPanel} tabIndex={-1} aria-label="Round score and video replay">
-    <div className="cs-iphone-score">
-     <span className="cs-iphone-score-kicker">COURTSTREAK / YOUR ROUND</span>
-     <h2>{p==='finished'?'Round complete':'Attempt stopped'}</h2>
-     <div className="cs-iphone-score-number"><strong>{ui.count}</strong><span>{p==='finished'?'detected reps':'partial count'}</span></div>
-     <p>Right-Hand Pound · {p==='finished'?'20 seconds':'Incomplete attempt'}</p>
-     {p==='interrupted'&&<p><strong>Why it stopped:</strong> {ui.message}</p>}
-     <div className="cs-iphone-score-detail"><span>Ball tracking coverage</span><b>{ui.total?`${Math.round(ui.detected/ui.total*100)}%`:'—'}</b></div>
-     <small>Coverage measures ball visibility, not counting accuracy.</small>
-    </div>
-    <div className="cs-iphone-replay">
-     <h3><FiPlay aria-hidden="true"/> Replay your round</h3>
-     {clip.status==='ready'?<>
-      <CountedReplay src={clip.url} changes={replayChanges} events={ui.evidence.repEvents} finalCount={ui.count} completed={p==='finished'}/>
-      {preparing?<div className="cs-iphone-export" role="status"><strong>Preparing shareable MP4… {Math.floor(countedClip.progress*100)}%</strong><progress value={countedClip.progress} max="1" aria-label="Preparing video with rep counter"/><p>You can play and review your round now. Keep this page open while the shareable MP4 prepares. Export time varies by device. Your original recording is also available below.</p><button type="button" className="cs-iphone-secondary" onClick={useOriginalVideo}>Use original video (no counter)</button></div>:countedClip.status==='ready'?<p className="cs-iphone-video-ready">✓ Counted MP4 ready · {countedClip.width} × {countedClip.height} · Original frame timing preserved.</p>:<div className="cs-iphone-export"><p role="status">{countedClip.status==='unavailable'?countedClip.message:countedClip.status==='original'?'Original selected: this video has no rep counter.':'Your counted replay prepares automatically. Keep this page open.'}</p><button type="button" className="cs-iphone-secondary" onClick={prepareCountedVideo}>Prepare counted video</button><button type="button" className="cs-iphone-secondary" onClick={useOriginalVideo}>Use original video (no counter)</button></div>}
-      <div className="cs-iphone-video-actions">
-       <button type="button" className="cs-iphone-primary" onClick={()=>shareVideo(true)} disabled={sharing||!canSave}><FiDownload aria-hidden="true"/> {countedClip.status==='ready'?'Save counted video':countedClip.status==='original'?'Save original video (no counter)':countedClip.status==='unavailable'?'Counted video unavailable':'Preparing counted video…'}</button>
-       <button type="button" className="cs-iphone-secondary" onClick={()=>shareVideo()} disabled={sharing||!canSave}><FiShare2 aria-hidden="true"/> {sharing?'Opening…':'Share video'}</button>
-      </div>
-      {canSave&&<a className="cs-iphone-file-download" href={savedClip.url} download={filename}>Download {countedClip.status==='ready'?'counted':'original'} video file</a>}
-      <details><summary>Original camera file (no counter)</summary><a className="cs-iphone-file-download cs-iphone-original-download" href={clip.url} download={originalFilename}>Save original camera video (no counter)</a></details>
-      <p>On iPhone, the share sheet may also offer Save Video or Save to Files. Save the clip before leaving or starting another round.</p>
-     </>:<p role="status">{clip.status==='finishing'?'Preparing your replay…':clip.status==='unavailable'?'Video recording is unavailable in this browser. Your count is still shown above.':'No drill video was recorded for this attempt.'}</p>}
-     {shareMessage&&<p role="status">{shareMessage}</p>}
-     <ShareTraining text={summary}/>
-     <small>Sharing opens your device’s share options. Videos are not posted to the in-app Circle feed.</small>
-    </div>
-    <p className="cs-iphone-review-note">Camera test result · Compare with your actual reps. No XP or Circle standings are changed.</p>
-    {ui.total>0&&<details className="cs-iphone-evidence"><summary>Help check this count</summary><p>If a count looks wrong, save the video and its matching test details. The details record ball detections, counting decisions, and timing; no video is uploaded automatically.</p><button type="button" className="cs-iphone-secondary" onClick={saveEvidence}>Save test details</button></details>}
-    <button type="button" className="cs-iphone-secondary" onClick={open}>Start another round</button>
-   </section>}
-   <details className="cs-iphone-help"><summary>Camera setup tips</summary><p>A stable floor-level support or tripod works in either orientation. If the phone is on the floor, tilt it up until your head, both feet and the basketball fit, with some floor visible below your shoes. Landscape usually gives more room for your arm and the ball. Hold the basketball comfortably in either visible hand until Go. Small adjustments are okay. A brief ball-lock interruption pauses the countdown and keeps your progress. A longer loss restarts the position check. The status message explains which check needs attention. A ring follows the detected ball; counting begins only after the five-second countdown.</p><p>If you rotate the phone, CourtStreak checks the new framing before starting again. Keep the phone still while training.</p></details>
-   <footer>On-device detector test · {ui.fps>0?`${ui.fps.toFixed(1)} tracking frames/sec`:'Waiting for camera'}<br/>Your round records locally from Go until Time for replay. Camera video stays on this device unless you choose to save or share it.</footer>
-  </div>
- </main>;
+ return <PoundSessionView ui={ui} ratio={ratio} live={live} ended={ended} ballLocked={!!ui.ball&&m.current.tracker.ready()}
+  videoRef={video} overlayRef={overlay} resultPanelRef={resultPanel}
+  clip={clip} countedClip={countedClip} replayChanges={replayChanges} preparing={preparing}
+  canSave={canSave} savedClip={savedClip} sharing={sharing} shareMessage={shareMessage}
+  filename={filename} originalFilename={originalFilename}
+  versions={{counter:freshFrames?EXPERIMENTAL_COUNTER_REVISION:BALL_TRACKER_REVISION,camera:CAMERA_SETUP_REVISION,frame:LIVE_FRAME_REVISION,identity:BALL_IDENTITY_REVISION,check:TRACKER_CHECK_REVISION}}
+  onBack={()=>navigate('/lab/drill/right-hand-pound')} onOpen={open}
+  onStop={()=>{token.current++;cancelAnimationFrame(raf.current);m.current.phase='interrupted';m.current.message='Attempt stopped. Recheck your position when ready.';stopCamera();publish();}}
+  onSaveEvidence={saveEvidence} onPrepareVideo={prepareCountedVideo}
+  onUseOriginal={useOriginalVideo} onShareVideo={shareVideo}/>;
 }
 

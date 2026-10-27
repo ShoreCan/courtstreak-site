@@ -1,0 +1,14 @@
+.cs-entry-studio{background:#111f32;border-color:#2b3a50;padding:24px}
+.cs-entry-studio .cs-iphone-entry-heading{margin-bottom:20px}
+.cs-entry-studio .cs-iphone-entry-heading strong{font-size:28px;font-weight:700;letter-spacing:-.04em;color:#eef3fc;line-height:1.15}
+.cs-entry-studio .cs-iphone-entry-heading p{font-size:13px;line-height:1.6;color:#b3bfd2;margin-top:10px}
+.cs-entry-studio button{min-height:54px;padding:14px 16px}
+.cs-entry-studio .cs-iphone-entry-ai{background:#ff8747;border-color:#ff8747;color:#111f32}
+.cs-entry-studio .cs-iphone-entry-manual{border-color:#33465f;color:#c7d3e4}
+.cs-entry-studio .cs-iphone-entry-disclaimer{font-size:11px;line-height:1.7;color:#a3b1c7;margin-top:14px}
+.cs-entry-studio[data-appearance=light]{background:#fff;border-color:#d7dfeb}
+.cs-entry-studio[data-appearance=light] .cs-iphone-entry-heading strong{color:#13243b}
+.cs-entry-studio[data-appearance=light] :is(.cs-iphone-entry-heading p,.cs-iphone-entry-disclaimer){color:#526279}
+.cs-entry-studio[data-appearance=light] .cs-iphone-entry-kicker{color:#a63d0b}
+.cs-entry-studio[data-appearance=light] .cs-iphone-entry-manual{border-color:#d7dfeb;color:#13243b}
+.cs-entry-studio[data-appearance=light] .cs-iphone-entry-manual:hover{background:#f3f5f9}

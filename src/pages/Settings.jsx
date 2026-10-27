@@ -21,6 +21,7 @@ import {
 } from 'react-icons/fi';
 import usePreviewNavigate from '../lib/usePreviewNavigate.js';
 import { supabase } from '../lib/supabaseClient.js';
+import { AppearanceSettings } from '../components/AppearanceControl.jsx';
 
 const skillLevels = ['Beginner', 'Intermediate', 'Advanced'];
 const trainingDurations = ['10 minutes', '20 minutes'];
@@ -222,6 +223,7 @@ window.setTimeout(() => {
           </div>
 
           <nav aria-label="Settings sections">
+            <a href="#appearance-settings"><FiEye /> Appearance</a>
             <a href="#training-settings">
               <FiTarget />
               Training
@@ -260,7 +262,9 @@ window.setTimeout(() => {
             </span>
           </div>
 
-          {previewOnly && <p className="cs-settings-preview-note">These are sample player settings. Members can personalize their training, privacy, and account preferences. Changes and saving are disabled in this preview.</p>}
+          {previewOnly && <p className="cs-settings-preview-note">Sample player settings. Appearance works on this device; account preferences are disabled in this preview.</p>}
+
+          <AppearanceSettings />
 
           {message ? (
             <div className="cs-settings-message success">

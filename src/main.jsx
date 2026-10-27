@@ -7,6 +7,8 @@ import './styles.css';
 import './player-app-ui.css';
 import './quality-polish.css';
 import './iphone-polish.css';
+import './theme.css';
+import './lib/appearance.mjs';
 
 function NavigationReset() {
   const { pathname } = useLocation();

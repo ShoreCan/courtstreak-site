@@ -1,6 +1,10 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <script>
+      try { document.documentElement.dataset.csAppearance = localStorage.getItem('courtstreak:appearance') === 'light' ? 'light' : 'dark'; }
+      catch { document.documentElement.dataset.csAppearance = 'dark'; }
+    </script>
     <link
   rel="icon"
   href="/courtstreak-site/favicon.svg"

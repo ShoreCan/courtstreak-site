@@ -1,0 +1,26 @@
+/* Shared by every route. Native camera/video pixels and artwork are unchanged. */
+:root {
+ --cs-theme-bg:#091321;--cs-theme-panel:#111f32;--cs-theme-raised:#182a41;
+ --cs-theme-bg-rgb:9,19,33;--cs-theme-panel-rgb:17,31,50;--cs-theme-raised-rgb:24,42,65;
+ --cs-theme-copy:#f1f5fc;--cs-theme-muted:#a5b4ca;--cs-theme-overlay-rgb:235,242,255;
+ --cs-theme-line-soft:#263449;--cs-theme-line:#34455e;--cs-theme-line-strong:#536780;
+ --cs-theme-accent-ink:#ffa36b;--cs-theme-on-accent:#122139;
+ --cs-theme-action:#243e5e;--cs-theme-on-action:#f5f8ff;
+ --cs-theme-success-ink:#88e3b0;--cs-theme-warning-ink:#f6cf78;--cs-theme-danger-ink:#ffa7a7;
+ --cs-theme-success-bg:#173b32;--cs-theme-danger-bg:#341b24;--cs-theme-purple-bg:#2d2343;
+ --cs-theme-info-ink:#a0c5ff;--cs-theme-purple-ink:#d0b4ff;
+ --cs-look-bg:var(--cs-theme-bg);--cs-look-panel:var(--cs-theme-panel);--cs-look-text:var(--cs-theme-copy);
+ --cs-look-muted:var(--cs-theme-muted);--cs-look-line:var(--cs-theme-line);--cs-look-accent:var(--cs-theme-accent-ink);
+ color:var(--cs-theme-copy);background:var(--cs-theme-bg);color-scheme:dark;
+}
+:root[data-cs-appearance=light] {
+ --cs-theme-bg:#f3f5f9;--cs-theme-panel:#ffffff;--cs-theme-raised:#e8eef6;
+ --cs-theme-bg-rgb:243,245,249;--cs-theme-panel-rgb:255,255,255;--cs-theme-raised-rgb:232,238,246;
+ --cs-theme-copy:#13243b;--cs-theme-muted:#4f6077;--cs-theme-overlay-rgb:19,36,59;
+ --cs-theme-line-soft:#e1e7ef;--cs-theme-line:#ced8e5;--cs-theme-line-strong:#8a9bb2;
+ --cs-theme-accent-ink:#a63d0b;--cs-theme-action:#13243b;--cs-theme-on-action:#ffffff;
+ --cs-theme-success-ink:#14663c;--cs-theme-warning-ink:#785200;--cs-theme-danger-ink:#a32332;
+ --cs-theme-success-bg:#e0f3e8;--cs-theme-danger-bg:#fde7eb;--cs-theme-purple-bg:#f0e8fc;
+ --cs-theme-info-ink:#205291;--cs-theme-purple-ink:#6a329e;color-scheme:light;
+}
+html,body{background-color:var(--cs-theme-bg)}
