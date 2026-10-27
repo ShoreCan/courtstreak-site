@@ -1,7 +1,7 @@
 import { BALL_TRACKER_REVISION, EXPERIMENTAL_COUNTER_REVISION, BALL_IDENTITY_REVISION, poundCounterOptions } from './poundCore.mjs';
 import { LIVE_FRAME_REVISION } from './detectionPass.mjs';
 
-export const TRACKER_CHECK_REVISION = 'CHECK 05';
+export const TRACKER_CHECK_REVISION = 'CHECK 06';
 export const CURRENT_POUND_MODE = 'iphone-fresh-frame-test';
 export const CURRENT_POUND_SESSION_PATH = `/lab/drill/right-hand-pound/session?mode=${CURRENT_POUND_MODE}`;
 export const isPoundCameraMode = mode => [CURRENT_POUND_MODE, 'iphone-vision-test'].includes(mode);

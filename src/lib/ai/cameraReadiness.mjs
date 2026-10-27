@@ -1,20 +1,23 @@
 // Brief detector flicker pauses setup; sustained loss requires a new lock.
 // Only fresh, valid observations advance the clock or allow Go.
-export const CAMERA_REVIEW_REVISION = 'CAMERA 03';
+export const CAMERA_REVIEW_REVISION = 'CAMERA 04';
 export const SETUP_GRACE_SECONDS = .65;
 export const BALL_LOCK_GRACE_SECONDS = 1.5;
 
 // Never ask the player to reposition for a detector/calibration interruption.
 // Framing loss and an unobserved camera gap keep their shorter timeout.
 export function cameraReadiness(checks, speedReady, lockReady) {
-  const valid = checks.valid && speedReady && lockReady;
+  const bodyRecheck = checks.refreshingBody === true;
+  const valid = checks.valid && !bodyRecheck && speedReady && lockReady;
   const ballRecheck = checks.body && checks.hand && checks.floor &&
     (!checks.ball || (checks.valid && !lockReady));
-  const message = !checks.valid ? checks.message : !speedReady ?
+  const message = bodyRecheck ? checks.message || 'Refreshing body and wrist tracking. Keep your position.' : !checks.valid ? checks.message : !speedReady ?
     'Checking tracking speed on this phone. Keep the phone still.' : !lockReady ?
     'Body framing is good. Rechecking the ball lock; hold the ball comfortably.' :
     'Position locked. Small movements are okay; wait for Go.';
-  return { valid, recoveryGrace: ballRecheck && speedReady ? BALL_LOCK_GRACE_SECONDS : SETUP_GRACE_SECONDS, message };
+  // Switching from ball reacquisition to a queued body refresh is still a
+  // detector interruption. It must not shorten the existing recovery window.
+  return { valid, recoveryGrace: (ballRecheck || bodyRecheck) && speedReady ? BALL_LOCK_GRACE_SECONDS : SETUP_GRACE_SECONDS, message };
 }
 
 export class ReadinessClock {

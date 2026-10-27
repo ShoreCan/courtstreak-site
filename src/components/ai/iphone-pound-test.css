@@ -14,7 +14,8 @@
 .cs-iphone-score small{font-size:10px;color:#687789;line-height:1.7}
 .cs-iphone-replay{padding:22px 0 0}
 .cs-iphone-replay h3{display:flex;align-items:center;gap:8px;font-size:17px;letter-spacing:-.025em;margin:0 0 12px}
-.cs-iphone-replay>video{display:block;width:100%;max-height:58svh;object-fit:contain;border-radius:17px;background:#101d30}
+.cs-iphone-replay-player{scroll-margin-top:88px;border-radius:17px;overflow:hidden;background:#101e31}
+.cs-iphone-replay-player video{display:block;width:100%;max-height:min(50svh,430px);object-fit:contain;background:#101d30}
 .cs-iphone-video-actions{display:grid;grid-template-columns:1fr;gap:10px;margin-top:14px}
 .cs-iphone-video-actions .cs-iphone-primary,.cs-iphone-video-actions .cs-iphone-secondary{display:flex;align-items:center;justify-content:center;gap:8px;text-align:center;text-decoration:none;margin:0;padding:12px 14px;box-sizing:border-box}
 .cs-iphone-video-actions button:disabled{opacity:.6;cursor:wait}
@@ -41,4 +42,11 @@
 .cs-iphone-original-download{display:block;color:#687789}
 .cs-iphone-rep-markers button:disabled{opacity:.5;cursor:wait}
 
-.cs-iphone-instant-count{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 16px;background:#101e31;color:#f5f7fb;border-radius:12px;margin-top:8px}.cs-iphone-instant-count span{font-size:11px;letter-spacing:.08em}.cs-iphone-instant-count strong{font-size:32px;color:#ffa46b}.cs-iphone-instant-count small{flex-basis:100%;color:#a5b6cb}
+.cs-iphone-replay .cs-iphone-instant-count{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 16px;background:#101e31;color:#f5f7fb}
+.cs-iphone-instant-count>div>span{display:block;font-size:10px;letter-spacing:.08em;color:#a5b6cb}
+.cs-iphone-replay-total{display:flex;align-items:baseline;gap:6px}
+.cs-iphone-instant-count strong{font-size:38px;line-height:1.15;color:#ffa46b;font-variant-numeric:tabular-nums}
+.cs-iphone-replay .cs-iphone-instant-count small{display:inline;margin:0;color:#a5b6cb;font-size:16px}
+.cs-iphone-selected-rep{font-size:11px;line-height:1.5;text-align:right;color:#f5f7fb;max-width:140px}
+.cs-iphone-rep-markers button[aria-pressed=true]{background:#14243a;color:#fff;border-color:#14243a}
+.cs-iphone-rep-markers button[aria-current=step]{box-shadow:0 0 0 2px #ffa46b}
