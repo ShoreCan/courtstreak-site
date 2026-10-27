@@ -4,7 +4,7 @@ import {timedBallContinuation,strongBallContinuation,corroboratedBallContinuatio
 import {ORDINARY_BALL_SCORE} from './ballProposalPolicy.mjs';
 export const BALL_TRACKER_REVISION = 'COUNT 03';
 export const EXPERIMENTAL_COUNTER_REVISION = 'COUNT 08';
-export const BALL_IDENTITY_REVISION = 'LOCK 09';
+export const BALL_IDENTITY_REVISION = 'LOCK 10';
 // Both live initialization/reset and cached-input replay must resolve the same settings.
 export function poundCounterOptions(revision) {
  if(revision==='COUNT 03')return {directionalPeaks:false,timeWindows:false};
@@ -24,7 +24,7 @@ const center=b=>[(b[0]+b[2])/2,(b[1]+b[3])/2];
 export const geometry = c => ({center:center(c.box), diameter:Math.sqrt(Math.max((c.box[2]-c.box[0])*(c.box[3]-c.box[1]),1))});
 const wrists = p => p ? [9,10].filter(i=>p.confidence[i]>=.15 && p.xy[i][0]>0 && p.xy[i][1]>0).map(i=>p.xy[i]) : [];
 export class BallIdentityTracker {
- constructor({handContinuity=false,objectBackgroundRadius=false,timedContinuity=false,strongContinuity=false,corroboratedContinuity=false,floorContinuity=false,turnContinuity=false,weakContinuity=false,diagnostics=false}={}){this.weakContinuity=weakContinuity;this.diagnostics=diagnostics;this.decisions=[];this.turnContinuity=turnContinuity;this.floorContinuity=floorContinuity;this.corroboratedContinuity=corroboratedContinuity;this.provisionalBall=null;this.strongContinuity=strongContinuity;this.handContinuity=handContinuity;this.objectBackgroundRadius=objectBackgroundRadius;this.timedContinuity=timedContinuity;this.samples=[];this.last=null;this.velocity=[0,0];this.diameter=null;this.missed=0;this.diameters=[];this.lanes=[];this.background=[];this.frame=0;}
+ constructor({handContinuity=false,objectBackgroundRadius=false,timedContinuity=false,strongContinuity=false,corroboratedContinuity=false,floorContinuity=false,turnContinuity=false,weakContinuity=false,regularFloorContinuity=false,diagnostics=false}={}){this.regularFloorContinuity=regularFloorContinuity;this.weakContinuity=weakContinuity;this.diagnostics=diagnostics;this.decisions=[];this.turnContinuity=turnContinuity;this.floorContinuity=floorContinuity;this.corroboratedContinuity=corroboratedContinuity;this.provisionalBall=null;this.strongContinuity=strongContinuity;this.handContinuity=handContinuity;this.objectBackgroundRadius=objectBackgroundRadius;this.timedContinuity=timedContinuity;this.samples=[];this.last=null;this.velocity=[0,0];this.diameter=null;this.missed=0;this.diameters=[];this.lanes=[];this.background=[];this.frame=0;}
  decision(index,status,reason){if(this.diagnostics)this.decisions[index]={candidateIndex:index,status,reason};}
  typical(){return this.diameters.length?median(this.diameters):this.diameter;}
  lane(){return this.lanes.length?median(this.lanes):this.last?.[0];}
@@ -43,13 +43,13 @@ export class BallIdentityTracker {
   }else{
    const predicted=this.last.map((v,i)=>v+this.velocity[i]*Math.min(this.missed+1,3));const typical=this.typical(),lane=this.lane(); const scored=[],reacquired=[];
    const timed=this.timedContinuity&&phase==='drill'?timedBallContinuation(candidates,this.samples,now,typical):null;
-   const floor=this.floorContinuity&&phase==='drill'&&this.ready()?floorBallContinuation(candidates,this.samples,now,typical,person,{allowApexReturn:this.turnContinuity}):null;
+   const floor=this.floorContinuity&&phase==='drill'&&this.ready()?floorBallContinuation(candidates,this.samples,now,typical,person,{allowApexReturn:this.turnContinuity,allowRegularCadence:this.regularFloorContinuity&&this.missed===0}):null;
    const strong=this.strongContinuity&&phase==='drill'?strongBallContinuation(candidates,this.samples,now,typical,this.velocity,this.missed):null;
    corroboratedRecovery=this.corroboratedContinuity&&phase==='drill'&&this.ready()?corroboratedBallContinuation(candidates,this.samples,now,typical,this.provisionalBall,{movingRecovery:this.turnContinuity,person}):null;
    this.provisionalBall=corroboratedRecovery?.pending??null;
    candidates.forEach((c,i)=>{const g=geometry(c),p=g.center,d=g.diameter;
     if(this.weakContinuity&&c.score<ORDINARY_BALL_SCORE&&(!this.ready()||phase!=='drill'||d/typical<.58||d/typical>1.68||Math.abs(p[0]-lane)>Math.max(28,typical*.75)))return void this.decision(i,'rejected','weak_geometry');
-    const floorCandidate=floor?.index===i,timedCandidate=timed?.index===i||floorCandidate,corroboratedCandidate=corroboratedRecovery?.index===i;
+    const floorCandidate=floor?.index===i,regularFloorCandidate=floorCandidate&&floor.regularCadence===true,timedCandidate=timed?.index===i||(floorCandidate&&!regularFloorCandidate),corroboratedCandidate=corroboratedRecovery?.index===i;
     // Preserve a nearby hand-owned continuation as well as the existing reacquisition.
     // Background memory must not alternate between rejecting and recovering a held ball.
     // The original setup-size and subsequent motion gates still apply.
@@ -64,7 +64,7 @@ export class BallIdentityTracker {
     // Two strong proposals must demonstrate motion near the feet before the
     // new path can cross a remembered object of comparable size. A larger
     // remembered object still vetoes selection.
-    if(!recoveringAtHand&&!continuingAtHand&&this.background.some(b=>b.observations>=5&&distance(p,b.center)<=(this.objectBackgroundRadius&&phase==='drill'?Math.max(28,b.diameter*.65):Math.max(28,d*.65,b.diameter*.65))&&!(((timedCandidate||strong===i||corroboratedCandidate)&&b.diameter<d*.75)||(corroboratedCandidate&&corroboratedRecovery.moving&&b.diameter<=d*1.25))))return void this.decision(i,'rejected','background_memory');
+    if(!recoveringAtHand&&!continuingAtHand&&this.background.some(b=>b.observations>=5&&distance(p,b.center)<=(this.objectBackgroundRadius&&phase==='drill'?Math.max(28,b.diameter*.65):Math.max(28,d*.65,b.diameter*.65))&&!(((timedCandidate||regularFloorCandidate||strong===i||corroboratedCandidate)&&b.diameter<d*.75)||(corroboratedCandidate&&corroboratedRecovery.moving&&b.diameter<=d*1.25))))return void this.decision(i,'rejected','background_memory');
     if(typical!=null&&(d/typical<.58||d/typical>1.68))return void this.decision(i,'rejected','size_ratio');
     const reference=Math.max(typical||this.diameter||d,28),handDistance=hands.length?Math.min(...hands.map(v=>distance(p,v))):Infinity;
     if(phase==='drill'&&this.missed&&handDistance<=Math.max(120,d*1.65))reacquired.push([handDistance/Math.max(d,24),i]);
@@ -100,7 +100,7 @@ export class BallIdentityTracker {
   this.last=g.center;this.diameter=g.diameter;this.missed=0;
   if((this.timedContinuity||this.strongContinuity||this.corroboratedContinuity)&&Number.isFinite(now)){
    if(this.samples.length&&now<=this.samples.at(-1).at)this.samples=[];
-   this.samples.push({at:now,center:[...g.center],diameter:g.diameter});this.samples=this.samples.slice(-32);
+   this.samples.push({at:now,center:[...g.center],diameter:g.diameter,...(this.regularFloorContinuity?{score:chosen.score}:{})});this.samples=this.samples.slice(-32);
   }
   if(owned&&['setup','countdown'].includes(phase)){this.diameters.push(g.diameter);this.diameters=this.diameters.slice(-30);this.lanes.push(g.center[0]);this.lanes=this.lanes.slice(-45);}
   return chosen;

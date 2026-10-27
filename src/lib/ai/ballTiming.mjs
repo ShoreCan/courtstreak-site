@@ -108,12 +108,18 @@ export function corroboratedBallContinuation(candidates,samples,now,reference,pr
 // a recent observed floor position and an ascent ending near the right wrist.
 // No positions are invented.
 // Control validation must still verify the return before accepting a rep.
-export function floorBallContinuation(candidates,samples,now,reference,person,{allowApexReturn=false}={}){
+export function floorBallContinuation(candidates,samples,now,reference,person,{allowApexReturn=false,allowRegularCadence=false}={}){
  if(!Number.isFinite(now)||!Number.isFinite(reference)||!(reference>0)||!Array.isArray(candidates)||!Array.isArray(samples)||samples.length<8||!person)return null;
  const last=samples.at(-1),before=samples.at(-2);
  if(!last?.center?.every(Number.isFinite)||!before?.center?.every(Number.isFinite)||!Number.isFinite(last.at)||!Number.isFinite(before.at)||!(last.diameter>0)||!Number.isFinite(last.diameter))return null;
  const gap=now-last.at,dt=last.at-before.at;
- if(!(gap>=.08&&gap<=.18&&dt>0&&dt<=(allowApexReturn ? .2 : .15)))return null;
+ // At ordinary cadence a fast descending ball can cross a small remembered
+ // object in one frame. Require two strong observed approach samples, a tight
+ // displacement bound, visible feet and one very strong floor proposal.
+ const regular=allowRegularCadence&&gap>=.06&&gap<.08&&dt>=.03&&dt<=.1
+  &&Number.isFinite(last.score)&&last.score>=.5&&Number.isFinite(before.score)&&before.score>=.4;
+ if(!regular&&!(gap>=.08&&gap<=.18&&dt>0&&dt<=(allowApexReturn ? .2 : .15)))return null;
+ if(regular&&last.center[1]-before.center[1]<reference*.3)return null;
  const descending=dt<=.15&&last.center[1]-before.center[1]>=reference*.05;
  const wrist=person.xy?.[10];
  const apex=allowApexReturn&&last.center[1]-before.center[1]<=-reference*.2&&person.confidence?.[10]>=.7
@@ -126,7 +132,7 @@ export function floorBallContinuation(candidates,samples,now,reference,person,{a
   const [x1,y1,x2,y2]=c.box;if(x2<=x1||y2<=y1)return;
   const d=Math.sqrt((x2-x1)*(y2-y1)),p=[(x1+x2)/2,(y1+y2)/2],dy=p[1]-last.center[1];
   if(d/reference<.85||d/reference>1.25||d/last.diameter<.85||d/last.diameter>1.25)return;
-  if(Math.abs(p[0]-last.center[0])>reference*.5||dy<reference*2||dy>reference*5)return;
+  if(Math.abs(p[0]-last.center[0])>reference*(regular?.35:.5)||dy<reference*2||dy>reference*(regular?2.5:5))return;
   if(p[1]<footY-d*.5||p[1]>footY+d*1.5)return;
   if(!descending){
    const prior=samples.some(q=>Number.isFinite(q?.at)&&Array.isArray(q.center)&&q.center.length===2&&last.at-q.at>0&&last.at-q.at<=.6&&q.center?.every(Number.isFinite)&&q.diameter/reference>=.85&&q.diameter/reference<=1.25&&q.center[1]-last.center[1]>=reference*1.2&&Math.abs(q.center[1]-p[1])<=reference*.5&&Math.abs(q.center[0]-p[0])<=reference*.5);
@@ -134,5 +140,6 @@ export function floorBallContinuation(candidates,samples,now,reference,person,{a
   }
   matches.push({index,envelope:Math.abs(dy)+reference});
  });
- return matches.length===1?matches[0]:null;
+ if(matches.length!==1||regular&&candidates[matches[0].index].score<.9)return null;
+ return regular?{...matches[0],regularCadence:true}:matches[0];
 }

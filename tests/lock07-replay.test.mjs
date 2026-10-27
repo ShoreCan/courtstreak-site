@@ -31,7 +31,7 @@ for(const name of ['19-reps','20-reps','21-reps','5-reps','oct22-count05-fast25'
 }
 test('live experimental initialization and resets enable the tested recovery and identify LOCK 07',()=>{
  const source=fs.readFileSync(new URL('../src/components/ai/IPhonePoundTest.jsx',import.meta.url),'utf8');
- assert.ok(['LOCK 07','LOCK 08','LOCK 09'].includes(BALL_IDENTITY_REVISION));assert.ok(['COUNT 06','COUNT 07','COUNT 08'].includes(EXPERIMENTAL_COUNTER_REVISION));
+ assert.ok(['LOCK 07','LOCK 08','LOCK 09','LOCK 10'].includes(BALL_IDENTITY_REVISION));assert.ok(['COUNT 06','COUNT 07','COUNT 08'].includes(EXPERIMENTAL_COUNTER_REVISION));
  assert.equal(createPoundTrackingState().tracker.floorContinuity,true);assert.match(source,/m\.current=machine\(freshFrames\)/);assert.match(source,/\.\.\.machine\(freshFrames\)/);
 });
 for(const mode of ['missing wrist','no controlled return'])test(`floor recovery still rejects reps with ${mode}`,()=>{
