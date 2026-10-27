@@ -3,6 +3,7 @@ import {createCountedVideoRenderer} from './countedVideoRenderer.mjs';
 
 export const SHARE_VIDEO_REVISION = 'SHARE 04';
 const abortError = () => new DOMException('Video preparation cancelled.', 'AbortError');
+const unsupported = message => Object.assign(new Error(message),{name:'CountedVideoUnsupportedError'});
 
 // Process every source frame with its media timestamp, awaiting encoder capacity.
 // This is an offline export after the camera/drill stops, never a real-time
@@ -24,14 +25,14 @@ export async function encodeQualityCountedVideo({ blob, changes, finalCount, com
   signal?.addEventListener('abort', cancel, { once: true });
   try {
     const track = await input.getPrimaryVideoTrack(); check();
-    if (!track || !await track.canDecode()) throw new Error('This browser cannot decode the original for a counted export. Save the original video, or try the export in a supported browser.');
+    if (!track || !await track.canDecode()) throw unsupported('This browser cannot decode the original for a counted export. Save the original video, or try the export in a supported browser.');
     const [width, height, sourceDuration] = await Promise.all([
       track.getDisplayWidth(), track.getDisplayHeight(), track.computeDuration()]);
     const layout = shareVideoLayout(width, height);
     const bitrate = Math.round(Math.max(4_000_000, layout.width * layout.height * 5));
     const quality = new Quality({ bitrate, bitrateMode: 'variable' });
     if (!await canEncodeVideo('avc', { width: layout.width, height: layout.height, quality })) {
-      throw new Error('High-quality MP4 export is unavailable in this browser. Your original camera video is still available.');
+      throw unsupported('High-quality MP4 export is unavailable in this browser. Your original camera video is still available.');
     }
     check();
     const canvas = createCanvas ? createCanvas(layout.width, layout.height) :
@@ -40,7 +41,7 @@ export async function encodeQualityCountedVideo({ blob, changes, finalCount, com
     // The camera picture and graphic bands cover the whole output. An opaque
     // surface avoids maintaining an unused transparency channel.
     const ctx = canvas.getContext('2d',{alpha:false});
-    if (!ctx) throw new Error('Video rendering is unavailable. Your original is still available.');
+    if (!ctx) throw unsupported('Video rendering is unavailable. Your original is still available.');
     const renderer=createCountedVideoRenderer({layout,changes,finalCount,completed,duration,createCanvas});
     const sink = new VideoSampleSink(track);
     output = new Output({ format: new Mp4OutputFormat({ fastStart: 'in-memory' }), target: new BufferTarget() });
