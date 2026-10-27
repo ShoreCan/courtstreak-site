@@ -1,7 +1,7 @@
 import { drawCountedVideo, shareVideoLayout, RESULT_CARD_SECONDS } from './videoCountOverlay.mjs';
 import {createCountedVideoRenderer} from './countedVideoRenderer.mjs';
 
-export const SHARE_VIDEO_REVISION = 'SHARE 03';
+export const SHARE_VIDEO_REVISION = 'SHARE 04';
 const abortError = () => new DOMException('Video preparation cancelled.', 'AbortError');
 
 // Process every source frame with its media timestamp, awaiting encoder capacity.
@@ -9,8 +9,10 @@ const abortError = () => new DOMException('Video preparation cancelled.', 'Abort
 // screen recording. A slow encoder takes longer instead of dropping frames.
 export async function encodeQualityCountedVideo({ blob, changes, finalCount, completed,
   duration = 20, signal, onProgress = () => {}, media, createCanvas,
-  yieldControl = () => new Promise(resolve => setTimeout(resolve, 0)), clock=()=>performance.now() }) {
+  yieldControl = () => new Promise(resolve => setTimeout(resolve, 0)), clock=()=>performance.now(),
+  executionContext='main-thread' }) {
   const exportBegan=clock();
+  const stageTimingsMs={initialization:0,sampleReadWait:0,render:0,encodeSubmitWait:0,cooperativeYieldWait:0,resultCard:0,finalize:0};
   const check = () => { if (signal?.aborted) throw abortError(); };
   check();
   const lib = media ?? await import('mediabunny');
@@ -35,7 +37,9 @@ export async function encodeQualityCountedVideo({ blob, changes, finalCount, com
     const canvas = createCanvas ? createCanvas(layout.width, layout.height) :
       typeof OffscreenCanvas === 'function' ? new OffscreenCanvas(layout.width, layout.height) :
       Object.assign(document.createElement('canvas'), { width: layout.width, height: layout.height });
-    const ctx = canvas.getContext('2d');
+    // The camera picture and graphic bands cover the whole output. An opaque
+    // surface avoids maintaining an unused transparency channel.
+    const ctx = canvas.getContext('2d',{alpha:false});
     if (!ctx) throw new Error('Video rendering is unavailable. Your original is still available.');
     const renderer=createCountedVideoRenderer({layout,changes,finalCount,completed,duration,createCanvas});
     const sink = new VideoSampleSink(track);
@@ -43,40 +47,45 @@ export async function encodeQualityCountedVideo({ blob, changes, finalCount, com
     source = new CanvasSource(canvas, { codec: 'avc', quality, latencyMode: 'quality', keyFrameInterval: 1 });
     output.addVideoTrack(source);
     await output.start(); check();
+    stageTimingsMs.initialization=clock()-exportBegan;
     let firstTimestamp = null, endTime = 0, frames = 0;
-    const frameDurations = [];
+    let waitingForSampleAt=clock();
     for await (const sample of sink.samples()) {
+      stageTimingsMs.sampleReadWait+=clock()-waitingForSampleAt;
       lastFrame?.close();lastFrame=sample;
       check();
       if (!(sample.duration > 0) || !Number.isFinite(sample.timestamp)) throw new Error('The camera video has invalid frame timing. Save the original for review.');
       firstTimestamp ??= sample.timestamp;
       const time = sample.timestamp - firstTimestamp;
-      renderer.draw(ctx,sample,time);
-      await source.add(time, sample.duration); check();
+      const renderAt=clock();renderer.draw(ctx,sample,time);stageTimingsMs.render+=clock()-renderAt;
+      const encodeAt=clock();await source.add(time, sample.duration);stageTimingsMs.encodeSubmitWait+=clock()-encodeAt;check();
       frames++; endTime = time + sample.duration;
-      frameDurations.push(sample.duration);
       onProgress(Math.min(.94, .94 * endTime / Math.max(sourceDuration, .01)));
-      if (frames % 8 === 0) await yieldControl();
+      // The main-thread fallback yields to page interaction. An independent
+      // worker already awaits decoder/encoder capacity and needs no UI timers.
+      if (executionContext!=='worker'&&frames % 8 === 0){const yieldAt=clock();await yieldControl();stageTimingsMs.cooperativeYieldWait+=clock()-yieldAt;}
+      waitingForSampleAt=clock();
     }
+    stageTimingsMs.sampleReadWait+=clock()-waitingForSampleAt;
     if (!frames) throw new Error('The original video contained no decodable frames.');
-    const sorted = frameDurations.slice().sort((a,b) => a-b);
-    const endCardFps = Math.min(60, Math.max(1, Math.round(1 / sorted[Math.floor(sorted.length / 2)])));
-    const endFrames = Math.round(RESULT_CARD_SECONDS * endCardFps);
+    const cardAt=clock();
     drawCountedVideo(ctx, lastFrame, layout, { time: endTime, changes, finalCount, duration, completed, result: true });
     lastFrame.close();lastFrame=null;
-    for (let i = 0; i < endFrames; i++) {
-      check(); await source.add(endTime + i / endCardFps, 1 / endCardFps);
-      onProgress(.94 + .05 * (i + 1) / endFrames);
-    }
-    source.close(); await output.finalize(); finalized = true; check(); onProgress(1);
+    // The result picture is static: hold it for two seconds instead of
+    // encoding ~60 identical copies. Every original camera frame stays intact.
+    check();await source.add(endTime,RESULT_CARD_SECONDS);check();stageTimingsMs.resultCard=clock()-cardAt;onProgress(.99);
+    const finalizeAt=clock();source.close();await output.finalize();stageTimingsMs.finalize=clock()-finalizeAt;
+    finalized = true; check(); onProgress(1);
     return { blob: new Blob([output.target.buffer], { type: 'video/mp4' }), width: layout.width,
       height: layout.height, resultCardSeconds: RESULT_CARD_SECONDS,
       exportInfo: { revision: SHARE_VIDEO_REVISION, path: 'offline-frame-encoding', codec: 'avc',
         requestedBitrate: bitrate, sourceWidth: width, sourceHeight: height,
         sourceFrames: frames, sourceDuration: endTime, sourceAverageFps: frames / endTime,
-        encodedSourceFrames: frames, preparationMs:clock()-exportBegan,
+        encodedSourceFrames: frames,resultCardFrames:1,resultCardSeconds:RESULT_CARD_SECONDS,encodedFrames:frames+1,
+        executionContext,preparationMs:clock()-exportBegan,stageTimingsMs,
+        timingMeasurement:'Elapsed pipeline waits; not isolated hardware execution or power measurements',
         renderer:'Cached typography; camera picture rendered for every source frame',
-        timing: 'Original presentation timestamps; no frame-rate upsampling' } };
+        timing: 'Original camera presentation timestamps; static result card held for two seconds' } };
   } finally {
     signal?.removeEventListener('abort', cancel);
     lastFrame?.close();
