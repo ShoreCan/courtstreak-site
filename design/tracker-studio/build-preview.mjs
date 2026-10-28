@@ -22,7 +22,7 @@ const script=chunks[0].code.replace(/<\/script/gi,'<\\/script');
 let css=outputs.filter(f=>f.fileName.endsWith('.css')).map(f=>String(f.source)).join('\n');
 // These marketing backgrounds are unused here; avoid external file references.
 css=css.replace(/url\((['"]?)\/courtstreak-site\/[^)]+\)/g,'none');
-const head='<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#15283f"><title>CourtStreak — Tracker Studio 03 design review</title>';
+const head='<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#15283f"><title>CourtStreak — Tracker Studio 04 design review</title>';
 const content=`<style>${css}</style></head><body><div id="root"></div><script type="module">${script}</script></body></html>`;
 const embedded=`<!doctype html><html lang="en" data-studio-phase="__STUDIO_PHASE__" data-studio-appearance="__STUDIO_APPEARANCE__"><head>${head}${content}`;
 const template=Buffer.from(embedded).toString('base64');

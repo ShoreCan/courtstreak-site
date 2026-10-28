@@ -39,11 +39,6 @@
 .cs-demo-label{position:absolute;top:22px;left:24px;font-size:10px;letter-spacing:.16em;font-weight:650;color:#c4cedd}
 .cs-demo-pause{position:absolute;right:17px;top:12px;display:grid;place-items:center;width:44px;height:44px;border:1px solid #8a9ab940;border-radius:50%;background:#0e1b2d;color:#c4cedd}
 .cs-demo-floor-label{position:absolute;bottom:17px;left:0;right:0;text-align:center;font-size:10px;letter-spacing:.16em;color:#b1bfd1}
-.cs-demo-ball{animation:cs-pound-bounce 1.3s infinite;transform:translate(310px,189px)}
-.cs-demo-ball-shadow{animation:cs-pound-shadow 1.3s infinite;transform-origin:310px 376px}
-.cs-pound-demo.is-paused *{animation-play-state:paused}
-@keyframes cs-pound-bounce{0%,100%{transform:translate(310px,189px);animation-timing-function:cubic-bezier(.55,.05,.8,.5)}50%{transform:translate(310px,352px);animation-timing-function:cubic-bezier(.2,.5,.45,.95)}}
-@keyframes cs-pound-shadow{0%,100%{transform:scaleX(.6);opacity:.3}50%{transform:scaleX(1);opacity:1}}
 .cs-iphone-lock{position:absolute;left:14px;top:14px;display:flex;align-items:center;gap:7px;padding:7px 11px;border:1px solid #8292a440;border-radius:8px;background:#0c192be8;color:#c6d0e0;font-size:11px}
 .cs-iphone-lock i{width:5px;height:5px;border-radius:50%;background:#a3b1c7}
 .cs-iphone-lock.found{color:#b0e2c9}.cs-iphone-lock.found i{background:#8dd9b4}
@@ -214,3 +209,46 @@
 @media(max-width:720px){.cs-iphone-tracker:is([data-phase=idle],[data-phase=error],[data-phase=loading]) .cs-iphone-controls{padding:22px}.cs-studio-ready-icon{width:46px;height:46px;margin-bottom:20px}.cs-studio-demo-slot{min-height:230px;max-height:270px}.cs-studio-visual-help>summary{font-size:12px}}
 
 .cs-studio-private{display:grid;place-items:center;width:44px;height:44px;color:var(--cs-look-muted);justify-self:end}.cs-studio-private>svg{width:17px;height:17px}
+
+/* One instruction at a time; raw diagnostics remain available on demand. */
+.cs-setup-before{font-size:12px;line-height:1.7;color:var(--muted);margin:15px 0}
+.cs-setup-stages{display:flex;list-style:none;padding:0;margin:22px 0 12px;gap:16px}
+.cs-setup-stages li{display:flex;gap:7px;align-items:center;font-size:11px;color:var(--muted)}
+.cs-setup-stages b{display:grid;place-items:center;width:22px;height:22px;border:1px solid var(--line);border-radius:50%;font-size:10px;flex-shrink:0}
+.cs-setup-stages .current{color:var(--ink)}.cs-setup-stages .current b{border-color:var(--accent);color:var(--accent)}.cs-setup-stages .complete{color:var(--green)}
+.cs-setup-details{margin-top:16px;border-top:1px solid var(--line)}
+.cs-setup-details summary{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px;font-size:11px;list-style:none;cursor:pointer;color:var(--muted)}
+.cs-setup-details p{font-size:12px;line-height:1.6;color:var(--muted)}
+.cs-setup-recovery{margin-top:18px;padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.cs-setup-recovery strong{font-size:14px}.cs-setup-recovery p{font-size:12px;line-height:1.7;color:var(--muted);margin:7px 0 12px}
+.cs-setup-frame{position:absolute;inset:7%;pointer-events:none;opacity:.65}.cs-setup-frame i{position:absolute;width:22px;height:22px;border:solid #d8e5f3;border-width:2px 0 0 2px;border-radius:5px 0 0}
+.cs-setup-frame i:nth-child(1){top:0;left:0}.cs-setup-frame i:nth-child(2){top:0;right:0;transform:rotate(90deg)}.cs-setup-frame i:nth-child(3){bottom:0;right:0;transform:rotate(180deg)}.cs-setup-frame i:nth-child(4){bottom:0;left:0;transform:rotate(270deg)}
+.cs-rep-sequence{display:flex;flex-direction:column;justify-content:center;padding:38px 12px 14px}
+.cs-rep-sequence .cs-demo-label{top:16px;left:18px;font-size:9px}
+.cs-rep-sequence ol{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;list-style:none;padding:0;margin:0}
+.cs-rep-sequence li{min-width:0}.cs-rep-sequence li>svg{display:block;width:100%;max-height:200px}
+.cs-rep-sequence li>span{display:flex;align-items:center;justify-content:center;gap:5px;font-size:10px;color:#e1ebf8;white-space:nowrap}
+.cs-rep-sequence li b{font-size:9px;color:#ffb58a;font-weight:600}
+.cs-rep-sequence>p{font-size:10px;line-height:1.6;color:#bfcee1;text-align:center;margin:12px auto 0;max-width:260px}
+.cs-rep-watch{display:flex;justify-content:center;align-items:center;gap:8px;min-height:44px;margin-top:8px;border:1px solid #657d9c;border-radius:8px;background:#0c192b;color:#e1ebf8;font-size:11px!important}
+.cs-pound-demo-video>video{display:block;width:100%;height:100%;object-fit:contain}
+.cs-iphone-tracker[data-phase=loading]:has(.cs-studio-camera-column:not([hidden])) .cs-studio-workspace{gap:20px}
+.cs-iphone-tracker[data-phase=loading]:has(.cs-studio-camera-column:not([hidden])) .cs-iphone-controls{padding:22px}
+@media(max-width:720px){
+ .cs-iphone-tracker:is([data-phase=setup],[data-phase=countdown]) .cs-studio-heading{padding:14px 0 12px}.cs-iphone-tracker:is([data-phase=setup],[data-phase=countdown]) .cs-studio-heading h1{font-size:28px}.cs-iphone-tracker:is([data-phase=setup],[data-phase=countdown]) .cs-iphone-steps{margin-bottom:16px}
+ .cs-iphone-tracker:is([data-phase=setup],[data-phase=countdown]) .cs-iphone-stage{max-height:42svh;min-height:220px}
+ .cs-iphone-tracker:is([data-phase=setup],[data-phase=countdown]) .cs-studio-workspace{gap:16px}
+ .cs-setup-stages{gap:14px;margin-top:14px}.cs-setup-details{margin-top:10px}.cs-rep-sequence{padding-top:35px}.cs-rep-sequence li>svg{max-height:160px}.cs-rep-sequence ol{gap:2px}
+}
+/* Keep the camera and the current instruction together on a phone. */
+@media(max-width:720px){
+ .cs-iphone-tracker:is([data-phase=loading],[data-phase=setup],[data-phase=countdown]) .cs-studio-topbar{height:54px}
+ .cs-iphone-tracker:is([data-phase=loading],[data-phase=setup],[data-phase=countdown]) .cs-studio-heading{padding:14px 0}
+ .cs-iphone-tracker:is([data-phase=loading],[data-phase=setup],[data-phase=countdown]) .cs-studio-heading h1{font-size:25px}
+ .cs-iphone-tracker:is([data-phase=loading],[data-phase=setup],[data-phase=countdown]) .cs-studio-heading .cs-studio-eyebrow,
+ .cs-iphone-tracker:is([data-phase=loading],[data-phase=setup],[data-phase=countdown]) .cs-iphone-steps{display:none}
+ .cs-iphone-tracker:is([data-phase=setup],[data-phase=countdown]) .cs-iphone-stage{max-height:32svh;min-height:200px}
+ .cs-iphone-tracker:is([data-phase=loading],[data-phase=setup],[data-phase=countdown]) .cs-iphone-help,
+ .cs-iphone-tracker:is([data-phase=loading],[data-phase=setup],[data-phase=countdown]) .cs-studio-privacy-note{display:none}
+ .cs-iphone-tracker:is([data-phase=setup],[data-phase=countdown]) .cs-iphone-controls h2{font-size:22px}
+}

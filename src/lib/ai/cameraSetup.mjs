@@ -1,12 +1,13 @@
 import { geometry } from './poundCore.mjs';
 
-export const CAMERA_SETUP_REVISION = 'CAMERA 03';
+export const CAMERA_SETUP_REVISION = 'CAMERA 05';
+export const POSITION_CONFIRM_SECONDS = .9;
 
 // Setup framing is separate from rep validation. A wide stance or a small
 // held-ball adjustment is allowed; the body, feet, right wrist and ball still
 // have to be visible, and a visible hand must be holding the selected ball.
 export function evaluateCameraSetup(person, ball, w, h) {
-  const r = { body:false, hand:false, ball:!!ball, floor:false, owned:false, valid:false, message:'' };
+  const r = { body:false, hand:false, ball:!!ball, floor:false, owned:false, rightHand:false, valid:false, message:'' };
   if (!person) { r.message='Looking for your body. Face the camera with your basketball visible.'; return r; }
   const visible = (i, confidence=.2) => person.confidence[i]>=confidence &&
     person.xy[i][0]>0 && person.xy[i][0]<w && person.xy[i][1]>0 && person.xy[i][1]<h;
@@ -33,8 +34,9 @@ export function evaluateCameraSetup(person, ball, w, h) {
   }
   if (!ball) { r.message='Body framing is good. Rechecking the basketball; hold it clear of your torso.'; return r; }
   const g=geometry(ball), radius=g.diameter/2;
-  if (g.center[0]-radius<w*.055 || g.center[0]+radius>w*.945) { r.message='The basketball is near the side edge. Bring it toward the center of the preview.'; return r; }
+  if (g.center[0]-radius<w*.055 || g.center[0]+radius>w*.945) { r.issue='ball-edge'; r.message='The basketball is near the side edge. Bring it toward the center of the preview.'; return r; }
   r.owned=[9,10].filter(i=>visible(i)).some(i=>Math.hypot(g.center[0]-person.xy[i][0],g.center[1]-person.xy[i][1])<=Math.max(110,g.diameter*2.3));
+  r.rightHand=visible(10,.22) && Math.hypot(g.center[0]-person.xy[10][0],g.center[1]-person.xy[10][1])<=Math.max(110,g.diameter*2.3);
   if (!r.owned) { r.message='Hold the basketball in either hand to confirm ball lock'; return r; }
   r.valid=true; r.message='Good position. Hold the ball comfortably'; return r;
 }
@@ -45,6 +47,6 @@ export class CameraPositionGate {
   update(now, checks, ball, tracker, performanceReady) {
     if (!checks.valid || !ball || !performanceReady || !tracker.ready()) { this.reset(); return 0; }
     this.since ??= now;
-    return Math.min(1,(now-this.since)/2.25);
+    return Math.min(1,(now-this.since)/POSITION_CONFIRM_SECONDS);
   }
 }

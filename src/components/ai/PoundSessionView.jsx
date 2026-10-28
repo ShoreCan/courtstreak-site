@@ -6,20 +6,23 @@ import PoundDemo from './PoundDemo.jsx';
 import { getDrillVideo } from '../../data/drillVideos.js';
 import './iphone-pound-test.css';
 
-export const TRACKER_PRESENTATION_REVISION = 'STUDIO 03';
+export const TRACKER_PRESENTATION_REVISION = 'STUDIO 04';
 export function CourtStreakMark() {
   return <svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><circle cx="16" cy="16" r="13"/><path d="M3 16h26M16 3v26M6.5 6.5c10.5 4 15 8.5 19 19M25.5 6.5c-10.5 4-15 8.5-19 19"/></svg>;
 }
 const checks = [['body', 'Body', FiMaximize], ['hand', 'Wrist', FiTarget], ['ball', 'Ball', CourtStreakMark], ['floor', 'Floor', FiSmartphone]];
 const titles = { idle: 'Ready when you are.', loading: 'Warming up the camera.', setup: 'Step into the frame.', countdown: 'Hold for Go.', active: 'Stay in your rhythm.', review: 'Checking the last rep.', 'recording-only': 'Count paused. Video rolling.', error: 'Let’s try again.' };
 
-export default function PoundSessionView({ ui, ratio, live, ended, ballLocked, videoRef, overlayRef, resultPanelRef, clip, countedClip, replayChanges, preparing, canSave, savedClip, sharing, shareMessage, filename, originalFilename, versions, onBack, onOpen, onStop, onSaveEvidence, onPrepareVideo, onUseOriginal, onShareVideo }) {
+export default function PoundSessionView({ ui, ratio, live, ended, ballLocked, videoRef, overlayRef, resultPanelRef, clip, countedClip, replayChanges, preparing, canSave, savedClip, sharing, shareMessage, filename, originalFilename, versions, onBack, onOpen, onRetrySetup, onManual, onStop, onSaveEvidence, onPrepareVideo, onUseOriginal, onShareVideo }) {
   const [guide, setGuide] = useState('landscape');
   const appearance = useAppearance();
   const demoVideoUrl = getDrillVideo({ drill_key: 'right-hand-pound' });
   const phase = ui.phase;
   const training = ['active', 'review', 'recording-only'].includes(phase);
   const positioning = ['setup', 'countdown'].includes(phase);
+  const cameraVisible=live||(phase==='loading'&&ui.cameraReady);
+  const setupStage=phase==='countdown'?'ready':ui.setupGuide?.stage||'frame';
+  const stageIndex=['frame','ball','ready'].indexOf(setupStage);
   const step = ended ? 2 : training ? 1 : 0;
   const status = phase === 'idle' ? 'Phone down. Full body and floor in view.' : phase === 'loading' ? ui.message || 'First-time setup can take a moment.' : ui.message;
   return <main data-phase={phase} data-appearance={appearance} className={`cs-iphone-tracker ${training ? 'is-training' : ''} ${ended ? 'is-results' : ''}`}>
@@ -36,10 +39,12 @@ export default function PoundSessionView({ ui, ratio, live, ended, ballLocked, v
       <ol className="cs-iphone-steps" aria-label="Session progress">{['Set up', 'Train', 'Replay'].map((label, index) => <li key={label} className={index === step ? 'current' : index < step ? 'complete' : ''} aria-current={index === step ? 'step' : undefined}><b>{index < step ? <FiCheck/> : index + 1}</b><span>{label}</span>{index < 2 && <i aria-hidden="true"/>}</li>)}</ol>
 
       <div className="cs-studio-workspace" hidden={ended}>
-        <div className="cs-studio-camera-column" hidden={!live}>
+        <div className="cs-studio-camera-column" hidden={!cameraVisible}>
           <section className="cs-iphone-stage" style={{ aspectRatio: ratio }} aria-label="Live camera and detected basketball">
             <video ref={videoRef} muted autoPlay playsInline aria-label="Mirrored front camera"/><canvas ref={overlayRef} aria-hidden="true"/>
-            {live && <span className={`cs-iphone-lock ${ui.ball ? 'found' : ''}`}><i/>{ui.ball ? ballLocked ? 'Ball locked' : 'Ball detected' : 'Finding ball'}</span>}
+            {training && <span className={`cs-iphone-lock ${ui.ball ? 'found' : ''}`}><i/>{ui.ball ? ballLocked ? 'Ball locked' : 'Ball detected' : 'Finding ball'}</span>}
+            {phase==='setup'&&<div className="cs-setup-frame" aria-hidden="true"><i/><i/><i/><i/></div>}
+            {phase==='loading'&&ui.cameraReady&&<span className="cs-iphone-lock"><i/>Camera on · Preparing tracker</span>}
             {phase === 'countdown' && <div className={`cs-iphone-countdown ${ui.rechecking ? 'is-paused' : ''}`}><span>{ui.rechecking ? 'HOLD POSITION' : 'GET READY'}</span><div className="cs-studio-countdown-ring" style={{ '--count-progress': `${(5 - ui.countdown) / 5 * 100}%` }}><strong key={ui.countdown}>{ui.countdown}</strong></div><span>{ui.rechecking ? 'Countdown paused · Rechecking' : 'Wait for Go.'}</span></div>}
             {phase === 'active' && ui.go && <div className="cs-iphone-countdown cs-iphone-go"><strong>GO.</strong></div>}
           </section>
@@ -52,19 +57,22 @@ export default function PoundSessionView({ ui, ratio, live, ended, ballLocked, v
         <section className={`cs-iphone-controls ${training ? 'is-active' : ''}`} aria-label="Session guidance">
           {!live && <div className="cs-studio-ready-icon" aria-hidden="true"><FiCamera/></div>}
           <p className="cs-studio-eyebrow">{training ? 'IN SESSION' : positioning ? 'CAMERA CHECK' : 'YOUR NEXT 20 SECONDS'}</p>
-          <h2>{titles[phase] || 'Get ready.'}</h2>
+          <h2>{phase==='setup'?ui.setupGuide?.title||'Step into the frame.':titles[phase] || 'Get ready.'}</h2>
           <p className={`cs-iphone-status ${phase === 'error' ? 'is-error' : ''}`} role="status" aria-live="polite">{status}</p>
           {['idle', 'error'].includes(phase) && <>
             <button type="button" className="cs-iphone-primary" onClick={onOpen}><FiCamera/><span>{phase === 'error' ? 'Try camera again' : 'Enable camera'}</span><FiArrowRight/></button>
             <span className="cs-studio-under-button">Position check → 5-second countdown → Go</span>
+            <p className="cs-setup-before">Once the camera is ready, hold the ball beside your right hip. Wait for Go before dribbling.</p>
             <details className="cs-studio-visual-help"><summary>Need a visual?<FiChevronDown/></summary><div className="cs-studio-demo-slot"><PoundDemo videoUrl={demoVideoUrl}/></div><p>Right hand. Floor bounce. Back under control.</p></details>
           </>}
-          {phase === 'loading' && <div className="cs-studio-loading-track" role="progressbar" aria-label="Loading camera and tracking"><span/></div>}
+          {phase === 'loading' && <><div className="cs-studio-loading-track" role="progressbar" aria-label="Loading camera and tracking"><span/></div><p className="cs-setup-before">Keep this page open. You can position the phone while tracking prepares.</p><button type="button" className="cs-studio-stop" onClick={onStop}>Cancel setup</button></>}
           {positioning && <>
-            <div className="cs-iphone-checks" aria-label="Live position checks">{checks.map(([key, label, Icon]) => <div key={key} className={ui.checks[key] ? 'pass' : ''}><Icon/><span>{label}</span><b>{ui.checks[key] ? <FiCheck/> : '…'}</b><span className="cs-sr-only">{ui.checks[key] ? 'ready' : 'checking'}</span></div>)}</div>
-            <div className="cs-iphone-progress" role="progressbar" aria-label="Position confirmation" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(ui.progress * 100)}><span style={{ width: `${ui.progress * 100}%` }}/></div>
-            <small>{ui.rechecking ? 'Your countdown is paused while we recheck.' : 'Hold the ball. We’ll start when you’re ready.'}</small>
+            {phase==='setup'&&<><ol className="cs-setup-stages" aria-label="Camera setup progress">{['Your frame','Your ball','Ready'].map((label,index)=><li key={label} className={index<stageIndex?'complete':index===stageIndex?'current':''} aria-current={index===stageIndex?'step':undefined}><b>{index<stageIndex?<FiCheck/>:index+1}</b>{label}</li>)}</ol><div className="cs-iphone-progress" role="progressbar" aria-label="Position confirmation" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(ui.progress * 100)}><span style={{ width: `${ui.progress * 100}%` }}/></div></>}
+            <small>{ui.rechecking ? 'A quick recheck. Your countdown keeps its place.' : phase==='countdown'?'Begin dribbling only after Go.':'Countdown starts automatically when your frame and ball are ready.'}</small>
+            {phase==='setup'&&ui.setupSlow&&<div className="cs-setup-recovery" role="status"><strong>Setup taking longer?</strong><p>We haven’t confirmed a reliable view yet. Retry the camera check, or use the timer.</p><button type="button" className="cs-iphone-secondary" onClick={onRetrySetup}><FiRefreshCw/>Retry camera check</button><button type="button" className="cs-studio-text-button" onClick={onManual}>Use the timer instead<FiArrowRight/></button></div>}
+            <details className="cs-setup-details"><summary>Camera check details<FiChevronDown/></summary><div className="cs-iphone-checks" aria-label="Live position checks">{checks.map(([key, label, Icon]) => <div key={key} className={ui.checks[key] ? 'pass' : ''}><Icon/><span>{label}</span><b>{ui.checks[key] ? <FiCheck/> : '…'}</b><span className="cs-sr-only">{ui.checks[key] ? 'ready' : 'checking'}</span></div>)}</div><p>{ui.setupBlocker||'Checks are ready.'}</p><button type="button" className="cs-studio-text-button" onClick={onSaveEvidence}><FiDownload/>Save setup details</button></details>
           </>}
+          {phase==='error'&&<button type="button" className="cs-studio-text-button" onClick={onSaveEvidence}><FiDownload/>Save setup details</button>}
           {phase === 'recording-only' && <p className="cs-studio-partial-note"><FiInfo/>Your partial count is frozen. Recording continues until Time.</p>}
           {live && <button type="button" className="cs-studio-stop" onClick={onStop}><FiX/> End session</button>}
           {!training && <details className="cs-iphone-help"><summary>Camera tips<FiChevronDown/></summary><div>
@@ -99,7 +107,7 @@ export default function PoundSessionView({ ui, ratio, live, ended, ballLocked, v
             <button type="button" className="cs-studio-again" onClick={onOpen}><FiRefreshCw/> Train again<FiArrowRight/></button>
           </aside>
         </div>
-        <div className="cs-studio-review-bottom"><p><FiInfo/> AI preview · Review your count. No XP or Circle score is posted.</p>{ui.total > 0 && <details className="cs-iphone-evidence"><summary>Session details<FiChevronDown/></summary><div><p>Ball visible in {Math.round(ui.detected / ui.total * 100)}% of processed frames. Visibility is not an accuracy score.</p><p>Save details with the matching video to report a problem. Nothing uploads automatically.</p><button type="button" className="cs-iphone-secondary" onClick={onSaveEvidence}><FiDownload/> Save test details</button></div></details>}</div>
+        <div className="cs-studio-review-bottom"><p><FiInfo/> AI preview · Review your count. No XP or Circle score is posted.</p>{(ui.total > 0||ui.evidence.frames?.length>0) && <details className="cs-iphone-evidence"><summary>Session details<FiChevronDown/></summary><div><p>{ui.total>0?`Ball visible in ${Math.round(ui.detected / ui.total * 100)}% of processed frames. Visibility is not an accuracy score.`:'Setup stopped before Go. You can still save the camera-check details.'}</p><p>Save details with the matching video to report a problem. Nothing uploads automatically.</p><button type="button" className="cs-iphone-secondary" onClick={onSaveEvidence}><FiDownload/> Save test details</button></div></details>}</div>
       </section>}
       <footer className="cs-studio-footer"><span><FiShield/> Private until you share.</span><details><summary>Build details<FiChevronDown/></summary><p>{versions.check} · {TRACKER_PRESENTATION_REVISION}<br/>{versions.counter} · {versions.camera} · {versions.frame} · {versions.identity}<br/>{ui.fps > 0 ? `${ui.fps.toFixed(1)} tracking frames/sec` : 'Camera is off'}<br/>Records from Go until Time while the camera stays healthy.</p></details></footer>
     </div>

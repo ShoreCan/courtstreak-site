@@ -12,3 +12,7 @@ export function resetPoundTrackingCounter(state) {
   state.counter=createPoundCounter(state.configuration.counterRevision);
   state.validator=createPoundValidator(state.configuration.counterRevision);
 }
+
+export function resetPoundTrackingIdentity(state) {
+  state.tracker=new BallIdentityTracker({...state.configuration.identityOptions,diagnostics:true});
+}
