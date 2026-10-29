@@ -1,3 +1,5 @@
+import { createRequestId } from '../lib/requestId.mjs';
+import { AppearanceSettings } from '../components/AppearanceControl.jsx';
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Link,
@@ -479,6 +481,8 @@ export default function Hub({ preview = false }) {
   function preferences() {
     if (tab !== "notifications")
       return (
+        <>
+        <AppearanceSettings />
         <section className="hd-settings-menu">
           <div className="hd-account">
             <span className="hd-avatar">{initials(data.account.name)}</span>
@@ -510,6 +514,7 @@ export default function Hub({ preview = false }) {
             </button>
           ))}
         </section>
+        </>
       );
     return (
       <section className="cs-panel updates-panel">
@@ -1661,8 +1666,15 @@ export default function Hub({ preview = false }) {
             <button
               className="cs-help"
               onClick={async () => {
-                if (!preview) await supabase.auth.signOut();
-                nav(preview ? "/" : "/login");
+                if (preview) { nav('/'); return; }
+                if (writing.current) return;
+                writing.current = true; setBusy(true); setError('');
+                try {
+                  const {error} = await supabase.auth.signOut();
+                  if (error) throw error;
+                  nav('/login');
+                } catch { setError('Could not log out. Check your connection and try again.'); }
+                finally { writing.current = false; setBusy(false); }
               }}
             >
               <LogOut size={14} /> {preview ? "Exit preview" : "Log out"}
@@ -2215,7 +2227,7 @@ function AssignmentWizard({
     [step, setStep] = useState(1),
     [planId, setPlanId] = useState(initialPlan || all[0]?.id),
     [name, setName] = useState(repeatSource?.name || "This week’s training"),
-    [requestId] = useState(() => globalThis.crypto.randomUUID()),
+    [requestId] = useState(() => preview ? null : createRequestId()),
     [recipients, setRecipients] = useState(() =>
       players.some((p) => p.id === initialPlayer)
         ? [initialPlayer]
@@ -2260,6 +2272,7 @@ function AssignmentWizard({
       setError("Preview only. No assignment was sent or saved.");
       return;
     }
+    if (repeatSource && !requestId) { setError('This browser could not prepare the request. Open CourtStreak in an updated browser.'); return; }
     const r = await save(
       () =>
         repeatSource && plan.id === "repeat:" + repeatSource.id

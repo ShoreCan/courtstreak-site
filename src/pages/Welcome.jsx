@@ -1,135 +1,32 @@
-import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { CheckCircle2, Flame, Sparkles } from 'lucide-react';
-import { supabase } from '../lib/supabaseClient.js';
+import React,{useEffect,useState} from 'react';
+import {Link,useSearchParams} from 'react-router-dom';
+import {supabase} from '../lib/supabaseClient.js';
+import AuthShell from '../components/AuthShell.jsx';
 
-export default function Welcome() {
-  const [membershipStatus, setMembershipStatus] = useState('checking');
-
-  useEffect(() => {
-    let active = true;
-    let attempts = 0;
-
-    async function checkMembership() {
-      const { data, error } = await supabase.rpc(
-        'has_active_courtstreak_membership'
-      );
-
-      if (!active) return;
-
-      if (!error && data === true) {
-        setMembershipStatus('active');
-        return;
-      }
-
-      attempts += 1;
-
-      if (attempts < 10) {
-        setTimeout(checkMembership, 1500);
-      } else {
-        setMembershipStatus('pending');
-      }
-    }
-
-    checkMembership();
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  if (membershipStatus === 'checking') {
-    return (
-      <main className="cs-welcome-page">
-        <section className="cs-welcome-card">
-          <div className="cs-welcome-icon-wrap">
-            <Sparkles size={30} />
-          </div>
-
-          <p className="cs-auth-eyebrow">ACTIVATING YOUR MEMBERSHIP</p>
-          <h1>Getting CourtStreak ready.</h1>
-
-          <p className="cs-welcome-lead">
-            Your payment was received. We’re activating your membership now.
-          </p>
-        </section>
-      </main>
-    );
+export default function Welcome(){
+ const [params]=useSearchParams(),invite=params.get('invite')?.trim().slice(0,512);
+ const [status,setStatus]=useState('checking'),[retry,setRetry]=useState(0);
+ useEffect(()=>{
+  let active=true,attempts=0,timer;
+  setStatus('checking');
+  async function check(){
+   try{
+    if(!supabase)throw Error('Unavailable');
+    const result=await supabase.rpc('has_active_courtstreak_membership');
+    if(!active)return;
+    if(result.error)throw result.error;
+    if(result.data===true){setStatus('active');return;}
+    attempts++;
+    if(attempts<10)timer=setTimeout(check,1500);else setStatus('pending');
+   }catch{if(active)setStatus('error');}
   }
-
-  if (membershipStatus === 'pending') {
-    return (
-      <main className="cs-welcome-page">
-        <section className="cs-welcome-card">
-          <div className="cs-welcome-icon-wrap">
-            <Sparkles size={30} />
-          </div>
-
-          <p className="cs-auth-eyebrow">MEMBERSHIP PROCESSING</p>
-          <h1>Almost there.</h1>
-
-          <p className="cs-welcome-lead">
-            Your membership is still being confirmed. Please refresh this page
-            in a moment.
-          </p>
-        </section>
-      </main>
-    );
-  }
-
-  return (
-    <main className="cs-welcome-page">
-      <section className="cs-welcome-card">
-        <div className="cs-welcome-icon-wrap">
-          <Sparkles size={30} />
-        </div>
-
-        <p className="cs-auth-eyebrow">WELCOME TO COURTSTREAK</p>
-
-        <h1>You’re officially in.</h1>
-
-        <p className="cs-welcome-lead">
-          Your CourtStreak membership is active. You now have everything you
-          need to train with purpose, stay consistent, track your progress,
-          and keep pushing your game forward.
-        </p>
-
-        <div className="cs-welcome-highlight">
-          <Flame size={24} />
-
-          <div>
-            <strong>Your streak starts today.</strong>
-            <span>
-              This is the first step in building the habits that build your game.
-            </span>
-          </div>
-        </div>
-
-        <div className="cs-welcome-benefits">
-          <div>
-            <CheckCircle2 size={20} />
-            <span>Structured ball-handling and footwork training</span>
-          </div>
-
-          <div>
-            <CheckCircle2 size={20} />
-            <span>Streaks, XP, personal records, and progress tracking</span>
-          </div>
-
-          <div>
-            <CheckCircle2 size={20} />
-            <span>Challenges, leaderboards, and private Training Circles</span>
-          </div>
-        </div>
-
-        <Link className="site-primary-button cs-welcome-button" to="/dashboard">
-          Start Your CourtStreak
-        </Link>
-
-        <p className="cs-welcome-footer">
-          Welcome to the CourtStreak family.
-        </p>
-      </section>
-    </main>
-  );
+  void check();return()=>{active=false;clearTimeout(timer);};
+ },[retry]);
+ const title=status==='active'?'You’re ready to train.':status==='checking'?'Checking membership…':status==='pending'?'Still confirming.':'Check interrupted.';
+ return <AuthShell title={title}>
+  <div className="cs-auth-simple-confirm">
+   {status==='active'?<><p>Your membership is active.</p><Link className="cs-auth-simple-action" to={invite?`/training-circles/join/${encodeURIComponent(invite)}`:"/dashboard"}>{invite?"Continue to Circle":"Start training"}</Link></>:status==='checking'?<p role="status">This can take a moment after checkout.</p>:<><p>{status==='pending'?'Your membership isn’t active yet. If you just checked out, try again in a moment.':'Check your connection and try again.'}</p><button className="cs-auth-simple-action" type="button" onClick={()=>setRetry(value=>value+1)}>Check again</button><Link className="cs-auth-simple-link" to="/membership">View membership</Link></>}
+   {status!=='checking'&&<Link className="cs-auth-simple-link" to="/hub">Open my account</Link>}
+  </div>
+ </AuthShell>;
 }

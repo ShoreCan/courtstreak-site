@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient.js';
 import {getHubAccount,hubHome} from '../hub/api.js';
-import { safeTrackerReturn } from '../lib/trackerReturn.mjs';
+import { accountAccessStatus, safeAccountReturn } from '../lib/accountFlow.mjs';
 
 export default function RequireMembership({ children }) {
   const location = useLocation();
@@ -25,13 +25,15 @@ export default function RequireMembership({ children }) {
 
       if (!active) return;
 
-      if (userError || !user) {
-        setStatus('logged-out');
+      const access = accountAccessStatus({data:{user},error:userError});
+      if (access !== 'ready') {
+        setStatus(access);
         return;
       }
 
       const account = await getHubAccount();
       if (!active) return;
+      if (!['player','parent','coach'].includes(account.role)) throw new Error('Unknown account role');
       if (account.role !== 'player') { setManagerPath(hubHome(account.role)); setStatus('manager'); return; }
 
       const {
@@ -55,10 +57,12 @@ export default function RequireMembership({ children }) {
 
     checkAccess().catch(() => { if (active) setStatus('error'); });
     const timeout = setTimeout(() => { if (active) setStatus((value) => value === 'checking' ? 'error' : value); }, 15000);
+    const {data}=supabase?.auth.onAuthStateChange(event=>{if(active&&event==='SIGNED_OUT')setStatus('logged-out');})||{};
 
     return () => {
       active = false;
       clearTimeout(timeout);
+      data?.subscription?.unsubscribe();
     };
   }, []);
 
@@ -69,10 +73,7 @@ export default function RequireMembership({ children }) {
       <main className="cs-welcome-page">
         <section className="cs-welcome-card">
           <p className="cs-auth-eyebrow">COURTSTREAK</p>
-          <h1>Loading your membership.</h1>
-          <p className="cs-welcome-lead">
-            Getting your CourtStreak experience ready.
-          </p>
+          <h1>Opening your training…</h1>
         </section>
       </main>
     );
@@ -82,14 +83,14 @@ export default function RequireMembership({ children }) {
     return (
       <Navigate
         to="/login"
-        state={{ from: safeTrackerReturn(location.pathname+location.search) || location.pathname }}
+        state={{ from: safeAccountReturn(location.pathname+location.search+location.hash) }}
         replace
       />
     );
   }
 
   if (status === 'unpaid') {
-    return <Navigate to="/pricing?checkout=membership" replace />;
+    return <Navigate to="/pricing" replace />;
   }
 
   if (status === 'error') {

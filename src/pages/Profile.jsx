@@ -151,7 +151,7 @@ export default function Profile({ previewOnly = false }) {
       setLoading(false);
     }
 
-    loadProfile();
+    loadProfile().catch(() => { if (isMounted) { setErrorMessage('Your profile could not load. Please try again.'); setLoading(false); } });
     return () => {
       isMounted = false;
     };

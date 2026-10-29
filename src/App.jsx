@@ -1,7 +1,7 @@
-import CourtStreakExperience from './features/courtstreak-ui/CourtStreakExperience';
 import React, { lazy, Suspense, useLayoutEffect } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import Home from './pages/Home.jsx';
+const CourtStreakExperience = lazy(() => import('./features/courtstreak-ui/CourtStreakExperience'));
 const BallHandling = lazy(() => import('./pages/BallHandling.jsx'));
 const Players = lazy(() => import('./pages/Players.jsx'));
 const Parents = lazy(() => import('./pages/Parents.jsx'));
@@ -46,7 +46,23 @@ const HubTraining = lazy(() => import('./hub/HubTraining.jsx'));
 
 function RouteScrollReset() {
   const { pathname, hash } = useLocation();
-  useLayoutEffect(() => { if (!hash) window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); }, [pathname]);
+  useLayoutEffect(() => {
+    if (!hash) { window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); return; }
+    let id;
+    try { id = decodeURIComponent(hash.slice(1)); } catch { return; }
+    if (!/^[a-zA-Z][\w-]*$/.test(id)) return;
+    const scroll = () => {
+      const element = document.getElementById(id);
+      if (!element) return false;
+      element.scrollIntoView({block: 'start'}); return true;
+    };
+    if (scroll()) return;
+    // Lazy routes and account data can render an anchor after navigation.
+    const observer = new MutationObserver(() => { if (scroll()) observer.disconnect(); });
+    observer.observe(document.getElementById('root'), {childList: true, subtree: true});
+    const timeout = setTimeout(() => observer.disconnect(), 10000);
+    return () => { clearTimeout(timeout); observer.disconnect(); };
+  }, [pathname, hash]);
   return null;
 }
 
@@ -90,7 +106,7 @@ export default function App() {
 <Route path="/login" element={<Login />} />
 <Route path="/forgot-password" element={<ForgotPassword />} />
 <Route path="/reset-password" element={<ResetPassword />} />
-<Route path="/welcome" element={<Welcome />} />
+<Route path="/welcome" element={<RequireAccount><Welcome /></RequireAccount>} />
 
 <Route
   path="/dashboard"

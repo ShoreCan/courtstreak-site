@@ -1,277 +1,40 @@
-import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabaseClient.js';
+import React,{useEffect,useRef,useState} from 'react';
+import {Link} from 'react-router-dom';
+import {supabase,recoverySession} from '../lib/supabaseClient.js';
+import {authErrorMessage} from '../lib/accountFlow.mjs';
+import AuthShell,{PasswordField} from '../components/AuthShell.jsx';
 
-export default function ResetPassword() {
-  const navigate = useNavigate();
-
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  // checking | recovery | invalid
-  const [recoveryStatus, setRecoveryStatus] = useState('checking');
-
-  useEffect(() => {
-    if (!supabase) {
-      setRecoveryStatus('invalid');
-      return;
-    }
-
-    let active = true;
-    let recoveryDetected = false;
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!active) return;
-
-      if (event === 'PASSWORD_RECOVERY' && session) {
-        recoveryDetected = true;
-        setRecoveryStatus('recovery');
-      }
-    });
-
-    // Give Supabase time to process the recovery credentials
-    // contained in the URL before deciding the link is invalid.
-    const timer = window.setTimeout(async () => {
-      if (!active || recoveryDetected) return;
-
-      const { data, error: sessionError } =
-        await supabase.auth.getSession();
-
-      if (!active || recoveryDetected) return;
-
-      if (sessionError || !data.session) {
-        setRecoveryStatus('invalid');
-        return;
-      }
-
-      // A normal signed-in session is not enough to expose this page.
-      // The PASSWORD_RECOVERY event above is what unlocks the form.
-      setRecoveryStatus('invalid');
-    }, 1500);
-
-    return () => {
-      active = false;
-      window.clearTimeout(timer);
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  async function handleSubmit(event) {
-    event.preventDefault();
-
-    setError('');
-    setMessage('');
-
-    if (!supabase || recoveryStatus !== 'recovery') {
-      setError(
-        'This password reset link is invalid or has expired. Please request a new one.'
-      );
-      return;
-    }
-
-    if (password.length < 8) {
-      setError('Your new password must be at least 8 characters.');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError('The passwords do not match.');
-      return;
-    }
-
-    setLoading(true);
-
-    const { error: updateError } = await supabase.auth.updateUser({
-      password,
-    });
-
-    if (updateError) {
-      setLoading(false);
-      setError(updateError.message);
-      return;
-    }
-
-    setMessage('Password updated successfully. Taking you back to log in...');
-
-    await supabase.auth.signOut();
-
-    window.setTimeout(() => {
-      navigate('/login', { replace: true });
-    }, 1500);
-  }
-
-  if (recoveryStatus === 'checking') {
-    return (
-      <main className="cs-auth-page">
-        <section className="cs-auth-brand">
-          <Link className="cs-auth-logo" to="/">CourtStreak</Link>
-          <p className="cs-auth-eyebrow">ACCOUNT RECOVERY</p>
-          <h1>Checking your reset link.</h1>
-          <p className="cs-auth-intro">
-            One moment while CourtStreak verifies your password reset request.
-          </p>
-        </section>
-
-        <section className="cs-auth-card">
-          <p className="cs-auth-eyebrow">SECURE RESET</p>
-          <h2>Verifying link...</h2>
-          <p className="cs-auth-muted">
-            This should only take a moment.
-          </p>
-        </section>
-      </main>
-    );
-  }
-
-  if (recoveryStatus === 'invalid') {
-    return (
-      <main className="cs-auth-page">
-        <section className="cs-auth-brand">
-          <Link className="cs-auth-logo" to="/">CourtStreak</Link>
-          <p className="cs-auth-eyebrow">ACCOUNT RECOVERY</p>
-          <h1 style={{
-            fontSize: 'clamp(42px, 5vw, 68px)',
-            lineHeight: '0.98',
-            maxWidth: '620px',
-            letterSpacing: '-0.04em'
-          }}>
-            Reset your password securely.
-          </h1>
-
-          <p
-            className="cs-auth-intro"
-            style={{
-              maxWidth: '540px',
-              lineHeight: '1.65'
-            }}
-          >
-            For your security, password changes can only be made through
-            a valid CourtStreak recovery email.
-          </p>
-        </section>
-
-        <section className="cs-auth-card">
-          <p className="cs-auth-eyebrow">RESET LINK</p>
-          <h2 style={{
-            fontSize: 'clamp(30px, 3vw, 42px)',
-            lineHeight: '1.05',
-            letterSpacing: '-0.03em',
-            maxWidth: '520px'
-          }}>
-            This link is invalid or expired.
-          </h2>
-
-          <p
-            className="cs-auth-muted"
-            style={{
-              maxWidth: '520px',
-              lineHeight: '1.6'
-            }}
-          >
-            Request a new password reset email and use the secure link
-            inside it.
-          </p>
-
-          <Link
-            to="/forgot-password"
-            style={{ textDecoration: 'none' }}
-          >
-            <button type="button">
-              Request New Reset Link
-            </button>
-          </Link>
-
-          <p className="cs-auth-login">
-            Remember your password? <Link to="/login">Back to Log In</Link>
-          </p>
-        </section>
-      </main>
-    );
-  }
-
-  return (
-    <main className="cs-auth-page">
-      <section className="cs-auth-brand">
-        <Link className="cs-auth-logo" to="/">CourtStreak</Link>
-
-        <p className="cs-auth-eyebrow">ACCOUNT RECOVERY</p>
-
-        <h1>Create your new password.</h1>
-
-        <p className="cs-auth-intro">
-          Choose a new password for your CourtStreak account,
-          then get right back to your training.
-        </p>
-
-        <div className="cs-auth-benefits">
-          <div><strong>Your progress stays with your account.</strong></div>
-          <div><strong>Your streak history stays connected.</strong></div>
-          <div><strong>Your Training Circles stay intact.</strong></div>
-        </div>
-      </section>
-
-      <section className="cs-auth-card">
-        <p className="cs-auth-eyebrow">NEW PASSWORD</p>
-
-        <h2>Reset your password.</h2>
-
-        <p className="cs-auth-muted">
-          Enter your new password twice to make sure it's correct.
-        </p>
-
-        <form onSubmit={handleSubmit}>
-          <label>
-            New password
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="Enter new password"
-              autoComplete="new-password"
-              minLength={8}
-              required
-            />
-          </label>
-
-          <label>
-            Confirm new password
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(event) => setConfirmPassword(event.target.value)}
-              placeholder="Enter new password again"
-              autoComplete="new-password"
-              minLength={8}
-              required
-            />
-          </label>
-
-          {error && (
-            <div className="cs-auth-message cs-auth-error">
-              {error}
-            </div>
-          )}
-
-          {message && (
-            <div className="cs-auth-message">
-              {message}
-            </div>
-          )}
-
-          <button type="submit" disabled={loading}>
-            {loading ? 'Updating Password...' : 'Update Password'}
-          </button>
-        </form>
-
-        <p className="cs-auth-login">
-          <Link to="/login">Back to Log In</Link>
-        </p>
-      </section>
-    </main>
-  );
+export default function ResetPassword(){
+ const [password,setPassword]=useState(''),[confirmPassword,setConfirmPassword]=useState(''),[error,setError]=useState(''),[loading,setLoading]=useState(false),[status,setStatus]=useState('checking'),[retry,setRetry]=useState(0);
+ const pending=useRef(false),finished=useRef(false);
+ useEffect(()=>{
+  if(!supabase){setStatus('error');return;}
+  let active=true;setStatus('checking');
+  const unsubscribe=recoverySession.subscribe(valid=>{if(active&&!finished.current)setStatus(valid?'recovery':'invalid');});
+  const timeout=setTimeout(()=>{if(active&&!finished.current)setStatus('error');},15000);
+  supabase.auth.getSession().then(({data,error})=>{if(active&&!finished.current)setStatus(error?'error':data?.session&&recoverySession.has(data.session)?'recovery':'invalid');}).catch(()=>{if(active)setStatus('error');}).finally(()=>clearTimeout(timeout));
+  return()=>{active=false;clearTimeout(timeout);unsubscribe();};
+ },[retry]);
+ async function submit(event){
+  event.preventDefault();if(pending.current)return;setError('');
+  if(!supabase||status!=='recovery'||!recoverySession.has()){setStatus('invalid');return;}
+  if(password.length<8){setError('Use at least 8 characters.');return;}
+  if(password!==confirmPassword){setError('Your passwords don’t match.');return;}
+  pending.current=true;setLoading(true);
+  try{
+   const result=await supabase.auth.updateUser({password});if(result.error)throw result.error;
+   finished.current=true;recoverySession.clear();setStatus('done');setPassword('');setConfirmPassword('');
+   try{const out=await supabase.auth.signOut();if(out.error)throw out.error;}catch{setError('Your password changed. Sign out from your account before logging in again.');}
+  }catch(error){setError(authErrorMessage(error,'We couldn’t update your password. Please try again.'));}
+  finally{pending.current=false;setLoading(false);}
+ }
+ const title=status==='done'?'Password updated.':status==='checking'?'Checking your link…':status==='invalid'?'This link has expired.':status==='error'?'Link check interrupted.':'Choose a new password.';
+ return <AuthShell title={title}>
+  {status==='checking'?<p className="cs-auth-simple-note" role="status">Verifying your reset link.</p>:status==='recovery'?<form onSubmit={submit} aria-busy={loading}>
+   <PasswordField label="New password" name="password" autoComplete="new-password" minLength={8} required placeholder="At least 8 characters" value={password} onChange={event=>setPassword(event.target.value)} disabled={loading}/>
+   <PasswordField label="Confirm password" name="confirmPassword" autoComplete="new-password" minLength={8} required value={confirmPassword} onChange={event=>setConfirmPassword(event.target.value)} disabled={loading}/>
+   {error&&<p className="cs-auth-simple-error" role="alert">{error}</p>}<button type="submit" disabled={loading}>{loading?'Updating…':'Update password'}</button>
+  </form>:status==='done'?<div className="cs-auth-simple-confirm"><p>Log in with your new password.</p>{error&&<p className="cs-auth-simple-error" role="alert">{error}</p>}<Link to="/login" className="cs-auth-simple-action">Back to login</Link></div>:status==='error'?<div className="cs-auth-simple-confirm"><p>Check your connection and try again.</p><button className="cs-auth-simple-action" type="button" onClick={()=>setRetry(value=>value+1)}>Try again</button></div>:<div className="cs-auth-simple-confirm"><p>Request a new reset link to continue.</p><Link className="cs-auth-simple-action" to="/forgot-password">Get a new link</Link></div>}
+  {!['done','checking'].includes(status)&&<p className="cs-auth-simple-footer"><Link to="/login">Back to login</Link></p>}
+ </AuthShell>;
 }

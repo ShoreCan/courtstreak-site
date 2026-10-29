@@ -1,3 +1,4 @@
+import { favoriteCache } from '../lib/favoriteCache.mjs';
 import { getDrillVideo } from '../data/drillVideos.js';
 import usePreviewNavigate from '../lib/usePreviewNavigate.js';
 import { PREVIEW_DRILLS } from '../data/previewDrills.js';
@@ -29,13 +30,6 @@ function normalizeKeyPoints(value) {
   return value.split(/\n|•|\|/).map((point) => point.trim()).filter(Boolean);
 }
 
-function readLocalFavorites(userId) {
-  try {
-    return JSON.parse(window.localStorage.getItem(`courtstreak:favorites:${userId}`) || '[]');
-  } catch {
-    return [];
-  }
-}
 
 export default function LabDrillDetail({ previewOnly = false }) {
   const { drillKey } = useParams();
@@ -46,10 +40,13 @@ export default function LabDrillDetail({ previewOnly = false }) {
   const [isFavorite, setIsFavorite] = useState(false);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
+  const [favoriteMessage, setFavoriteMessage] = useState('');
+  const [favoriteBusy, setFavoriteBusy] = useState(false);
   const [videoFailed, setVideoFailed] = useState(false);
 
   useEffect(() => {
     let mounted = true;
+    setLoading(true); setErrorMessage(''); setVideoFailed(false); setFavoriteMessage('');
 
     async function loadDrill() {
       if (previewOnly) {
@@ -108,7 +105,7 @@ export default function LabDrillDetail({ previewOnly = false }) {
         .eq('user_id', user.id)
         .eq('drill_key', data.drill_key)
         .maybeSingle();
-      if (mounted) setIsFavorite(Boolean(favorite) || readLocalFavorites(user.id).includes(data.drill_key));
+      if (mounted) setIsFavorite(Boolean(favorite) || favoriteCache.read(user.id).includes(data.drill_key));
       if (data.section_id) {
         const { data: sectionData } = await supabase
           .from('lab_sections')
@@ -127,21 +124,21 @@ export default function LabDrillDetail({ previewOnly = false }) {
   const keyPoints = useMemo(() => normalizeKeyPoints(drill?.key_points), [drill]);
 
   async function toggleFavorite() {
-    if (previewOnly) { navigate("/preview/membership"); return; }
-    if (!userId || !drill) return;
-    const nextFavorite = !isFavorite;
-    const storedKeys = readLocalFavorites(userId);
-    const nextKeys = nextFavorite
-      ? [...new Set([...storedKeys, drill.drill_key])]
-      : storedKeys.filter((key) => key !== drill.drill_key);
-    window.localStorage.setItem(`courtstreak:favorites:${userId}`, JSON.stringify(nextKeys));
-    setIsFavorite(nextFavorite);
-
-    if (isFavorite) {
-      await supabase.from('drill_favorites').delete().eq('user_id', userId).eq('drill_key', drill.drill_key);
-      return;
-    }
-    await supabase.from('drill_favorites').upsert({ user_id: userId, drill_key: drill.drill_key });
+    if (previewOnly) { navigate('/preview/membership'); return; }
+    if (!userId || !drill || favoriteBusy) return;
+    const previous = isFavorite, next = !previous, keys = favoriteCache.read(userId);
+    const nextKeys = next ? [...new Set([...keys, drill.drill_key])] : keys.filter(key => key !== drill.drill_key);
+    setFavoriteBusy(true); setFavoriteMessage(''); setIsFavorite(next);
+    const cached = favoriteCache.write(userId, nextKeys);
+    try {
+      const result = previous
+        ? await supabase.from('drill_favorites').delete().eq('user_id', userId).eq('drill_key', drill.drill_key)
+        : await supabase.from('drill_favorites').upsert({user_id: userId, drill_key: drill.drill_key});
+      if (result.error) throw result.error;
+    } catch {
+      if (!cached) setIsFavorite(previous);
+      setFavoriteMessage(cached ? 'Changed on this device. Account sync could not finish.' : 'Favorite could not save. Please try again.');
+    } finally { setFavoriteBusy(false); }
   }
 
   if (loading) {
@@ -190,12 +187,13 @@ export default function LabDrillDetail({ previewOnly = false }) {
         <div className="cs-drill-detail-copy">
           <span className="cs-lab-eyebrow">{section?.name ?? 'BALL HANDLING'}</span>
           <h1>{drill.name}</h1>
+          {favoriteMessage && <p role="status">{favoriteMessage}</p>}
           <div className="cs-drill-detail-meta">
             <span>{formatHand(drill.hand)}</span>
             <span><FiClock /> {drill.default_duration_seconds} sec</span>
             <span><FiStar /> +{Math.min(10, drill.xp_reward)} XP</span>
             <span>Guided Manual</span>
-            <button type="button" className={`cs-drill-favorite ${isFavorite ? 'is-favorite' : ''}`} onClick={toggleFavorite} aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}><FiHeart /><span>{isFavorite ? 'Saved' : 'Save'}</span></button>
+            <button type="button" className={`cs-drill-favorite ${isFavorite ? 'is-favorite' : ''}`} onClick={toggleFavorite} disabled={favoriteBusy} aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}><FiHeart /><span>{isFavorite ? 'Saved' : 'Save'}</span></button>
           </div>
 
           <div className={`cs-mobile-drill-quick-actions ${!previewOnly && drill.drill_key === 'right-hand-pound' ? 'cs-has-ai-choice' : ''}`}>

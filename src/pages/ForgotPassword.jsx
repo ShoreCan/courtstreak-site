@@ -1,109 +1,30 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { supabase } from '../lib/supabaseClient.js';
+import React,{useRef,useState} from 'react';
+import {Link} from 'react-router-dom';
+import {supabase} from '../lib/supabaseClient.js';
+import {authErrorMessage} from '../lib/accountFlow.mjs';
+import AuthShell from '../components/AuthShell.jsx';
 
-export default function ForgotPassword() {
-  const [email, setEmail] = useState('');
-  const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  async function handleReset(event) {
-    event.preventDefault();
-    setError('');
-    setMessage('');
-
-    if (!supabase) {
-      setError('Supabase is not connected.');
-      return;
-    }
-
-    setLoading(true);
-
-    const redirectTo = `${window.location.origin}/courtstreak-site/reset-password`;
-
-    const { error: resetError } =
-      await supabase.auth.resetPasswordForEmail(
-        email.trim().toLowerCase(),
-        { redirectTo }
-      );
-
-    setLoading(false);
-
-    if (resetError) {
-      setError(resetError.message);
-      return;
-    }
-
-    setMessage(
-      'Check your email. We sent you a secure link to reset your CourtStreak password.'
-    );
-  }
-
-  return (
-    <main className="cs-auth-page">
-      <section className="cs-auth-brand">
-        <Link className="cs-auth-logo" to="/">CourtStreak</Link>
-
-        <p className="cs-auth-eyebrow">ACCOUNT RECOVERY</p>
-
-        <h1>Get back to your training.</h1>
-
-        <p className="cs-auth-intro">
-          Enter the email connected to your CourtStreak account and
-          we'll send you a secure password reset link.
-        </p>
-
-        <div className="cs-auth-benefits">
-          <div><strong>Your streak and progress stay safe.</strong></div>
-          <div><strong>Your Training Circles stay connected.</strong></div>
-          <div><strong>Reset your password securely.</strong></div>
-        </div>
-      </section>
-
-      <section className="cs-auth-card">
-        <p className="cs-auth-eyebrow">FORGOT PASSWORD?</p>
-
-        <h2>Reset your password.</h2>
-
-        <p className="cs-auth-muted">
-          Enter the email address you used to create your CourtStreak account.
-        </p>
-
-        <form onSubmit={handleReset}>
-          <label>
-            Email address
-            <input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="you@example.com"
-              autoComplete="email"
-              required
-            />
-          </label>
-
-          {error && (
-            <div className="cs-auth-message cs-auth-error">
-              {error}
-            </div>
-          )}
-
-          {message && (
-            <div className="cs-auth-message">
-              {message}
-            </div>
-          )}
-
-          <button type="submit" disabled={loading}>
-            {loading ? 'Sending...' : 'Send Reset Link'}
-          </button>
-        </form>
-
-        <p className="cs-auth-login">
-          Remember your password? <Link to="/login">Back to Log In</Link>
-        </p>
-      </section>
-    </main>
-  );
+export default function ForgotPassword(){
+ const [email,setEmail]=useState(''),[error,setError]=useState(''),[sent,setSent]=useState(false),[loading,setLoading]=useState(false),pending=useRef(false);
+ async function submit(event){
+  event.preventDefault();if(pending.current)return;setError('');
+  if(!supabase){setError('Password reset is temporarily unavailable. Please try again shortly.');return;}
+  pending.current=true;setLoading(true);
+  try{
+   const redirectTo=new URL(import.meta.env.BASE_URL+'reset-password',window.location.origin).href;
+   const result=await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(),{redirectTo});
+   if(result.error)throw result.error;
+   setSent(true);
+  }catch(error){setError(authErrorMessage(error,'We couldn’t send the link. Please try again.'));}
+  finally{pending.current=false;setLoading(false);}
+ }
+ return <AuthShell title={sent?'Check your inbox.':'Reset your password.'}>
+  {sent?<div className="cs-auth-simple-confirm" role="status"><p>If an account uses that email, a reset link is on its way.</p><Link className="cs-auth-simple-action" to="/login">Back to login</Link><button type="button" className="cs-auth-simple-link" onClick={()=>setSent(false)}>Use a different email</button></div>:<form onSubmit={submit} aria-busy={loading}>
+   <p className="cs-auth-simple-note">We’ll email you a reset link.</p>
+   <label className="cs-auth-simple-field"><span>Email</span><input name="email" type="email" autoComplete="email" autoCapitalize="none" spellCheck={false} required value={email} onChange={event=>setEmail(event.target.value)} placeholder="you@example.com" disabled={loading}/></label>
+   {error&&<p className="cs-auth-simple-error" role="alert">{error}</p>}
+   <button type="submit" disabled={loading}>{loading?'Sending…':'Send reset link'}</button>
+  </form>}
+  {!sent&&<p className="cs-auth-simple-footer"><Link to="/login">Back to login</Link></p>}
+ </AuthShell>;
 }

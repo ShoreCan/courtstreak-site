@@ -1,57 +1,25 @@
 import React, { useState } from 'react';
+import { Menu, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import '../public-preview-entry.css';
 
 const HOME = '/courtstreak-site/';
 
 const menus = [
-  {
-    title: 'Membership',
-    links: [
-      ['Explore CourtStreak', '/courtstreak-site/preview'],
-      ['Pricing', '/courtstreak-site/pricing'],
-     ['What’s Included', '/courtstreak-site/whats-included'],
-      ['Create Account', '/courtstreak-site/create-account'],
-      ['FAQ', '/courtstreak-site/faq'],
-    ],
-  },
-  {
-    title: 'Parents & Coaches',
-    links: [
-      ['Players', '/courtstreak-site/players'],
-      ['Parents', '/courtstreak-site/parents'],
-      ['Team & Family Hub', '/courtstreak-site/hub'],
-      ['Explore All Previews', '/courtstreak-site/preview'],
-      ['Coaches', '/courtstreak-site/coaches'],
-      ['AAU Teams', '/courtstreak-site/coaches'],
-      ['Training Circles', `${HOME}#community`],
-    ],
-  },
-  {
-    title: 'Training',
-    links: [
-      ['Ball Handling', '/courtstreak-site/training/ball-handling'],
-      ['Player Development', '/courtstreak-site/players'],
-      ['Personalized Plans', '/courtstreak-site/players'],
-      ['Live Coaching Support', '/courtstreak-site/players'],
-    ],
-  },
-  {
-    title: 'Support',
-    links: [
-      ['FAQ', '/courtstreak-site/faq'],
-      ['Reviews', '/courtstreak-site/reviews'],
-     ['Contact', '/courtstreak-site/contact'],
-    ],
-  },
-  {
-    title: 'Company',
-    links: [
-      ['Mission', '/courtstreak-site/about'],
-      ['Reviews', '/courtstreak-site/reviews'],
-      ['Founder Story', '/courtstreak-site/about'],
-    ],
-  },
+  { title: 'Training', links: [
+    ['Ball handling', '/courtstreak-site/training/ball-handling'],
+    ['What’s included', '/courtstreak-site/whats-included'],
+    ['Membership', '/courtstreak-site/pricing'],
+  ]},
+  { title: 'Parents & coaches', links: [
+    ['For parents', '/courtstreak-site/parents'],
+    ['For coaches', '/courtstreak-site/coaches'],
+    ['Open your Hub', '/courtstreak-site/hub'],
+  ]},
+  { title: 'Help', links: [
+    ['Quick answers', '/courtstreak-site/faq'],
+    ['Contact support', '/courtstreak-site/contact'],
+  ]},
 ];
 
 export default function Navbar() {
@@ -67,14 +35,14 @@ export default function Navbar() {
       <div className="premium-menu">
         <Link className="cs-public-nav-preview" to="/preview">Preview</Link>
         {menus.map((menu) => (
-          <div className="premium-menu-item" key={menu.title}>
-            <button type="button">{menu.title}</button>
+          <details className="premium-menu-item" key={menu.title} onKeyDown={event => { if (event.key === 'Escape') { event.currentTarget.open = false; event.currentTarget.querySelector('summary').focus(); } }} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false; }}>
+            <summary>{menu.title}</summary>
             <div className="premium-dropdown">
               {menu.links.map(([label, href]) => (
                 <a href={href} key={`${menu.title}-${label}`}>{label}</a>
               ))}
             </div>
-          </div>
+          </details>
         ))}
       </div>
 
@@ -88,22 +56,22 @@ export default function Navbar() {
   </a>
 </div>
 
+      <Link className="cs-public-mobile-login" to="/login">Log in</Link>
       <Link className="cs-public-mobile-preview" to="/preview">Preview</Link>
 
       <button
         className="hamburger"
         type="button"
-        aria-label="Open navigation menu"
+        aria-label={open ? 'Close navigation menu' : 'Open navigation menu'}
+        aria-controls="cs-public-mobile-menu"
         aria-expanded={open}
         onClick={() => setOpen(!open)}
       >
-        <span></span>
-        <span></span>
-        <span></span>
+        {open ? <X size={22} aria-hidden="true" /> : <Menu size={22} aria-hidden="true" />}
       </button>
 
       {open && (
-        <div className="mobile-menu">
+        <div className="mobile-menu" id="cs-public-mobile-menu" onKeyDown={event => { if (event.key === 'Escape') { setOpen(false); event.currentTarget.closest('nav').querySelector('.hamburger').focus(); } }}>
           <Link className="cs-public-menu-preview" to="/preview" onClick={() => setOpen(false)}><strong>Explore CourtStreak →</strong><small>Free to explore · No account needed</small></Link>
           {menus.map((menu) => (
             <details className="mobile-menu-group" key={menu.title}>

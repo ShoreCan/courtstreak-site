@@ -41,6 +41,9 @@ export default function PlayerAppNav() {
   const previewPath = location.pathname.slice('/preview'.length);
   const pathname = previewOnly ? (previewPath === '/player' ? '/dashboard' : previewPath.replace(/^\/circles(?=\/|$)/, '/training-circles')) : location.pathname;
   const [trainMenuOpen, setTrainMenuOpen] = useState(false);
+  const [logoutError, setLogoutError] = useState('');
+  const [loggingOut, setLoggingOut] = useState(false);
+
 
   const isAppRoute = appRoutes.some((route) => routeStartsWith(pathname, route));
   const isFocusedExperience =
@@ -82,8 +85,15 @@ export default function PlayerAppNav() {
 
   async function handleLogout() {
     if (previewOnly) { navigate('/'); return; }
-    if (supabase) await supabase.auth.signOut();
-    navigate('/login');
+    if (loggingOut) return;
+    setLoggingOut(true); setLogoutError('');
+    try {
+      if (!supabase) throw new Error('Unavailable');
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      navigate('/login');
+    } catch { setLogoutError('Could not log out. Please try again.'); }
+    finally { setLoggingOut(false); }
   }
 
   return (
@@ -107,9 +117,10 @@ export default function PlayerAppNav() {
           ))}
         </nav>
 
-        <button type="button" className="cs-app-desktop-logout" onClick={handleLogout}>
+        <button type="button" className="cs-app-desktop-logout" onClick={handleLogout} disabled={loggingOut}>
           <FiLogOut /><span>{previewOnly ? 'Exit Preview' : 'Log Out'}</span>
         </button>
+        {logoutError && <p role="alert">{logoutError}</p>}
       </aside>
 
       {trainMenuOpen ? (

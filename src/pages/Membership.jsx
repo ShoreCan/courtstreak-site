@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ExternalLink, CreditCard, Receipt, Users } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient.js';
 import '../membership-polish.css';
+import {billingUrl} from '../lib/billingFlow.mjs';
 export default function Membership() {
   const navigate=useNavigate();
   const [subscription,setSubscription]=useState(null);
@@ -18,7 +19,7 @@ export default function Membership() {
         const {data:auth,error:userError}=await supabase.auth.getUser();
         if(!mounted)return;
         if(userError || !auth?.user){navigate('/login');return;}
-        const {data,error}=await supabase.from('subscriptions').select('status, current_period_end').eq('user_id',auth.user.id).limit(1).maybeSingle();
+        const {data,error}=await supabase.from('subscriptions').select('status, current_period_end').eq('user_id',auth.user.id).order('current_period_end',{ascending:false,nullsFirst:false}).limit(1).maybeSingle();
         if(error)throw Error('Your membership details could not load. Please reload or contact support.');
         if(mounted)setSubscription(data);
       }catch(error){if(mounted)setErrorMessage(error.message);}
@@ -32,8 +33,8 @@ export default function Membership() {
     try{
       const returnUrl=window.location.origin+import.meta.env.BASE_URL+'membership';
       const {data,error}=await supabase.functions.invoke('create-customer-portal',{body:{returnUrl}});
-      if(error || !data?.url)throw Error('Billing could not open. Please try again or contact support.');
-      window.location.href=data.url;
+      if(error || !billingUrl(data?.url))throw Error('Billing could not open. Please try again or contact support.');
+      window.location.assign(billingUrl(data.url));
     }catch(error){setErrorMessage(error.message);}
     finally{portalPending.current=false;setOpening(false);}
   }

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import usePreviewNavigate from '../lib/usePreviewNavigate.js';
 import { PREVIEW_CIRCLES, PREVIEW_CIRCLE_STATS } from '../lib/previewData.js';
+import JoinCircleAction from '../components/JoinCircleAction.jsx';
 import { supabase } from '../lib/supabaseClient.js';
 import {
   ArrowLeft,
@@ -26,14 +27,15 @@ const [createCircleError, setCreateCircleError] = useState('');
 const [circles, setCircles] = useState([]);
 const [circleStats, setCircleStats] = useState({});
 const [circleStatsError, setCircleStatsError] = useState('');
+const [loadError, setLoadError] = useState('');
 const [loadingCircles, setLoadingCircles] = useState(true);
 
   async function loadCircles() {
   if (previewOnly) { setCircles(PREVIEW_CIRCLES); setCircleStats(PREVIEW_CIRCLE_STATS); setLoadingCircles(false); return; }
-  if (!supabase) {
-    setLoadingCircles(false);
-    return;
-  }
+  setLoadingCircles(true);
+  setLoadError('');
+  try {
+  if (!supabase) throw new Error('Connection unavailable.');
 
   const {
     data: { user },
@@ -42,8 +44,7 @@ const [loadingCircles, setLoadingCircles] = useState(true);
 
   if (userError || !user) {
     console.error('Could not load current user:', userError);
-    setLoadingCircles(false);
-    return;
+    throw new Error('Please log in again to see your Circles.');
   }
 
   const { data, error } = await supabase
@@ -66,8 +67,7 @@ const [loadingCircles, setLoadingCircles] = useState(true);
 
   if (error) {
     console.error('Could not load Training Circles:', error);
-    setLoadingCircles(false);
-    return;
+    throw error;
   }
 
   const loadedCircles = (data ?? [])
@@ -81,6 +81,7 @@ const [loadingCircles, setLoadingCircles] = useState(true);
 
   const statsEntries = await Promise.all(
     loadedCircles.map(async (circle) => {
+      try {
       const { data: statsData, error: statsError } =
         await supabase.rpc('get_training_circle_weekly_stats', {
           p_circle_id: circle.id,
@@ -152,6 +153,7 @@ const [loadingCircles, setLoadingCircles] = useState(true);
           pendingChallenges,
         },
       ];
+      } catch { return [circle.id, null]; }
     })
   );
 
@@ -171,7 +173,9 @@ const [loadingCircles, setLoadingCircles] = useState(true);
       : ''
   );
 
-  setLoadingCircles(false);
+  } catch {
+    setLoadError('Your Circles could not load. Check your connection and try again.');
+  } finally { setLoadingCircles(false); }
 }
 useEffect(() => {
   loadCircles();
@@ -186,7 +190,7 @@ async function handleCreateCircle() {
 
   if (!supabase) {
     setCreateCircleError(
-      'CourtStreak could not connect to Supabase.'
+      'Connection unavailable. Please try again shortly.'
     );
     return;
   }
@@ -194,6 +198,7 @@ async function handleCreateCircle() {
   setCreatingCircle(true);
   setCreateCircleError('');
 
+  try {
   const { data, error } = await supabase.rpc(
     'create_training_circle',
     {
@@ -213,7 +218,8 @@ async function handleCreateCircle() {
     return;
   }
 
-  const createdCircle = data?.[0];
+  const createdCircle = Array.isArray(data) ? data[0] : data;
+  if (!createdCircle?.circle_id) throw new Error('No Circle confirmed.');
 
   setCreatingCircle(false);
   setShowCreateCircle(false);
@@ -225,6 +231,8 @@ async function handleCreateCircle() {
       `/training-circles/${createdCircle.circle_id}`
     );
   }
+  } catch { setCreateCircleError('Your Circle could not be created. Please try again.'); }
+  finally { setCreatingCircle(false); }
 }
   return (
     <main className="cs-circles-page">
@@ -253,15 +261,11 @@ async function handleCreateCircle() {
             </span>
 
             <h1>
-              Train with the people
-              <br />
-              <strong>who push you.</strong>
+              Your crew. <strong>Your progress.</strong>
             </h1>
 
             <p>
-              Private groups for friends, teammates, coaches,
-              trainers, and family to stay accountable and
-              compete together.
+              Private Circles. Shared goals. A little competition.
             </p>
           </div>
 
@@ -275,14 +279,7 @@ async function handleCreateCircle() {
               Create Circle
             </button>
 
-            <button
-              type="button"
-              className="cs-circles-secondary"
-              onClick={previewOnly ? () => navigate("/preview/membership") : undefined}
-            >
-              <UserPlus size={18} />
-              Join Circle
-            </button>
+            <JoinCircleAction navigate={navigate} previewOnly={previewOnly} />
           </div>
         </section>
 
@@ -310,13 +307,14 @@ async function handleCreateCircle() {
             </div>
           ) : null}
 
+          {loadError && <div className="cs-circle-empty-state" role="alert"><p>{loadError}</p><button type="button" onClick={loadCircles}>Try again</button></div>}
           <div className="cs-circles-simple-grid">
 
    {loadingCircles ? (
   <div className="cs-circle-loading-card">
     Loading your Training Circles...
   </div>
-) : circles.length > 0 ? (
+) : loadError ? null : circles.length > 0 ? (
   circles.map((circle) => {
     const stats = circleStats[circle.id];
     const weeklyGoal = Math.max(

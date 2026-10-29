@@ -156,7 +156,7 @@ export default function TrophyCollection({ previewOnly = false }) {
       setLoading(false);
     }
 
-    loadCollection();
+    loadCollection().catch(() => { if (isMounted) { setErrorMessage('Your achievements could not load. Please try again.'); setLoading(false); } });
 
     return () => {
       isMounted = false;

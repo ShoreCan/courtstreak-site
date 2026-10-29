@@ -40,6 +40,12 @@ import {
 
 const WORKOUT_DRAFT_KEY = 'courtstreak-guided-workout-draft-v1';
 const CUSTOM_WORKOUTS_KEY = 'courtstreak-custom-workouts-v1';
+function cacheWrite(key, value) {
+  try { window.localStorage.setItem(key, value); return true; } catch { return false; }
+}
+function cacheRemove(key) {
+  try { window.localStorage.removeItem(key); } catch { /* Account results remain on the server. */ }
+}
 const CUSTOM_WORKOUT_MIN_DRILLS = 3;
 const CUSTOM_WORKOUT_MAX_DRILLS = 20;
 
@@ -310,7 +316,7 @@ useEffect(() => () => {
 
 useEffect(() => {
   if (previewOnly) return;
-  window.localStorage.setItem(CUSTOM_WORKOUTS_KEY, JSON.stringify(customWorkouts));
+  if (!cacheWrite(CUSTOM_WORKOUTS_KEY, JSON.stringify(customWorkouts))) setRoundMessage('Device storage is unavailable. Keep this page open; account results still save online.');
 }, [customWorkouts]);
 
 useEffect(() => {
@@ -367,7 +373,7 @@ useEffect(() => {
     }
   }
 
-  void loadAccountWorkouts();
+  void loadAccountWorkouts().catch(() => { if (!cancelled) setRoundMessage('Custom plans could not sync. Check your connection before training.'); });
   return () => { cancelled = true; };
 }, []);
 
@@ -381,10 +387,10 @@ useEffect(() => {
     if (isCurrentDay && hasValidProgram && !saved?.finished) {
       setSavedWorkoutDraft(saved);
     } else {
-      window.localStorage.removeItem(WORKOUT_DRAFT_KEY);
+      cacheRemove(WORKOUT_DRAFT_KEY);
     }
   } catch {
-    window.localStorage.removeItem(WORKOUT_DRAFT_KEY);
+    cacheRemove(WORKOUT_DRAFT_KEY);
   }
 }, []);
 
@@ -407,7 +413,7 @@ useEffect(() => {
     finished: false,
   };
 
-  window.localStorage.setItem(WORKOUT_DRAFT_KEY, JSON.stringify(draft));
+  cacheWrite(WORKOUT_DRAFT_KEY, JSON.stringify(draft));
   setSavedWorkoutDraft(draft);
 }, [
   activeWorkout,
@@ -423,11 +429,12 @@ useEffect(() => {
 ]);
 
 function clearWorkoutDraft() {
-  window.localStorage.removeItem(WORKOUT_DRAFT_KEY);
+  cacheRemove(WORKOUT_DRAFT_KEY);
   setSavedWorkoutDraft(null);
 }
 
 async function syncCustomWorkout(program) {
+  try {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
@@ -440,7 +447,8 @@ async function syncCustomWorkout(program) {
     updated_at: new Date().toISOString(),
   }, { onConflict: 'user_id,workout_key' });
 
-  if (error) console.info('Workout saved on this device; account sync is not enabled yet.');
+  if (error) throw error;
+  } catch { setRoundMessage('Plan is available on this screen. Account sync could not finish; retry before closing.'); }
 }
 
 function resetCustomBuilder() {
@@ -554,17 +562,17 @@ function saveCustomWorkout() {
 }
 
 async function deleteCustomWorkout(workout) {
+  if (previewOnly) return;
   if (!window.confirm(`Delete “${workout.name}”? This cannot be undone.`)) return;
-  setCustomWorkouts((workouts) => workouts.filter((item) => item.key !== workout.key));
-  if (savedWorkoutDraft?.workoutKey === workout.key) clearWorkoutDraft();
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return;
-  await supabase
-    .from('custom_workouts')
-    .update({ is_archived: true, updated_at: new Date().toISOString() })
-    .eq('user_id', user.id)
-    .eq('workout_key', workout.key);
+  try {
+    const user = await requireTrainingAccess();
+    const {error} = await supabase.from('custom_workouts')
+      .update({is_archived: true, updated_at: new Date().toISOString()})
+      .eq('user_id', user.id).eq('workout_key', workout.key);
+    if (error) throw error;
+    setCustomWorkouts(items => items.filter(item => item.key !== workout.key));
+    if (savedWorkoutDraft?.workoutKey === workout.key) clearWorkoutDraft();
+  } catch { setRoundMessage('Plan could not be deleted. Please try again.'); }
 }
 
 function openWorkoutPreview(workoutKey) {
@@ -625,7 +633,8 @@ async function startDrillRound() {
 
   if (trainingMode === 'ai') {
     if (!aiTrackerAvailable) {
-      setRoundMessage('The live AI engine is not connected to this web build yet. Choose Guided Manual for a timed, validated round.');
+      setRoundMessage('Choose Guided Manual to start this workout.');
+      setRoundPhase('preview');
       return;
     }
 
@@ -651,6 +660,7 @@ async function startDrillRound() {
       stopRoundCamera();
       setRoundMessage('Camera or AI tracking could not start. Check camera permission or switch to Guided Manual.');
       console.error('Could not start the AI-guided round:', error);
+      setRoundPhase('preview');
       return;
     }
   }
@@ -726,6 +736,7 @@ async function startWorkout(workoutKey) {
     const circles=[...new Set([...sharedCircleIds,...(circleChallenge?.circleId ? [circleChallenge.circleId] : [])])];
     const {data,error}=await supabase.rpc('begin_workout_run',{p_workout_key:program.key,p_timezone:Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',p_shared_circle_ids:circles});
     if(error || !data?.run_id || !data.program)throw new Error(error?.message || 'The workout could not be prepared.');
+    attemptRef.current=null;
     clearWorkoutDraft();setRunId(data.run_id);setServerProgram(data.program);setActiveWorkoutKey(program.key);setPreviewWorkoutKey(null);
     setCurrentDrill(0);setCompletedDrills([]);setWorkoutFinished(false);setShowRepEntry(false);setPendingRepTotal('');setPendingDrillIndex(null);
     setEarnedXp(0);setSessionResults([]);setRoundPhase('preview');setRoundCountdown(5);setRoundSecondsLeft(data.program.drills[0].durationSeconds);setResetSecondsLeft(0);setRoundPaused(false);window.scrollTo({top:0,behavior:'smooth'});

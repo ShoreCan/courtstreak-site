@@ -12,7 +12,7 @@ export default function TrainingStart({ previewOnly = false }) {
 
   const route = (path) =>
     previewOnly
-      ? path === '/dashboard' ? '/preview' : `/preview${path}`
+      ? path === '/dashboard' ? '/preview/player' : `/preview${path}`
       : path;
 
   useEffect(() => {
@@ -43,7 +43,7 @@ export default function TrainingStart({ previewOnly = false }) {
 
     timer.current = setTimeout(() => {
       navigate(route(destination));
-    }, 1800);
+    }, 400);
   };
 
   return (
@@ -56,7 +56,7 @@ export default function TrainingStart({ previewOnly = false }) {
         <p className="cs-preview-eyebrow">START TRAINING</p>
         <h1>Your work starts here.</h1>
         <p className="cs-training-subtitle">
-          Every session matters. Choose how you want to get better today.
+          A full workout or one focused skill.
         </p>
       </header>
 
@@ -82,9 +82,7 @@ export default function TrainingStart({ previewOnly = false }) {
             <span className="cs-training-choice-kicker">BUILD CONSISTENCY</span>
             <h2>Train with a plan.</h2>
             <p>
-              Structured training to help you improve. Choose a 10- or
-              20-minute workout and finish every round to earn a full
-              workout completion.
+              10 or 20 minutes. Follow the plan and finish every round.
             </p>
           </div>
 
@@ -114,8 +112,7 @@ export default function TrainingStart({ previewOnly = false }) {
             <span className="cs-training-choice-kicker">MASTER YOUR CRAFT</span>
             <h2>Own your skills.</h2>
             <p>
-              Focus on what needs work. Explore individual drills,
-              coaching cues, and demonstrations at your own pace.
+              Pick a drill. Watch the move. Make it yours.
             </p>
           </div>
 
@@ -141,7 +138,7 @@ export default function TrainingStart({ previewOnly = false }) {
         <p className="cs-guide-note">
           Your saved level: {preferences.skill_level || 'Intermediate'}.
           {' '}Preferred session: {preferences.preferred_training_duration || '20 minutes'}.
-          {' '}You can choose any plan; 30-minute plans are not currently available.
+          {' '}Choose any plan.
         </p>
       )}
 

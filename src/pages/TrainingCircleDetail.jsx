@@ -197,6 +197,7 @@ export default function TrainingCircleDetail({ previewOnly = false }) {
 
     setLoading(true);
     setPageError('');
+    try {
 
     const {
       data: { user },
@@ -400,7 +401,8 @@ export default function TrainingCircleDetail({ previewOnly = false }) {
       }))
     );
 
-    setLoading(false);
+    } catch { setPageError('Your Circle could not load. Check your connection and try again.'); }
+    finally { setLoading(false); }
   }
 
   useEffect(() => {
@@ -408,12 +410,17 @@ export default function TrainingCircleDetail({ previewOnly = false }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [circleId, previewOnly]);
 
+  async function circleRpc(name, args) {
+    try { return await supabase.rpc(name, args); }
+    catch { return {data: null, error: {message: 'Connection interrupted. Please try again.'}}; }
+  }
+
   async function handleCreateInvite() {
     if (previewOnly) { navigate("/preview/membership"); return; }
     if (!canInvite || creatingInvite) return;
 
     setCreatingInvite(true);
-    const { data, error } = await supabase.rpc(
+    const { data, error } = await circleRpc(
       'create_training_circle_invite',
       { p_circle_id: circleId }
     );
@@ -426,6 +433,7 @@ export default function TrainingCircleDetail({ previewOnly = false }) {
     }
 
     const invite = data?.[0];
+    if (!invite?.invite_code) { showFeedback('error', 'The invite could not be confirmed. Please try again.'); return; }
     setInviteCode(invite?.invite_code || '');
     setInviteExpiresAt(invite?.expires_at || null);
     setInviteOpen(true);
@@ -502,7 +510,7 @@ export default function TrainingCircleDetail({ previewOnly = false }) {
     if (!isOwner || savingSettings) return;
 
     setSavingSettings(true);
-    const { data, error } = await supabase.rpc(
+    const { data, error } = await circleRpc(
       'update_training_circle_settings',
       {
         p_circle_id: circleId,
@@ -534,7 +542,7 @@ export default function TrainingCircleDetail({ previewOnly = false }) {
     if (previewOnly) { navigate("/preview/membership"); return; }
     if (isOwner || actionLoading) return;
     setActionLoading(true);
-    const { error } = await supabase.rpc('leave_training_circle', {
+    const { error } = await circleRpc('leave_training_circle', {
       p_circle_id: circleId,
     });
     setActionLoading(false);
@@ -552,7 +560,7 @@ export default function TrainingCircleDetail({ previewOnly = false }) {
     if (previewOnly) { navigate("/preview/membership"); return; }
     if (!isOwner || actionLoading) return;
     setActionLoading(true);
-    const { error } = await supabase.rpc('delete_training_circle', {
+    const { error } = await circleRpc('delete_training_circle', {
       p_circle_id: circleId,
     });
     setActionLoading(false);
@@ -570,7 +578,7 @@ export default function TrainingCircleDetail({ previewOnly = false }) {
     if (previewOnly) { navigate("/preview/membership"); return; }
     if (!isOwner || actionLoading) return;
     setActionLoading(true);
-    const { error } = await supabase.rpc('remove_training_circle_member', {
+    const { error } = await circleRpc('remove_training_circle_member', {
       p_circle_id: circleId,
       p_member_id: member.userId,
     });
@@ -591,7 +599,7 @@ export default function TrainingCircleDetail({ previewOnly = false }) {
     if (previewOnly) { navigate("/preview/membership"); return; }
     if (!isOwner || actionLoading) return;
     setActionLoading(true);
-    const { error } = await supabase.rpc(
+    const { error } = await circleRpc(
       'transfer_training_circle_ownership',
       {
         p_circle_id: circleId,
@@ -616,7 +624,7 @@ export default function TrainingCircleDetail({ previewOnly = false }) {
     if (previewOnly) { navigate("/preview/membership"); return; }
     if (!isOwner || actionLoading) return;
     setActionLoading(true);
-    const { error } = await supabase.rpc('revoke_training_circle_invites', {
+    const { error } = await circleRpc('revoke_training_circle_invites', {
       p_circle_id: circleId,
     });
     setActionLoading(false);
@@ -650,6 +658,7 @@ export default function TrainingCircleDetail({ previewOnly = false }) {
           <Shield />
           <h1>Circle unavailable</h1>
           <p>{pageError}</p>
+          <button onClick={loadCirclePage}>Try again</button>
           <button onClick={() => navigate('/training-circles')}>
             Return to Training Circles
           </button>
@@ -677,7 +686,7 @@ export default function TrainingCircleDetail({ previewOnly = false }) {
           <div className="cs-circle-rebuild-identity">
             <div className="cs-circle-rebuild-badge"><SelectedBadge /></div>
             <div>
-              <span>{circle.circle_type.toUpperCase()} · {circle.is_private ? 'PRIVATE' : 'OPEN'}</span>
+              <span>{(circle.circle_type || 'Friends').toUpperCase()} · {circle.is_private ? 'PRIVATE' : 'OPEN'}</span>
               <h1>{circle.name}</h1>
               <p>{circle.motto || 'Your people. Your progress. Your standard.'}</p>
               <small>{members.length} {members.length === 1 ? 'member' : 'members'}</small>

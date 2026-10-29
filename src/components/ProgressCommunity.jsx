@@ -23,14 +23,12 @@ export default function ProgressCommunity() {
         <p className="eyebrow">PROGRESS YOU CAN SEE</p>
 
         <h2>
-          Get better together.
-          <span> See the work paying off.</span>
+          See your work pay off.
         </h2>
 
         <p>
-          Track your improvement over time, celebrate personal bests,
-          and compete with the friends, teammates, coaches, and
-          family members who push you to improve.
+          Personal bests. Private Circles. Progress you can see.
+          Sample results shown below.
         </p>
       </div>
 
@@ -207,7 +205,7 @@ export default function ProgressCommunity() {
               <Target size={18} />
 
               <span>
-                <strong>3 reps to take the lead</strong>
+                <strong>4 reps to take the lead</strong>
                 Healthy competition. Real accountability.
               </span>
 
@@ -224,8 +222,7 @@ export default function ProgressCommunity() {
     <h3>Train with purpose. Improve together.</h3>
 
     <p>
-      Start training, make your progress visible, and compete
-      with the people who bring out your best.
+      Choose a drill and make your next rep count.
     </p>
   </div>
 

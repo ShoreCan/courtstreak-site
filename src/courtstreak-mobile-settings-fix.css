@@ -32,3 +32,5 @@
 .cs-settings-topbar>button{font-size:14px}
 }
 @media (max-width:380px){.cs-profile-settings-shortcut{font-size:12px;padding:8px 9px}.cs-settings-layout{width:calc(100% - 24px)}}
+
+@media(max-width:600px){.cs-settings-sidebar nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible;gap:8px}.cs-settings-sidebar nav a{min-width:0;white-space:normal;text-align:center;padding:9px 8px;min-height:44px;line-height:1.3}}

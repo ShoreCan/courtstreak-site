@@ -1,0 +1,4 @@
+.cs-join-dialog{width:min(420px,calc(100% - 32px));padding:28px;border:1px solid var(--cs-theme-line);border-radius:24px;background:var(--cs-theme-panel);color:var(--cs-theme-copy);box-sizing:border-box}
+.cs-join-dialog::backdrop{background:rgb(5 13 24 / .72)}
+.cs-join-dialog h2{margin:12px 0 24px;font-size:28px}.cs-join-close{display:grid;place-items:center;margin-left:auto;width:44px;height:44px;border:0;background:none;color:inherit;cursor:pointer}
+.cs-join-dialog form{display:grid;gap:14px}.cs-join-dialog input{box-sizing:border-box;width:100%;min-height:48px;padding:12px;border:1px solid var(--cs-theme-line);border-radius:12px;background:var(--cs-theme-bg);color:inherit;font:inherit;font-size:16px}.cs-join-dialog form>button{min-height:48px;border:0;border-radius:12px;background:#ff984f;color:var(--cs-theme-on-accent);font:inherit;font-weight:800;cursor:pointer}.cs-join-dialog p{margin:0;font-size:14px}

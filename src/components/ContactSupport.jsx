@@ -13,10 +13,9 @@ export default function ContactSupport() {
     <section id="contact" className="section contact-section upgraded-contact">
       <div className="section-heading center">
         <p className="eyebrow">Support</p>
-        <h2>Need help? Reach out directly.</h2>
+        <h1>How can we help?</h1>
         <p>
-          CourtStreak is built to be interactive. Players, parents, and coaches should be able
-          to report problems, ask questions, or request a meeting when they need more support.
+          Questions about training, your account, or your team? Email us.
         </p>
       </div>
 
@@ -46,11 +45,10 @@ export default function ContactSupport() {
           <Calendar size={28} />
           <h3>Request a Meeting</h3>
           <p>
-            Parents, coaches, or trainers can request a time to talk through bigger questions,
-            team setup, or feedback.
+            Talk through team setup or a bigger question.
           </p>
           <a href="mailto:courtstreaksupport@gmail.com?subject=CourtStreak Meeting Request">
-            Schedule a Meeting
+            Request a meeting
           </a>
         </div>
       </div>

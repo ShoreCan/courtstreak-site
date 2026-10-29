@@ -148,12 +148,13 @@ export default function HubTraining() {
             </p>
             <h2>{drill.name}</h2>
             <p className="hub-purpose">{drill.short_description}</p>
+            <details className="hub-training-help"><summary>Technique &amp; setup</summary>
             <ol className="hub-coaching">
               {(drill.steps || [drill.instructions]).map((step, i) => (
                 <li key={i}>{step}</li>
               ))}
             </ol>
-            <p>{drill.repeat}</p>
+            <p>{drill.repeat}</p></details>
             <p className="cs-note">
               <strong>Count:</strong> {drill.rep_rule}
             </p>
@@ -204,8 +205,7 @@ export default function HubTraining() {
                   {busy ? "Saving…" : "Save round"}
                 </button>
                 <p className="pc-note">
-                  Self-reported count. The server checks the required training
-                  interval.
+                  Timed round · Self-reported count.
                 </p>
               </form>
             )}

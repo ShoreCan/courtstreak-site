@@ -21,7 +21,7 @@ export default function WhatsIncluded() {
     <section id="included" className="section included-section">
       <div>
         <p className="eyebrow">What’s Included</p>
-        <h2>Everything players need to stay consistent.</h2>
+        <h1>Everything players need to stay consistent.</h1>
         <p>
           CourtStreak is built around structure, accountability, and motivation — the pieces that help players keep showing up.
         </p>

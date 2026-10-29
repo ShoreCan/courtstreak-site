@@ -72,7 +72,7 @@ function transformValue(value,role,context){
   return mapColor(raw,role,context);
  });
 }
-const nativePalette=/\/(?:components\/(?:appearance\.css|ai\/(?:iphone-pound-test|pound-entry-studio)\.css)|theme\.css|design\/tracker-studio\/preview\.css)$/;
+const nativePalette=/\/(?:components\/(?:(?:appearance|auth-simple)\.css|ai\/(?:iphone-pound-test|pound-entry-studio)\.css)|theme\.css|design\/tracker-studio\/preview\.css)$/;
 const artwork=/(?:cs-iphone-shell|cs-app-preview-device|cs-app-preview-phone|cs-court-art|cs-hero-court|cs-ball-seam|cs-basketball-art|cs-vault-cabinet|cs-vault-basketball|cs-cabinet-trophy-(?:cup|stem|base))/;
 function customColors(root,seed=new Map()){
  const colors=new Map(seed);

@@ -20,6 +20,7 @@ import {
   FiUsers,
 } from 'react-icons/fi';
 import usePreviewNavigate from '../lib/usePreviewNavigate.js';
+import {authErrorMessage} from '../lib/accountFlow.mjs';
 import { supabase } from '../lib/supabaseClient.js';
 import { AppearanceSettings } from '../components/AppearanceControl.jsx';
 
@@ -51,8 +52,9 @@ export default function Settings({ previewOnly = false }) {
     let isMounted = true;
 
     async function loadSettings() {
+      try {
       if (!supabase) {
-        setErrorMessage('CourtStreak could not connect to Supabase.');
+        setErrorMessage('Settings are temporarily unavailable.');
         setLoading(false);
         return;
       }
@@ -97,7 +99,8 @@ export default function Settings({ previewOnly = false }) {
         setWeeklyGoal(profile?.weekly_goal || 4);
       }
 
-      setLoading(false);
+      } catch { if (isMounted) setErrorMessage('Settings could not load. Please refresh and try again.'); }
+      finally { if (isMounted) setLoading(false); }
     }
 
     loadSettings();
@@ -114,81 +117,50 @@ export default function Settings({ previewOnly = false }) {
 
   async function handleSavePreferences(event) {
     event.preventDefault();
-    if (previewOnly) { navigate("/preview/membership"); return; }
-    clearMessages();
-    setSaving(true);
-
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .update({
-        weekly_goal: Number(weeklyGoal),
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', user.id);
-
-    if (profileError) {
-      console.error(profileError);
-      setErrorMessage('CourtStreak could not save your weekly goal.');
-      setSaving(false);
-      return;
-    }
-
-    const { error: metadataError } = await supabase.auth.updateUser({
-      data: {
-        skill_level: skillLevel,
-        preferred_training_duration: trainingDuration,
-        dominant_hand: dominantHand,
-        default_circle_sharing: defaultSharing,
-      },
-    });
-
-    if (metadataError) {
-      console.error(metadataError);
-      setErrorMessage('CourtStreak could not save all your preferences.');
-      setSaving(false);
-      return;
-    }
-
-    setMessage('Your CourtStreak settings have been saved.');
-setSaving(false);
-
-window.setTimeout(() => {
-  setMessage('');
-}, 3500);
+    if (previewOnly) { navigate('/preview/membership'); return; }
+    if (saving || !supabase || !user) return;
+    clearMessages(); setSaving(true);
+    let goalSaved = false;
+    try {
+      const { error: profileError } = await supabase.from('profiles').update({
+        weekly_goal: Number(weeklyGoal), updated_at: new Date().toISOString(),
+      }).eq('id', user.id);
+      if (profileError) throw profileError;
+      goalSaved = true;
+      const { error } = await supabase.auth.updateUser({ data: {
+        skill_level: skillLevel, preferred_training_duration: trainingDuration,
+        dominant_hand: dominantHand, default_circle_sharing: defaultSharing,
+      }});
+      if (error) throw error;
+      setMessage('Preferences saved.');
+    } catch {
+      setErrorMessage(goalSaved ? 'Weekly goal saved. Other preferences could not save; please retry.' : 'Preferences could not save. Please try again.');
+    } finally { setSaving(false); }
   }
 
   async function handlePasswordChange(event) {
     event.preventDefault();
-    if (previewOnly) { navigate("/preview/membership"); return; }
+    if (previewOnly) { navigate('/preview/membership'); return; }
+    if (passwordSaving || !supabase || !user) return;
     clearMessages();
-
-    if (newPassword.length < 8) {
-      setErrorMessage('Your new password must be at least 8 characters.');
-      return;
-    }
-
+    if (newPassword.length < 8) { setErrorMessage('Use at least 8 characters.'); return; }
     setPasswordSaving(true);
-
-    const { error } = await supabase.auth.updateUser({
-      password: newPassword,
-    });
-
-    if (error) {
-      console.error(error);
-      setErrorMessage(error.message || 'Your password could not be updated.');
-      setPasswordSaving(false);
-      return;
-    }
-
-    setNewPassword('');
-    setMessage('Your password has been updated securely.');
-    setPasswordSaving(false);
+    try {
+      const { error } = await supabase.auth.updateUser({password: newPassword});
+      if (error) throw error;
+      setNewPassword(''); setMessage('Password updated.');
+    } catch (error) { setErrorMessage(authErrorMessage(error, 'Password could not update. Please try again.')); }
+    finally { setPasswordSaving(false); }
   }
 
   async function handleLogout() {
-    if (previewOnly) { navigate("/"); return; }
-    await supabase.auth.signOut();
-    navigate('/login', { replace: true });
+    if (previewOnly) { navigate('/'); return; }
+    clearMessages();
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      navigate('/login', { replace: true });
+    } catch { setErrorMessage('Could not log out. Check your connection and try again.'); }
   }
 
   return (
@@ -247,18 +219,16 @@ window.setTimeout(() => {
           </nav>
 
           <p>
-            Set up CourtStreak around your goals, your training, and
-            the people who help you improve.
+            Your game. Your preferences.
           </p>
         </aside>
 
         <section className="cs-settings-content">
           <div className="cs-settings-heading">
             <p>SETTINGS</p>
-            <h1>Make CourtStreak work for you.</h1>
+            <h1>Your settings.</h1>
             <span>
-              Keep your training focused, your progress private, and
-              your account secure.
+              Training, privacy, and account.
             </span>
           </div>
 
@@ -267,14 +237,14 @@ window.setTimeout(() => {
           <AppearanceSettings />
 
           {message ? (
-            <div className="cs-settings-message success">
+            <div className="cs-settings-message success" role="status">
               <FiCheck />
               {message}
             </div>
           ) : null}
 
           {errorMessage ? (
-            <div className="cs-settings-message error">
+            <div className="cs-settings-message error" role="alert">
               {errorMessage}
             </div>
           ) : null}
@@ -297,10 +267,9 @@ window.setTimeout(() => {
 
                     <div>
                       <small>TRAINING PREFERENCES</small>
-                      <h2>Train around your game.</h2>
+                      <h2>Training</h2>
                       <p>
-                        These preferences help CourtStreak understand
-                        how you want to train.
+                        Choose your usual setup.
                       </p>
                     </div>
                   </div>
@@ -388,10 +357,9 @@ window.setTimeout(() => {
 
                     <div>
                       <small>PRIVACY & CIRCLES</small>
-                      <h2>You control who sees your work.</h2>
+                      <h2>Sharing</h2>
                       <p>
-                        CourtStreak keeps training social without
-                        making player activity public.
+                        Choose who sees completed sessions.
                       </p>
                     </div>
                   </div>
@@ -423,17 +391,16 @@ window.setTimeout(() => {
 
                   <div className="cs-settings-privacy-note">
                     <FiUsers />
-                    Your default preselects Circles before training. You can change it for each session. Circle challenges always post to their Circle.
+                    Change sharing before any session. Circle challenges always post to their Circle.
                   </div>
                 </section>
 
                 <div className="cs-settings-save-row">
                   <span>
-                    Your preferences are securely connected to your
-                    CourtStreak account.
+                    Saved to your account.
                   </span>
 
-                  <button type="submit" disabled={previewOnly || saving}>
+                  <button type="submit" disabled={previewOnly || saving || !user}>
                     <FiSave />
                     {saving ? 'Saving...' : 'Save Preferences'}
                   </button>
@@ -456,7 +423,7 @@ window.setTimeout(() => {
 
                   <div>
                     <small>ACCOUNT & SECURITY</small>
-                    <h2>Keep your account secure.</h2>
+                    <h2>Account</h2>
                   </div>
                 </div>
 
@@ -488,6 +455,8 @@ window.setTimeout(() => {
                         }
                         placeholder="Enter a new password"
                         minLength="8"
+                        autoComplete="new-password"
+                        required
                       />
 
                       <button
@@ -506,7 +475,7 @@ window.setTimeout(() => {
                     </div>
                   </label>
 
-                  <button type="submit" disabled={previewOnly || passwordSaving}>
+                  <button type="submit" disabled={previewOnly || passwordSaving || !user}>
                     {passwordSaving
                       ? 'Updating...'
                       : 'Update Password'}

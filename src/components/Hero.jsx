@@ -4,9 +4,7 @@ import '../customer-preview.css';
 import '../public-preview-entry.css';
 import {
   ArrowRight,
-  CheckCircle2,
   Flame,
-  Mail,
     Swords,
   Target,
   TrendingUp,
@@ -14,12 +12,7 @@ import {
   Users,
 } from 'lucide-react';
 
-export default function Hero({
-  email,
-  setEmail,
-  joined,
-  handleSubmit,
-}) {
+export default function Hero() {
   return (
     <section className="court-home-hero" id="top">
       <div className="court-home-shade" />
@@ -27,69 +20,25 @@ export default function Hero({
       <div className="court-home-content">
         <div className="court-home-copy">
           <p className="court-home-eyebrow">
-            Basketball training built around your game
+            BALL HANDLING · BUILT FOR YOU
           </p>
 
           <h1>
-            <span>What do you want to</span>
-            <strong>get better at today?</strong>
+            <span>Better handles.</span>
+            <strong>Start here.</strong>
           </h1>
 
           <p className="court-home-description">
-            Choose the ball-handling skills you want to improve.
-            Follow guided drills, put in the reps, earn XP, build
-            your streak, and keep leveling up your game.
+            Pick a drill. Put in the reps. See your progress.
           </p>
 
-          <div className="court-home-training-focus">
-            <span>AVAILABLE NOW</span>
-            <strong>Ball Handling</strong>
-            <p>Shooting + Finishing coming next</p>
+          <div className="cs-home-entry-actions" id="join">
+            <Link className="cs-home-entry-primary" to="/preview">Try the preview <ArrowRight size={19} aria-hidden="true" /></Link>
+            <Link className="cs-home-entry-secondary" to="/create-account">Create account</Link>
           </div>
-
-          {joined ? (
-            <div className="court-home-success">
-              <CheckCircle2 size={25} />
-
-              <div>
-                <strong>You&apos;re officially on the membership.</strong>
-                <span>
-                  Check your inbox for your CourtStreak confirmation.
-                </span>
-              </div>
-            </div>
-          ) : (
-            <form
-              className="court-home-form"
-              id="join"
-              onSubmit={handleSubmit}
-            >
-              <label>
-                <Mail size={20} />
-
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="Enter email to start training"
-                  autoComplete="email"
-                  required
-                />
-              </label>
-
-              <button type="submit">
-                Start Training
-                <ArrowRight size={19} />
-              </button>
-            </form>
-          )}
-
-          <div className="cs-public-preview-entry">
-            <Link className="cs-public-preview-button" to="/preview">Explore CourtStreak <ArrowRight size={19} aria-hidden="true" /></Link>
-            <p>No account or payment needed. Explore the dashboard, drills, and sample progress.</p>
-          </div>
-          <div className="cs-home-supporter-entry"><div><Users size={21} /><span><strong>Parents &amp; coaches have a home here, too.</strong><small>See effort. Assign work. Follow progress.</small></span></div><div><Link to="/parents">For parents <ArrowRight size={15} /></Link><Link to="/coaches">For coaches <ArrowRight size={15} /></Link></div></div>
-          <p className="cs-preview-price">Membership: $29.99/month · Manage or cancel anytime</p>
+          <p className="cs-home-entry-note">Preview free · No login needed</p>
+          <p className="cs-preview-price">Player membership · $29.99/month · Cancel anytime</p>
+          <div className="cs-home-audience"><Link to="/parents">For parents</Link><Link to="/coaches">For coaches</Link></div>
           <div className="court-home-benefits">
             <div>
               <Target size={29} />
@@ -157,7 +106,7 @@ export default function Hero({
 
           <div className="court-phone-header">
             <div>
-              <p>Good evening, Jordan</p>
+              <p>Sample player preview</p>
               <h2>Ready to work?</h2>
             </div>
 
@@ -214,7 +163,7 @@ export default function Hero({
     <div>
       <span>MARCUS CHALLENGED YOU</span>
       <strong>Crossover Control</strong>
-      <small>3 more reps to take the lead</small>
+      <small>4 more reps to take the lead</small>
     </div>
 
     <ArrowRight size={17} />

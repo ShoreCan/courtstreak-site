@@ -1,3 +1,4 @@
+import { favoriteCache } from '../lib/favoriteCache.mjs';
 import { getDrillVideo } from '../data/drillVideos.js';
 import usePreviewNavigate from '../lib/usePreviewNavigate.js';
 import { PREVIEW_DRILLS } from '../data/previewDrills.js';
@@ -28,17 +29,6 @@ function formatHand(hand) {
   return 'Both Hands';
 }
 
-function readLocalFavorites(userId) {
-  try {
-    return JSON.parse(window.localStorage.getItem(`courtstreak:favorites:${userId}`) || '[]');
-  } catch {
-    return [];
-  }
-}
-
-function writeLocalFavorites(userId, keys) {
-  window.localStorage.setItem(`courtstreak:favorites:${userId}`, JSON.stringify(keys));
-}
 
 function DrillPreview({ drill }) {
   if (getDrillVideo(drill)) {
@@ -74,6 +64,8 @@ export default function Lab({ previewOnly = false }) {
   const [difficultyFilter, setDifficultyFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
+  const [favoriteMessage, setFavoriteMessage] = useState('');
+  const [favoriteBusy, setFavoriteBusy] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -153,7 +145,7 @@ export default function Lab({ previewOnly = false }) {
           .limit(12),
       ]);
 
-      const storedFavoriteKeys = readLocalFavorites(user.id);
+      const storedFavoriteKeys = favoriteCache.read(user.id);
       const remoteFavoriteKeys = favoritesResult.error ? [] : (favoritesResult.data ?? []).map((item) => item.drill_key);
       setFavoriteKeys([...new Set([...storedFavoriteKeys, ...remoteFavoriteKeys])]);
       if (!recentResult.error) {
@@ -206,28 +198,21 @@ export default function Lab({ previewOnly = false }) {
 
   async function toggleFavorite(drill, event) {
     event.stopPropagation();
-    if (previewOnly) { navigate("/preview/membership"); return; }
-    if (!userId) return;
-    const isFavorite = favoriteKeys.includes(drill.drill_key);
-    const nextKeys = isFavorite
-      ? favoriteKeys.filter((key) => key !== drill.drill_key)
-      : [...new Set([...favoriteKeys, drill.drill_key])];
-
-    setFavoriteKeys(nextKeys);
-    writeLocalFavorites(userId, nextKeys);
-
-    if (isFavorite) {
-      await supabase
-        .from('drill_favorites')
-        .delete()
-        .eq('user_id', userId)
-        .eq('drill_key', drill.drill_key);
-      return;
-    }
-
-    await supabase
-      .from('drill_favorites')
-      .upsert({ user_id: userId, drill_key: drill.drill_key });
+    if (previewOnly) { navigate('/preview/membership'); return; }
+    if (!userId || favoriteBusy) return;
+    const previous = favoriteKeys, selected = previous.includes(drill.drill_key);
+    const next = selected ? previous.filter(key => key !== drill.drill_key) : [...new Set([...previous, drill.drill_key])];
+    setFavoriteBusy(true); setFavoriteMessage(''); setFavoriteKeys(next);
+    const cached = favoriteCache.write(userId, next);
+    try {
+      const result = selected
+        ? await supabase.from('drill_favorites').delete().eq('user_id', userId).eq('drill_key', drill.drill_key)
+        : await supabase.from('drill_favorites').upsert({user_id: userId, drill_key: drill.drill_key});
+      if (result.error) throw result.error;
+    } catch {
+      if (!cached) setFavoriteKeys(previous);
+      setFavoriteMessage(cached ? 'Changed on this device. Account sync could not finish.' : 'Favorite could not save. Please try again.');
+    } finally { setFavoriteBusy(false); }
   }
 
   if (loading) {
@@ -244,6 +229,7 @@ export default function Lab({ previewOnly = false }) {
 
   return (
     <main className="cs-lab-page cs-lab-page-compact">
+      {favoriteMessage && <p role="status">{favoriteMessage}</p>}
       <header className="cs-lab-topbar">
         <Link to={previewOnly ? "/preview" : "/dashboard"} className="cs-lab-brand">
           <span>CS</span>

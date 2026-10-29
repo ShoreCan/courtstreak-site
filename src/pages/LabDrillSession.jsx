@@ -1,5 +1,6 @@
 // CourtStreak quality update v1
 import { saveResultContext } from '../lib/resultContext.js';
+import { confirmedSessionReceipt } from '../lib/sessionReceipt.mjs';
 import ShareTraining from '../components/ShareTraining.jsx';
 import TrainingVisibility from '../components/TrainingVisibility.jsx';
 import React, { useEffect, useRef, useState } from 'react';
@@ -109,8 +110,9 @@ function GuidedLabDrillSession() {
       if (!receiptRef.current) {
         const result = await supabase.rpc('complete_lab_drill_attempt', { p_attempt_id: attemptRef.current, p_reps: numericReps });
         if (result.error) throw new Error('Your result could not be saved. Keep this screen open and retry.');
-        receiptRef.current = Array.isArray(result.data) ? result.data[0] : result.data;
-        setComparisonSaved(await saveResultContext(receiptRef.current?.session_id, drill, durationRef.current));
+        const receipt = confirmedSessionReceipt(result.data);
+        receiptRef.current = receipt;
+        setComparisonSaved(await saveResultContext(receipt.session_id, drill, durationRef.current));
       }
       if (challenge?.id) {
         const result = await supabase.rpc('submit_circle_challenge_result', { p_challenge_id: challenge.id, p_score: numericReps, p_verification_mode: 'manual', p_result_payload: { drillKey: drill.drill_key, attemptId: attemptRef.current, durationSeconds: durationRef.current } });

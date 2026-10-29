@@ -1185,7 +1185,7 @@ footer strong { color: #0f172a; }
   position: relative;
 }
 
-.premium-menu-item button {
+.premium-menu-item summary {
   background: transparent;
   border: none;
   color: #0f172a;
@@ -1211,7 +1211,7 @@ footer strong { color: #0f172a; }
   z-index: 999;
 }
 
-.premium-menu-item:hover .premium-dropdown {
+.premium-menu-item[open] .premium-dropdown {
   display: block;
 }
 
@@ -27572,3 +27572,5 @@ main > .contact-section::before {
 
 /* Trophy collection earned progress indicator */
 .cs-vault-completion-meter{min-width:0}.cs-vault-completion-track{height:6px;border-radius:999px;overflow:hidden;background:rgba(120,139,160,.32);margin-top:9px;min-width:70px}.cs-vault-completion-track span{display:block;height:100%;background:linear-gradient(90deg,#f97316,#ffc17b);border-radius:inherit;transition:width .55s ease}.cs-vault-card.unlocked{transition:transform .22s ease,box-shadow .22s ease}.cs-vault-card.unlocked:hover{transform:translateY(-3px);box-shadow:0 12px 26px rgba(0,0,0,.24)}.cs-vault-card:focus-visible{outline:3px solid #ffa65d;outline-offset:3px}@media(prefers-reduced-motion:reduce){.cs-vault-completion-track span,.cs-vault-card.unlocked{transition:none!important}}
+
+.premium-menu-item summary{list-style:none;min-height:44px;box-sizing:border-box}.premium-menu-item summary::-webkit-details-marker{display:none}.premium-menu-item summary:focus-visible,.premium-dropdown a:focus-visible{outline:2px solid #f58020;outline-offset:4px}

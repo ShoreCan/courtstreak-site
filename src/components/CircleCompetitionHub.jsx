@@ -137,6 +137,7 @@ export default function CircleCompetitionHub({
     }
     if (!circle?.id || !currentUserId) return;
     setLoading(true);
+    try {
 
     // Safe to call repeatedly: database uniqueness rules award each completed
     // weekly title only once and prevent multi-Circle XP duplication.
@@ -178,7 +179,8 @@ export default function CircleCompetitionHub({
     setPulse(pulseResult.data?.[0] ?? null);
     setDrills(drillResult.data ?? []);
     setCustomWorkouts(customResult.data ?? []);
-    setLoading(false);
+    } catch { showFeedback?.('error', 'Competition could not load. Please try again.'); }
+    finally { setLoading(false); }
   }
 
   useEffect(() => {
@@ -203,12 +205,17 @@ export default function CircleCompetitionHub({
     setCreateOpen(true);
   }
 
+  async function competitionRpc(name, args) {
+    try { return await supabase.rpc(name, args); }
+    catch { return {data: null, error: {message: 'Connection interrupted. Please try again.'}}; }
+  }
+
   async function createChallenge() {
     if (previewOnly) { navigate("/preview/membership"); return; }
     if (!selectedSource || creating) return;
     if (circle?.allow_member_challenges === false && circle?.owner_id !== currentUserId) { showFeedback?.('error', 'Only the Circle owner can create challenges.'); return; }
     setCreating(true);
-    const { data, error } = await supabase.rpc('create_circle_challenge', {
+    const { data, error } = await competitionRpc('create_circle_challenge', {
       p_circle_id: circle.id,
       p_target_user_id: targetUserId === 'circle' ? null : targetUserId,
       p_source_type: selectedSource.sourceType,
@@ -244,7 +251,7 @@ export default function CircleCompetitionHub({
   async function acceptChallenge(challenge) {
     if (previewOnly) { navigate("/preview/membership"); return; }
     if (!currentChallengeSource(challenge)) { showFeedback?.('error', 'This challenge uses retired content. Create a new challenge from the core library.'); return; }
-    const { error } = await supabase.rpc('accept_circle_challenge', { p_challenge_id: challenge.id });
+    const { error } = await competitionRpc('accept_circle_challenge', { p_challenge_id: challenge.id });
     if (error) {
       showFeedback?.('error', error.message || 'Challenge could not be accepted.');
       return;

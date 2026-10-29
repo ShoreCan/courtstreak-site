@@ -18,7 +18,7 @@ export async function hubRpc(name, args = {}) {
       );
     if (error.code === "PGRST202" || error.code === "42883")
       throw new Error(
-        "The Team & Family Hub database update has not been installed yet. Run CourtStreak-Hubs.sql in Supabase, then refresh.",
+        "This workspace is temporarily unavailable. Please try again or contact support.",
       );
     throw new Error(
       error.message || "This change could not be saved. Please retry.",
