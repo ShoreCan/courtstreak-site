@@ -1,7 +1,7 @@
 import { cameraReadiness } from './cameraReadiness.mjs';
 
 // Presentation only. Raw, fresh checks still decide readiness and counting.
-export const SETUP_GUIDANCE_REVISION = 'SETUP 01';
+export const SETUP_GUIDANCE_REVISION = 'SETUP 02';
 export const SETUP_HELP_SECONDS = 12;
 
 export function setupCondition(checks, speedReady, lockReady) {
@@ -32,6 +32,10 @@ export class SetupGuidance {
   constructor(delay=.45) { this.delay=delay; this.current=null; this.pending=null; this.since=null; }
   update(now, next) {
     if (!this.current) this.current=next;
+    // Let the next actual body observation confirm or contradict the cue.
+    // Resetting its debounce on every queued refresh otherwise prevents a
+    // 400ms pose worker from ever displaying a stable framing instruction.
+    if(next.key==='refresh')return this.current;
     if (this.current.key === next.key) { this.pending=null; this.since=null; return this.current; }
     if (this.pending?.key !== next.key) { this.pending=next; this.since=now; }
     if (now-this.since >= this.delay) { this.current=this.pending; this.pending=null; this.since=null; }
