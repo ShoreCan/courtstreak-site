@@ -3,6 +3,7 @@ import Navbar from '../components/Navbar.jsx';
 import Hero from '../components/Hero.jsx';
 import ProgressCommunity from '../components/ProgressCommunity.jsx';
 import Footer from '../components/Footer.jsx';
+import AITrainingShowcase from '../components/AITrainingShowcase.jsx';
 
 export default function Home() {
 
@@ -11,6 +12,7 @@ export default function Home() {
       <Navbar />
 
       <Hero />
+      <AITrainingShowcase />
 
       <ProgressCommunity />
       <Footer />

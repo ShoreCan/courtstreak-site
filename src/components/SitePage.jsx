@@ -1,6 +1,7 @@
 import React from 'react';
 import Navbar from './Navbar.jsx';
 import Footer from './Footer.jsx';
+import SiteLink from './SiteLink.jsx';
 
 export default function SitePage({
   themeClass = '',
@@ -29,9 +30,9 @@ export default function SitePage({
           <p className="site-page-intro">{intro}</p>
 
           <div className="site-page-actions">
-            <a className="site-primary-button" href={primaryHref}>{primaryLabel}</a>
+            <SiteLink className="site-primary-button" href={primaryHref}>{primaryLabel}</SiteLink>
             {secondaryLabel && secondaryHref && (
-              <a className="site-secondary-button" href={secondaryHref}>{secondaryLabel}</a>
+              <SiteLink className="site-secondary-button" href={secondaryHref}>{secondaryLabel}</SiteLink>
             )}
           </div>
         </div>
@@ -46,9 +47,9 @@ export default function SitePage({
     <p>{finalText}</p>
   </div>
 
-  <a className="site-primary-button" href={finalButtonHref}>
+  <SiteLink className="site-primary-button" href={finalButtonHref}>
     {finalButtonLabel}
-  </a>
+  </SiteLink>
 </section>
 
       <Footer />

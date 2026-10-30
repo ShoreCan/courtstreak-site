@@ -28,7 +28,7 @@ const content = {
 export function PreviewRoleCard({role, inviteCode}) {
   const [name,title,detail,Icon] = content[role];
   const target=role === 'player' ? `/preview/player${inviteCode ? '?invite='+encodeURIComponent(inviteCode) : ''}` : `/preview/hub?view=${role}`;
-  return <Link className={`cs-discover-card ${role}`} to={target}>
+  return <Link className={`cs-discover-card ${role}`} to={target} state={{previewTour:role}}>
     <div className="cs-discover-role"><Icon size={20} /><strong>For {name === 'Player' ? 'players' : name === 'Parent' ? 'parents' : 'coaches'}</strong></div>
     <PreviewVisual role={role} />
     <div className="cs-discover-card-copy"><h2>{title}</h2><p>{detail}</p><span>Explore {name === 'Player' ? 'CourtStreak' : name === 'Parent' ? 'Family Hub' : 'Team Hub'} <ArrowUpRight size={18} /></span></div>

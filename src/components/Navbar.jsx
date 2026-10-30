@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { Menu, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import SiteLink from './SiteLink.jsx';
+import {AppearanceOptions} from './AppearanceControl.jsx';
 import '../public-preview-entry.css';
 
 const HOME = '/courtstreak-site/';
 
 const menus = [
   { title: 'Training', links: [
+    ['AI training', '/courtstreak-site/#ai-training'],
     ['Ball handling', '/courtstreak-site/training/ball-handling'],
     ['What’s included', '/courtstreak-site/whats-included'],
     ['Membership', '/courtstreak-site/pricing'],
@@ -14,7 +17,7 @@ const menus = [
   { title: 'Parents & coaches', links: [
     ['For parents', '/courtstreak-site/parents'],
     ['For coaches', '/courtstreak-site/coaches'],
-    ['Open your Hub', '/courtstreak-site/hub'],
+    ['Open your Hub', '/courtstreak-site/hubs'],
   ]},
   { title: 'Help', links: [
     ['Quick answers', '/courtstreak-site/faq'],
@@ -27,10 +30,10 @@ export default function Navbar() {
 
   return (
     <nav className="nav premium-nav">
-      <a className="brand" href={HOME}>
+      <SiteLink className="brand" href={HOME}>
         <span className="brand-mark">CS</span>
         <span>CourtStreak</span>
-      </a>
+      </SiteLink>
 
       <div className="premium-menu">
         <Link className="cs-public-nav-preview" to="/preview">Preview</Link>
@@ -39,7 +42,7 @@ export default function Navbar() {
             <summary>{menu.title}</summary>
             <div className="premium-dropdown">
               {menu.links.map(([label, href]) => (
-                <a href={href} key={`${menu.title}-${label}`}>{label}</a>
+                <SiteLink href={href} key={`${menu.title}-${label}`}>{label}</SiteLink>
               ))}
             </div>
           </details>
@@ -47,13 +50,13 @@ export default function Navbar() {
       </div>
 
       <div className="nav-auth desktop-auth">
-  <a className="nav-login" href="/courtstreak-site/login">
+  <SiteLink className="nav-login" href="/courtstreak-site/login">
     Log In
-  </a>
+  </SiteLink>
 
-  <a className="nav-cta desktop-cta" href="/courtstreak-site/create-account">
+  <SiteLink className="nav-cta desktop-cta" href="/courtstreak-site/create-account">
     Create Account
-  </a>
+  </SiteLink>
 </div>
 
       <Link className="cs-public-mobile-login" to="/login">Log in</Link>
@@ -77,32 +80,33 @@ export default function Navbar() {
             <details className="mobile-menu-group" key={menu.title}>
               <summary>{menu.title}</summary>
               {menu.links.map(([label, href]) => (
-                <a
+                <SiteLink
                   href={href}
                   key={`${menu.title}-${label}`}
                   onClick={() => setOpen(false)}
                 >
                   {label}
-                </a>
+                </SiteLink>
               ))}
             </details>
           ))}
          <div className="mobile-auth">
-  <a
+  <SiteLink
     className="mobile-login"
     href="/courtstreak-site/login"
     onClick={() => setOpen(false)}
   >
     Log In
-  </a>
+  </SiteLink>
 
-  <a
+  <SiteLink
     className="mobile-join"
     href="/courtstreak-site/create-account"
     onClick={() => setOpen(false)}
   >
     Create Account
-  </a>
+  </SiteLink>
+  <AppearanceOptions/>
 </div>
         </div>
       )}

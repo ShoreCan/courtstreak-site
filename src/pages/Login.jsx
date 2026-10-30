@@ -17,7 +17,7 @@ export default function Login(){
   catch(error){if(mounted.current)setError(authErrorMessage(error,'We couldn’t log you in. Please try again.'));}
   finally{pending.current=false;if(mounted.current)setLoading(false);}
  }
- return <AuthShell title="Welcome back.">
+ return <AuthShell title="Welcome back." variant="login">
   <form onSubmit={submit} aria-busy={loading}>
    <label className="cs-auth-simple-field"><span>Email</span><input name="email" type="email" autoComplete="email" autoCapitalize="none" spellCheck={false} required value={email} onChange={event=>setEmail(event.target.value)} placeholder="you@example.com" disabled={loading}/></label>
    <PasswordField name="password" autoComplete="current-password" required value={password} onChange={event=>setPassword(event.target.value)} disabled={loading}/>

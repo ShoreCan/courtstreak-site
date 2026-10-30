@@ -1,40 +1,16 @@
-import React from 'react';
-import { CheckCircle2 } from 'lucide-react';
+import React,{useState} from 'react';
+import {Link} from 'react-router-dom';
+import {ArrowUpRight,Check,Camera,Flame,Target,Trophy,Users} from 'lucide-react';
+import {CameraTrainingVisual,CircleVisual,CourtArtwork,MomentumVisual} from './ProductVisuals.jsx';
 
-const included = [
-  '10- and 20-minute guided workouts',
-  'Drill instructions and coaching cues',
-  'Circle challenges',
-  'Streak tracking',
-  'XP and badges',
-  'Private Training Circles',
-  'Friend and team leaderboards',
-  'Workout and drill library',
-  'Training progress and personal bests',
-  'Mobile-friendly web access',
-  'Demonstrations where available',
-  'Future updates included',
-];
-
-export default function WhatsIncluded() {
-  return (
-    <section id="included" className="section included-section">
-      <div>
-        <p className="eyebrow">What’s Included</p>
-        <h1>Everything players need to stay consistent.</h1>
-        <p>
-          CourtStreak is built around structure, accountability, and motivation — the pieces that help players keep showing up.
-        </p>
-      </div>
-
-      <div className="included-grid">
-        {included.map((item) => (
-          <div className="included-item" key={item}>
-            <CheckCircle2 size={18} />
-            <span>{item}</span>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
+const features={
+ train:{label:'Train',Icon:Target,title:'A clear plan. A better session.',text:'Choose a full workout or work on one skill. Your next move is always clear.',items:['Guided work and reset intervals','Coaching cues when you need them','Build your own workout'],link:'/preview/workout',action:'Explore the training library'},
+ track:{label:'Track',Icon:Camera,title:'Put your camera to work.',text:'Count right-hand pounds automatically and revisit the reps that made your round.',items:['Live AI rep counter','Replay with counted rep markers','Training history and personal bests'],link:'/preview/ai-training',action:'Try the AI experience'},
+ connect:{label:'Connect',Icon:Users,title:'Your circle. Your extra push.',text:'Turn individual work into shared momentum with friends, teammates, and the people in your corner.',items:['Private Training Circles','Friendly challenges and standings','Parent and coach progress views'],link:'/preview/circles',action:'Step inside a Training Circle'},
+};
+export default function WhatsIncluded(){
+ const [tab,setTab]=useState('train');const f=features[tab];
+ return <div className="cs-product-page"><section className="cs-product-hero"><div className="cs-product-hero-copy"><p className="cs-product-eyebrow">INSIDE COURTSTREAK</p><h1>More purpose.<br/><span>Every time you train.</span></h1><p>Training, AI counting, and a community that keeps you coming back. One place to build your game.</p><div className="cs-product-actions"><Link className="cs-product-primary" to="/preview">Take a look inside<ArrowUpRight size={18}/></Link><Link className="cs-product-secondary" to="/create-account">Create account</Link></div></div><MomentumVisual/></section>
+ <section className="cs-product-feature-tabs" aria-label="Explore included features"><div className="cs-product-tablist" role="group" aria-label="Feature category">{Object.entries(features).map(([key,{label,Icon}])=><button type="button" key={key} aria-pressed={tab===key} onClick={()=>setTab(key)}><Icon size={16}/>{label}</button>)}</div><div className="cs-product-feature-panel"><div><p className="cs-product-eyebrow">{f.label.toUpperCase()} WITH PURPOSE</p><h2>{f.title}</h2><p>{f.text}</p><ul>{f.items.map(item=><li key={item}><Check size={16}/>{item}</li>)}</ul><Link className="cs-product-secondary" to={f.link}>{f.action}<ArrowUpRight size={16}/></Link>{tab==='track'&&<p style={{fontSize:10}}>AI preview currently supports right-hand pound. Review your count; AI scores do not post to Circles or earn XP.</p>}</div><div>{tab==='track'?<CameraTrainingVisual/>:tab==='connect'?<CircleVisual/>:<div className="cs-product-hero-art"><span>YOUR NEXT SESSION</span><strong>One round at a time.</strong><CourtArtwork/><div><span>Choose your focus</span><span>Find your rhythm</span></div></div>}</div></div></section>
+ <section className="cs-product-bottom"><article><Flame size={24}/><h3>Build your rhythm.</h3><p>Streaks and weekly goals make showing up feel like progress.</p></article><article><Trophy size={24}/><h3>Keep the milestones.</h3><p>Earn eligible XP, unlock achievements, and see your personal bests.</p></article><article><Users size={24}/><h3>Bring your people.</h3><p>Players train. Parents and coaches follow progress with player-approved access.</p></article></section></div>;
 }

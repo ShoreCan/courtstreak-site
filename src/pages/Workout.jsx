@@ -1,3 +1,6 @@
+import WorkoutOverview from '../components/WorkoutOverview.jsx';
+import {CourtArtwork} from '../components/ProductVisuals.jsx';
+import '../workout-library03.css';
 // CourtStreak quality update v1
 import { saveResultContext } from '../lib/resultContext.js';
 import ShareTraining from '../components/ShareTraining.jsx';
@@ -111,7 +114,7 @@ export default function Workout({ previewOnly = false }) {
   const workoutSaveRef = useRef(false);
   const [selectedDuration, setSelectedDuration] = useState(10);
   const [selectedGoal, setSelectedGoal] = useState('all');
-  const [previewWorkoutKey, setPreviewWorkoutKey] = useState(null);
+  const [previewWorkoutKey, setPreviewWorkoutKey] = useState(() => { const key=new URLSearchParams(location.search).get('plan'); return WORKOUT_PROGRAMS.some(p=>p.key===key)?key:null; });
   const [activeWorkoutKey, setActiveWorkoutKey] = useState(null);
   const [customWorkouts, setCustomWorkouts] = useState(() => previewOnly ? [] : readSavedCustomWorkouts());
   const [customBuilderOpen, setCustomBuilderOpen] = useState(false);
@@ -1482,138 +1485,17 @@ if (!activeWorkout) {
   }
 
   if (previewWorkout) {
-    const previewPhases = [...new Set(previewWorkout.drills.map((item) => item.phase))];
-
-    return (
-      <main className="cs-program-page">
-        <header className="cs-program-topbar">
-          <button
-            type="button"
-            className="cs-program-back"
-            onClick={() => setPreviewWorkoutKey(null)}
-          >
-            <FiArrowLeft />
-            All workouts
-          </button>
-
-          <div>
-            <span>{previewWorkout.durationMinutes} MINUTE WORKOUT</span>
-            <strong>{previewWorkout.drills.length} guided rounds</strong>
-          </div>
-        </header>
-
-        <section className="cs-program-preview-shell">
-          <header className="cs-program-preview-hero">
-            <div className="cs-program-preview-copy">
-              <p className="cs-program-eyebrow">{previewWorkout.isCustom ? 'YOUR CUSTOM WORKOUT' : 'COURTSTREAK TRAINING PLAN'}</p>
-              <h1>{previewWorkout.name}</h1>
-              <p>{previewWorkout.summary}</p>
-
-              <div className="cs-program-preview-meta">
-                <span><FiClock /> {previewWorkout.durationMinutes} minutes</span>
-                <span><FiActivity /> {previewWorkout.intensity}</span>
-                <span><FiTarget /> {previewWorkout.level}</span>
-              </div>
-            </div>
-
-            <aside className="cs-program-outcome">
-              <span>WHAT YOU&apos;LL BUILD</span>
-              <strong>{previewWorkout.outcome}</strong>
-              <small>WHY THIS MATTERS</small>
-              <p>{previewWorkout.whyItMatters}</p>
-            </aside>
-          </header>
-
-          <div className="cs-program-preview-body">
-            <section className="cs-program-sequence">
-              <div className="cs-program-section-heading">
-                <div>
-                  <span>WORKOUT SEQUENCE</span>
-                  <h2>Every round has a purpose.</h2>
-                </div>
-                <p>{previewPhases.join(' · ')}</p>
-              </div>
-
-              <div className="cs-program-sequence-list">
-                {previewWorkout.drills.map((previewDrill, index) => (
-                  <details key={previewDrill.key}>
-                    <summary>
-                      <span className="cs-program-sequence-number">
-                        {String(index + 1).padStart(2, '0')}
-                      </span>
-                      <div>
-                        <small>{previewDrill.phase}</small>
-                        <strong>{previewDrill.name}</strong>
-                        <p>{previewDrill.cue}</p>
-                      </div>
-                      <time>
-                        {previewDrill.durationSeconds}s
-                        <small>work</small>
-                      </time>
-                      <FiChevronRight className="cs-program-sequence-chevron" />
-                    </summary>
-                    <div className="cs-program-drill-explanation">
-                      <span>HOW TO DO IT</span>
-                      <DrillGuide drill={previewDrill} />
-                    </div>
-                  </details>
-                ))}
-              </div>
-            </section>
-
-            <aside className="cs-program-start-panel">
-              {roundMessage && <p role="alert">{roundMessage}</p>}
-              <span>READY WHEN YOU ARE</span>
-              <h2>{previewWorkout.durationMinutes}:00</h2>
-              <p>
-                One ball. Guided work and reset intervals. Complete every
-                round to record the full workout.
-              </p>
-              <ul>
-                <li><FiCheck /> {previewWorkout.drills.length} progressive drills</li>
-                <li><FiCheck /> {previewWorkout.workSeconds}s work each round</li>
-                <li><FiCheck /> {previewWorkout.resetSeconds}s guided reset</li>
-              </ul>
-
-              <div className="cs-manual-tracking-note">
-                <FiEdit3 aria-hidden="true" />
-                <div><strong>Guided training</strong><p>Follow each timer, then enter your clean reps. Camera counting is not included.</p></div>
-              </div>
-
-              {!previewOnly && <TrainingVisibility onReady={setVisibilityReady} value={sharedCircleIds} onChange={setSharedCircleIds} lockedCircleId={circleChallenge?.circleId} />}
-              <button
-                type="button"
-                onClick={() => startWorkout(previewWorkout.key)}
-                disabled={startingWorkout || (!previewOnly && !visibilityReady) || !trainingMode || (trainingMode === 'ai' && !aiTrackerAvailable)}
-              >
-                {startingWorkout ? 'Preparing your workout…' : previewOnly ? 'Unlock this workout' : 'Start workout'}
-                <FiChevronRight />
-              </button>
-              <button
-                type="button"
-                className="cs-program-circle-challenge"
-                onClick={() => navigate('/training-circles', {
-                  state: {
-                    challengeDraft: {
-                      sourceType: previewWorkout.isCustom ? 'custom_workout' : 'workout',
-                      sourceKey: previewWorkout.key,
-                      sourceName: previewWorkout.name,
-                      sourcePayload: previewWorkout.isCustom
-                        ? { program: previewWorkout }
-                        : { durationMinutes: previewWorkout.durationMinutes },
-                      challengeType: 'score',
-                    },
-                  },
-                })}
-              >
-                <FiUsers /> Challenge a Circle
-              </button>
-              <small className="cs-program-lock-note"><FiLock /> Future rounds stay locked until the current interval is completed and saved.</small>
-            </aside>
-          </div>
-        </section>
-      </main>
-    );
+    return <WorkoutOverview key={previewWorkout.key} workout={previewWorkout} previewOnly={previewOnly}
+      onBack={() => setPreviewWorkoutKey(null)}
+      onStart={() => startWorkout(previewWorkout.key)}
+      starting={startingWorkout}
+      disabled={startingWorkout || (!previewOnly && !visibilityReady) || !trainingMode || (trainingMode === 'ai' && !aiTrackerAvailable)}
+      message={roundMessage}
+      visibilityControls={!previewOnly && <TrainingVisibility onReady={setVisibilityReady} value={sharedCircleIds} onChange={setSharedCircleIds} lockedCircleId={circleChallenge?.circleId} />}
+      onChallenge={() => navigate('/training-circles', {state:{challengeDraft:{
+        sourceType:previewWorkout.isCustom?'custom_workout':'workout',sourceKey:previewWorkout.key,sourceName:previewWorkout.name,
+        sourcePayload:previewWorkout.isCustom?{program:previewWorkout}:{durationMinutes:previewWorkout.durationMinutes},challengeType:'score'
+      }}})} />;
   }
 
   return (
@@ -1760,8 +1642,8 @@ if (!activeWorkout) {
         {recommendedProgram ? (
           <section className="cs-workout-recommendation">
             <div className="cs-workout-recommendation-copy">
-              <span>COURTSTREAK PICK</span>
-              <h2>{recommendedProgram.name}</h2>
+              <span>YOUR NEXT SESSION</span>
+              <CourtArtwork variant={recommendedProgram.goal}/><h2>{recommendedProgram.name}</h2>
               <p>{recommendedProgram.outcome}</p>
               <div>
                 <small><FiClock /> {recommendedProgram.durationMinutes} min</small>
@@ -1771,8 +1653,8 @@ if (!activeWorkout) {
             </div>
 
             <aside>
-              <span>WHY IT MATTERS</span>
-              <strong>{recommendedProgram.whyItMatters}</strong>
+              <span>ONE ROUND AT A TIME</span>
+              <strong>Show up. Find your rhythm. We’ll guide the flow.</strong>
               <button
                 type="button"
                 onClick={() => openWorkoutPreview(recommendedProgram.key)}
@@ -1804,10 +1686,11 @@ if (!activeWorkout) {
                   </div>
                 </header>
 
+                <CourtArtwork variant={program.goal}/>
                 <div className="cs-program-card-copy">
                   <p>{program.focus}</p>
                   <h2>{program.name}</h2>
-                  <span>{program.summary}</span>
+                  <span>{program.outcome}</span>
                 </div>
 
                 <footer>

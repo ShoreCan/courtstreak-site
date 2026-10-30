@@ -25,7 +25,7 @@ export default function CreateAccount(){
   }catch(error){setError(authErrorMessage(error,'We couldn’t create your account. Please try again or log in.'));}
   finally{pending.current=false;setLoading(false);}
  }
- return <AuthShell title={sent?'Check your inbox.':'Join CourtStreak.'}>
+ return <AuthShell title={sent?'Check your inbox.':'Join CourtStreak.'} variant="join" accountRole={form.accountType}>
   {sent?<div className="cs-auth-simple-confirm" role="status"><p>Open the confirmation link in your email to continue.</p><Link className="cs-auth-simple-action" to={'/login'+contextQuery(context)}>Continue to login</Link><button type="button" className="cs-auth-simple-link" onClick={()=>setSent(false)}>Use a different email</button></div>:<>
    <form onSubmit={submit} aria-busy={loading}><fieldset disabled={loading}>
     <label className="cs-auth-simple-field"><span>Account for</span><select name="accountType" value={form.accountType} onChange={update}><option value="player">Player</option><option value="parent">Parent</option><option value="coach">Coach / trainer</option></select></label>

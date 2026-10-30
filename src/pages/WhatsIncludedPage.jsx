@@ -5,7 +5,7 @@ import Footer from '../components/Footer.jsx';
 
 export default function WhatsIncludedPage() {
   return (
-    <main>
+    <main className="cs-product-page">
       <Navbar />
       <WhatsIncluded />
       <Footer />

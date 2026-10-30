@@ -12,6 +12,7 @@ const WhatsIncludedPage = lazy(() => import('./pages/WhatsIncludedPage.jsx'));
 const ContactPage = lazy(() => import('./pages/ContactPage.jsx'));
 const PricingPage = lazy(() => import('./pages/PricingPage.jsx'));
 const About = lazy(() => import('./pages/About.jsx'));
+const HubAccess = lazy(() => import('./pages/HubAccess.jsx'));
 const CreateAccount = lazy(() => import('./pages/CreateAccount.jsx'));
 const Login = lazy(() => import('./pages/Login.jsx'));
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword.jsx'));
@@ -36,6 +37,7 @@ const CustomerPreview = lazy(() => import('./pages/CustomerPreview.jsx'));
 import RequireAccount from './components/RequireAccount.jsx';
 import AppErrorBoundary from './components/AppErrorBoundary.jsx';
 import PlayerAppNav from './components/PlayerAppNav.jsx';
+import PreviewTour from './components/PreviewTour.jsx';
 import './ui-polish.css';
 
 const RestorePlayer = lazy(() => import('./hub/RestorePlayer.jsx'));
@@ -102,6 +104,7 @@ export default function App() {
 />
       <Route path="/pricing" element={<PricingPage />} />
       <Route path="/about" element={<About />} />
+      <Route path="/hubs" element={<HubAccess />} />
       <Route path="/create-account" element={<CreateAccount />} />
 <Route path="/login" element={<Login />} />
 <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -238,6 +241,7 @@ export default function App() {
       </Routes>
       </Suspense>
       <PlayerAppNav />
+      <PreviewTour />
     </AppErrorBoundary>
   );
 }

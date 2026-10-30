@@ -20,7 +20,7 @@ function contrast(a,b){const [hi,lo]=[luminance(a),luminance(b)].sort((a,b)=>b-a
 test('both appearances keep primary, supporting and status copy readable on every surface',()=>{
  const dark=palette(':root'),light=new Map([...dark,...palette(':root[data-cs-appearance=light]')]);
  for(const [mode,colors] of [['dark',dark],['light',light]]){
-  for(const surface of ['bg','panel','raised'])for(const ink of ['copy','muted','accent-ink','success-ink','warning-ink','danger-ink','info-ink','purple-ink']){
+  for(const surface of ['bg','panel','raised'])for(const ink of ['copy','muted','accent-ink','success-ink','warning-ink','danger-ink','info-ink','purple-ink','secondary','teal']){
    assert.ok(contrast(colors.get(`--cs-theme-${ink}`),colors.get(`--cs-theme-${surface}`))>=4.5,`${mode}: ${ink} on ${surface}`);
   }
   for(const status of ['success','danger','purple'])assert.ok(contrast(colors.get(`--cs-theme-${status}-ink`),colors.get(`--cs-theme-${status}-bg`))>=4.5);

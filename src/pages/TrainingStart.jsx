@@ -7,6 +7,7 @@ import '../training-start-premium.css';
 export default function TrainingStart({ previewOnly = false }) {
   const navigate = useNavigate();
   const timer = useRef(null);
+  const launchDestination = useRef(null);
   const [preferences, setPreferences] = useState(null);
   const [launching, setLaunching] = useState('');
 
@@ -31,8 +32,9 @@ export default function TrainingStart({ previewOnly = false }) {
   useEffect(() => () => clearTimeout(timer.current), []);
 
   const launch = (event, destination) => {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
     event.preventDefault();
-    if (launching) return;
+    if (launchDestination.current) return;
 
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       navigate(route(destination));
@@ -40,11 +42,17 @@ export default function TrainingStart({ previewOnly = false }) {
     }
 
     setLaunching(destination);
-
-    timer.current = setTimeout(() => {
-      navigate(route(destination));
-    }, 400);
+    launchDestination.current = destination;
+    // The completion event owns navigation. The timer only covers a browser
+    // cancelling the animation (for example, a motion preference change).
+    timer.current = setTimeout(finishLaunch, 2100);
   };
+  function finishLaunch(){
+    const destination=launchDestination.current;
+    if(!destination)return;
+    launchDestination.current=null;clearTimeout(timer.current);
+    navigate(route(destination));
+  }
 
   return (
     <main className="cs-training-start cs-training-premium">
@@ -144,7 +152,7 @@ export default function TrainingStart({ previewOnly = false }) {
 
       {launching && (
         <div className="cs-training-animation" aria-hidden="true">
-          <div className="cs-training-animation-ball">
+          <div className="cs-training-animation-ball" onAnimationEnd={event=>{if(event.animationName==='cs-ball-cross')finishLaunch();}}>
             <svg viewBox="0 0 100 100" width="100%" height="100%">
               <circle cx="50" cy="50" r="46" fill="#f58020" stroke="#152033" strokeWidth="4"/>
               <path

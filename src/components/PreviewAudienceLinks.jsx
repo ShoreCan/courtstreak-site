@@ -10,7 +10,7 @@ export default function PreviewAudienceLinks({ compact = false }) {
         ["Player", "/preview/player", "Explore training and your progress", Activity],
         ["Parent", "/preview/hub?view=parent", "Follow your child’s work and progress", ShieldCheck],
         ["Coach", "/preview/hub?view=coach", "See team effort and assignment tools", Users],
-      ].map(([name, to, detail, Icon]) => <Link key={name} to={to}><Icon size={19} aria-hidden="true" /><span><strong>{name} preview</strong>{!compact && <small>{detail}</small>}</span><ArrowUpRight size={15} aria-hidden="true" /></Link>)}
+      ].map(([name, to, detail, Icon]) => <Link key={name} to={to} state={{previewTour:name.toLowerCase()}}><Icon size={19} aria-hidden="true" /><span><strong>{name} preview</strong>{!compact && <small>{detail}</small>}</span><ArrowUpRight size={15} aria-hidden="true" /></Link>)}
     </div>
   </nav>;
 }
