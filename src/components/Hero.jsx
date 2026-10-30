@@ -2,14 +2,13 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import '../customer-preview.css';
 import '../public-preview-entry.css';
+import './hero-dashboard-preview.css';
 import {
   ArrowRight,
+  ArrowUpRight,
   Flame,
-    Swords,
   Target,
-  TrendingUp,
   Trophy,
-  Users,
 } from 'lucide-react';
 
 export default function Hero() {
@@ -102,84 +101,13 @@ export default function Hero() {
     </div>
   </div>
 
-  <div className="court-phone-shell">
-
-          <div className="court-phone-header">
-            <div>
-              <p>Sample player preview</p>
-              <h2>Ready to work?</h2>
-            </div>
-
-            <div className="court-phone-fire">
-              <Flame size={17} />
-              <strong>17</strong>
-            </div>
-          </div>
-
-          <section className="court-phone-workout">
-            <p>CHOOSE YOUR TRAINING</p>
-            <h3>What are you working on today?</h3>
-
-            <div className="court-phone-skill-choice">
-              <div>
-                <Target size={18} />
-                <span>
-                  <strong>Ball Handling</strong>
-                  Drills available now
-                </span>
-              </div>
-
-              <strong>›</strong>
-            </div>
-          </section>
-
-          <div className="court-phone-stats">
-  <div>
-    <strong>3 / 4</strong>
-    <span>Weekly goal</span>
-  </div>
-
-  <div>
-    <strong>+29%</strong>
-    <span>Crossover improvement</span>
-  </div>
-</div>
-
-         <div className="court-phone-proof">
-  <div className="court-phone-proof-heading">
-    <div>
-      <Users size={16} />
-      <span>FRIENDS TRAINING CIRCLE</span>
+  <div className="court-phone-shell cs-hero-dashboard-screen">
+    <div className="cs-hero-dashboard-viewport" aria-hidden="true">
+      <iframe title="CourtStreak dashboard with fictional sample data" src={import.meta.env.BASE_URL+'preview/phone'} loading="lazy" tabIndex={-1} scrolling="no" allow="camera 'none'; microphone 'none'; geolocation 'none'"/>
     </div>
-
-    <strong>6 players</strong>
-  </div>
-
-  <div className="court-phone-challenge">
-    <div className="court-phone-challenge-icon">
-      <Swords size={18} />
-    </div>
-
-    <div>
-      <span>MARCUS CHALLENGED YOU</span>
-      <strong>Crossover Control</strong>
-      <small>4 more reps to take the lead</small>
-    </div>
-
-    <ArrowRight size={17} />
-  </div>
-
-  <div className="court-phone-improvement">
-    <TrendingUp size={17} />
-
-    <span>
-      <strong>New personal best</strong>
-      Improved from 38 to 49 reps
-    </span>
-
-            <Trophy size={17} />
-      </div>
-    </div>
+    <Link className="cs-hero-dashboard-link" to="/preview/player" aria-label="Explore the CourtStreak player dashboard">
+      <span>Actual dashboard · Sample player<ArrowUpRight size={13}/></span>
+    </Link>
   </div>
 </div>
 </div>

@@ -25,7 +25,7 @@ export default function PreviewTour(){
  const location=useLocation(),navigate=useNavigate();
  const [open,setOpen]=useState(false),[role,setRole]=useState('player'),[step,setStep]=useState(-1);
  const consumed=useRef(null),card=useRef(null);
- const visible=location.pathname.startsWith('/preview/')&&!location.pathname.includes('/ai-training')&&!location.pathname.includes('/session')&&!location.pathname.startsWith('/preview/workout')&&!location.pathname.startsWith('/preview/lab/drill');
+ const visible=location.pathname.startsWith('/preview/')&&location.pathname.replace(/\/$/,'')!=='/preview/phone'&&!location.pathname.includes('/ai-training')&&!location.pathname.includes('/session')&&!location.pathname.startsWith('/preview/workout')&&!location.pathname.startsWith('/preview/lab/drill');
  const requestedRole=new URLSearchParams(location.search).get('view');
  const currentRole=location.pathname.startsWith('/preview/hub')?['player','parent'].includes(requestedRole)?requestedRole:'coach':'player';
  useEffect(()=>{

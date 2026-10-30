@@ -77,6 +77,7 @@ export default function App() {
       <Routes>
         <Route path="/experience-lab" element={<CourtStreakExperience />} />
       <Route path="/" element={<Home />} />
+      <Route path="/preview/phone" element={<div className="cs-phone-app-sample"><Dashboard previewOnly /></div>} />
       <Route path="/preview/hub/*" element={<Hub preview />} />
       <Route path="/account/restore-player" element={<RequireAccount><RestorePlayer /></RequireAccount>} />
       <Route path="/hub" element={<RequireAccount><HubEntry /></RequireAccount>} />
