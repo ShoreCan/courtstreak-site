@@ -4,9 +4,30 @@
 .cs-auth-premium-grid{display:grid;grid-template-columns:1fr minmax(340px,420px);gap:90px;align-items:center}
 .cs-auth-membership{min-width:0}.cs-auth-access-pass{display:flex;align-items:center;gap:14px;border-block:1px solid var(--cs-theme-line);padding:18px 0;margin-bottom:34px}.cs-auth-access-pass>svg:first-child{width:42px;height:42px;flex-shrink:0}.cs-auth-access-pass>svg:last-child{margin-left:auto;color:var(--cs-theme-secondary)}
 .cs-auth-access-pass span{display:block;font-size:9px;letter-spacing:.15em;color:var(--cs-theme-secondary);margin-bottom:7px}.cs-auth-access-pass strong{font-size:15px;font-weight:650;letter-spacing:-.02em}
-.cs-auth-membership h2{font-size:clamp(38px,4vw,54px);line-height:1.08;letter-spacing:-.055em;font-weight:700;margin:0 0 20px;color:var(--cs-theme-copy)}.cs-auth-membership h2>span{color:var(--cs-theme-secondary)}.cs-auth-membership-desktop>p:not(.cs-product-eyebrow){font-size:14px;line-height:1.7;color:var(--cs-theme-muted);max-width:330px}
+.cs-auth-membership h2{font-size:clamp(38px,4vw,54px);line-height:1.08;letter-spacing:-.055em;font-weight:700;margin:0 0 20px;color:var(--cs-theme-copy)}.cs-auth-membership h2>span{color:var(--cs-theme-secondary)}.cs-auth-membership-content>p:not(.cs-product-eyebrow){font-size:14px;line-height:1.7;color:var(--cs-theme-muted);max-width:330px}
 .cs-auth-feature-choices{display:flex;gap:7px;margin:27px 0 15px}.cs-auth-feature-choices>button{display:flex;align-items:center;gap:6px;min-height:44px;padding:9px 14px;border:1px solid var(--cs-theme-line);border-radius:99px;background:transparent;color:var(--cs-theme-muted);font-size:11px;cursor:pointer}.cs-auth-feature-choices>button[aria-pressed=true]{color:var(--cs-theme-secondary);background:var(--cs-theme-secondary-bg);border-color:var(--cs-theme-secondary)}
-.cs-auth-feature-visual{max-width:390px;min-height:260px}.cs-auth-feature-visual .cs-court-artwork{max-height:170px}.cs-auth-feature-visual .cs-product-hero-art{padding:22px}.cs-auth-feature-visual .cs-product-hero-art>strong{font-size:25px}.cs-auth-membership-desktop>small{display:block;font-size:9px;color:var(--cs-theme-muted);margin-top:14px}
+.cs-auth-feature-visual{max-width:390px;min-height:260px}.cs-auth-feature-visual .cs-court-artwork{max-height:170px}.cs-auth-feature-visual .cs-product-hero-art{padding:22px}.cs-auth-feature-visual .cs-product-hero-art>strong{font-size:25px}.cs-auth-membership-content>small{display:block;font-size:9px;color:var(--cs-theme-muted);margin-top:14px}
 .cs-auth-premium .cs-auth-simple-card{padding:32px;border-radius:23px;box-shadow:0 24px 60px #071a3610}.cs-auth-form-kicker{font-size:9px;letter-spacing:.15em;font-weight:700;color:var(--cs-theme-secondary);margin:0 0 12px}.cs-auth-form-column{min-width:0}.cs-auth-premium.is-login .cs-auth-simple-card{padding-top:38px;padding-bottom:35px}
 @media(max-width:900px){.cs-auth-premium-grid{gap:45px}.cs-auth-feature-choices>button{padding-inline:10px}.cs-auth-premium{padding-inline:24px}}
-@media(max-width:720px){.cs-auth-premium{padding:22px 16px 35px}.cs-auth-premium-top{margin-bottom:20px}.cs-auth-premium-grid{display:block;max-width:440px;margin:auto}.cs-auth-membership-desktop{display:none}.cs-auth-access-pass{padding:13px 0;margin-bottom:21px}.cs-auth-access-pass>svg:first-child{width:32px;height:32px}.cs-auth-access-pass span{font-size:8px;margin-bottom:5px}.cs-auth-access-pass strong{font-size:13px}.cs-auth-premium .cs-auth-simple-card{padding:24px 20px;border-radius:18px}.cs-auth-premium-top .cs-auth-simple-brand{font-size:17px}.cs-auth-premium .cs-auth-simple-card>h1{font-size:28px}.cs-auth-premium.is-login .cs-auth-simple-card{padding-block:28px}}
+@media(max-width:720px){.cs-auth-premium{padding:22px 16px 35px}.cs-auth-premium-top{margin-bottom:20px}.cs-auth-premium-grid{display:block;max-width:440px;margin:auto}.cs-auth-membership-content{display:block;margin-bottom:20px}.cs-auth-access-pass{padding:13px 0;margin-bottom:21px}.cs-auth-access-pass>svg:first-child{width:32px;height:32px}.cs-auth-access-pass span{font-size:8px;margin-bottom:5px}.cs-auth-access-pass strong{font-size:13px}.cs-auth-premium .cs-auth-simple-card{padding:24px 20px;border-radius:18px}.cs-auth-premium-top .cs-auth-simple-brand{font-size:17px}.cs-auth-premium .cs-auth-simple-card>h1{font-size:28px}.cs-auth-premium.is-login .cs-auth-simple-card{padding-block:28px}}
+
+@media(max-width:720px){
+ .cs-auth-access-pass{margin-bottom:15px}
+ .cs-auth-membership-content>.cs-product-eyebrow,.cs-auth-membership-content>h2,.cs-auth-membership-content>p{display:none}
+ .cs-auth-feature-choices{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:0 0 10px}
+ .cs-auth-feature-choices>button{justify-content:center;gap:6px;min-height:40px;padding:8px 6px;font-size:11px}
+ .cs-auth-feature-visual{height:148px;min-height:148px;max-width:none}
+ .cs-auth-feature-visual>:is(.cs-product-hero-art,.cs-product-momentum,.cs-product-circle){height:100%;padding:16px 18px;border-radius:15px}
+ .cs-auth-feature-visual .cs-product-hero-art{position:relative;overflow:hidden}
+ .cs-auth-feature-visual .cs-product-hero-art>span{position:relative;z-index:1;font-size:8px}
+ .cs-auth-feature-visual .cs-product-hero-art>strong{position:relative;z-index:1;max-width:55%;margin-top:12px;font-size:21px;line-height:1.1}
+ .cs-auth-feature-visual .cs-product-hero-art>.cs-court-artwork{position:absolute;right:-15px;bottom:12px;width:56%;height:110px}
+ .cs-auth-feature-visual .cs-product-hero-art>div{position:absolute;bottom:17px;left:18px;display:flex;flex-direction:column;gap:5px;font-size:9px}
+ .cs-auth-feature-visual .cs-product-momentum>strong{font-size:22px;margin:12px 0}
+ .cs-auth-feature-visual .cs-product-week{gap:6px;max-width:280px}.cs-auth-feature-visual .cs-product-week>span{height:27px;aspect-ratio:auto;border-radius:7px;font-size:9px}
+ .cs-auth-feature-visual .cs-product-momentum-bottom{margin-top:10px;font-size:9px}
+ .cs-auth-feature-visual .cs-product-circle-title{font-size:8px}.cs-auth-feature-visual .cs-product-circle-title>svg{width:14px;height:14px}
+ .cs-auth-feature-visual .cs-product-circle h3{font-size:20px;margin:8px 0}
+ .cs-auth-feature-visual .cs-product-circle-row{gap:9px;margin-top:6px;font-size:9px}.cs-auth-feature-visual .cs-product-circle-row strong{font-size:9px}.cs-auth-feature-visual .cs-product-circle-row i{height:3px;margin-top:4px}.cs-auth-feature-visual .cs-product-circle-row>svg{width:12px;height:12px}
+ .cs-auth-membership-content>small{font-size:8px;margin-top:8px;text-align:center}
+}
