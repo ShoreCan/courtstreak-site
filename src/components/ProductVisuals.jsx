@@ -1,5 +1,5 @@
 import React,{useId,useState} from 'react';
-import {ArrowUpRight,Camera,Check,Clock,Flame,Timer,Users,Video} from 'lucide-react';
+import {ArrowUpRight,Camera,Check,Clock,Download,Flame,RotateCcw,Timer,Users} from 'lucide-react';
 import {Link} from 'react-router-dom';
 import '../product-pages.css';
 import './ai-product-preview.css';
@@ -24,11 +24,9 @@ export function CircleVisual(){
  return <div className="cs-product-circle" aria-label="Illustrative Training Circle"><div className="cs-product-circle-title"><Users size={18}/><span>YOUR TRAINING CREW</span><small>SAMPLE</small></div><h3>Better together.</h3>{[['Jordan',82],['Maya',92],['Eli',65]].map(([name,width],i)=><div className="cs-product-circle-row" key={name}><span>{i+1}</span><div><strong>{name}</strong><i><b style={{width:width+'%'}}/></i></div><Check size={15}/></div>)}</div>;
 }
 export function CameraTrainingVisual(){
- const [method,setMethod]=useState('ai'),[week,setWeek]=useState(0),id=useId();
- const rounds=[{label:'Day 1',reps:24,bars:[22,37,28,45,32,46,39,58,43,62,48,57]},{label:'Week 2',reps:32,bars:[36,48,42,61,49,68,56,76,63,81,70,88]}];
- const round=rounds[week];
- return <div className="cs-ai-product-preview" aria-label="Interactive drill page preview with illustrative progress">
-  <div className="cs-ai-product-top"><span><span className="cs-ai-product-monogram">CS</span>THE LAB</span><small>PRODUCT PREVIEW</small></div>
+ const [method,setMethod]=useState('ai'),id=useId();
+ return <div className="cs-ai-product-preview" aria-label="Drill setup interface preview; camera off">
+  <div className="cs-ai-product-top"><span><span className="cs-ai-product-monogram">CS</span>THE LAB</span><small>INTERFACE PREVIEW</small></div>
   <div className="cs-ai-drill-setup">
    <div className="cs-ai-drill-heading"><div><p>BALL HANDLING / CONTROL</p><h3>Right-Hand Pound</h3><span><Clock size={12}/>20 seconds<span aria-hidden="true">·</span>Right hand</span></div><BallMark/></div>
    <p className="cs-ai-method-label" id={`${id}-method`}>HOW DO YOU WANT TO TRAIN?</p>
@@ -36,15 +34,17 @@ export function CameraTrainingVisual(){
     <button type="button" aria-pressed={method==='ai'} onClick={()=>setMethod('ai')}><Camera size={20}/><strong>AI Camera</strong><span>Live count + replay</span>{method==='ai'&&<Check size={13} className="cs-ai-method-check"/>}</button>
     <button type="button" aria-pressed={method==='timer'} onClick={()=>setMethod('timer')}><Timer size={20}/><strong>Timer</strong><span>Enter your own reps</span>{method==='timer'&&<Check size={13} className="cs-ai-method-check"/>}</button>
    </div>
-   <Link className="cs-ai-open-method" to={method==='ai'?'/preview/ai-training':'/preview/lab/drill/right-hand-pound/session'}>{method==='ai'?<Camera size={15}/>:<Timer size={15}/>}<span>{method==='ai'?'Try AI Camera':'Try the timer'}</span><ArrowUpRight size={16}/></Link>
-   <small>Sample experience · Camera off · No result saved</small>
+   <div className="cs-ai-method-description" aria-live="polite"><span>{method==='ai'?'Let the camera count.':'Train with a guided timer.'}</span><p>{method==='ai'?'Live rep counting and a replay to review after your round.':'Follow the timer, then enter your own rep count.'}</p></div>
+   <Link className="cs-ai-open-method" to={method==='ai'?'/preview/lab/drill/right-hand-pound':'/preview/lab/drill/right-hand-pound/session'}>{method==='ai'?<Camera size={15}/>:<Timer size={15}/>}<span>{method==='ai'?'Explore AI drill setup':'Explore timer setup'}</span><ArrowUpRight size={16}/></Link>
+   <small>Interface preview · Your camera stays off</small>
   </div>
-  <div className="cs-ai-progress-preview">
-   <div className="cs-ai-progress-heading"><div><p>YOUR WORK, OVER TIME</p><h4>A starting point. Then progress.</h4></div><Video size={18}/></div>
-   <div className="cs-ai-clip-choices" role="group" aria-label="Compare illustrative sessions">{rounds.map((item,index)=><button type="button" key={item.label} aria-pressed={week===index} aria-controls={`${id}-round`} onClick={()=>setWeek(index)}><Video size={14}/><span>{item.label}</span><b>{item.reps}<small>reps</small></b></button>)}</div>
-   <div className="cs-ai-round-summary" id={`${id}-round`} aria-live="polite" aria-atomic="true"><div><span>{round.label} · Sample round</span><strong>{round.reps}<small> reps</small></strong><span>20 seconds · Same drill</span></div><div className="cs-ai-rep-bars" aria-hidden="true">{round.bars.map((height,index)=><i key={index} style={{height:height+'%'}}/>)}</div></div>
-   <p className="cs-ai-example-note">Illustrative results. Save real clips to your device to compare over time.</p>
+  <div className="cs-ai-round-flow">
+   <p className="cs-ai-flow-label">WITH AI CAMERA · FROM FIRST REP TO FINISH</p>
+   <ol>
+    <li><span className="cs-ai-flow-icon"><Camera size={16}/></span><div><strong>Train with a live count.</strong><span>Stay focused on the drill.</span></div><b>01</b></li>
+    <li><span className="cs-ai-flow-icon"><RotateCcw size={16}/></span><div><strong>Review your round.</strong><span>Go back through your counted reps.</span></div><b>02</b></li>
+    <li><span className="cs-ai-flow-icon"><Download size={16}/></span><div><strong>Save to your camera roll.</strong><span>Rewatch on your phone, whenever you want.</span></div><b>03</b></li>
+   </ol>
   </div>
-  <Link className="cs-ai-circle-link" to="/preview/circles/sample-crew"><span className="cs-ai-circle-avatars" aria-hidden="true"><i>J</i><i>M</i><i>Y</i></span><span><strong>Better with your people.</strong><small>Explore friend challenges in Training Circles</small></span><ArrowUpRight size={17}/></Link>
  </div>;
 }
