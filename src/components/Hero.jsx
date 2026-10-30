@@ -1,4 +1,4 @@
-import React from 'react';
+import React,{useLayoutEffect,useRef,useState} from 'react';
 import { Link } from 'react-router-dom';
 import '../customer-preview.css';
 import '../public-preview-entry.css';
@@ -12,6 +12,15 @@ import {
 } from 'lucide-react';
 
 export default function Hero() {
+  const phoneViewport=useRef(null),[phoneScale,setPhoneScale]=useState(1);
+  useLayoutEffect(()=>{
+    const viewport=phoneViewport.current;
+    if(!viewport)return;
+    const resize=()=>setPhoneScale(Math.max(.1,viewport.clientWidth/390));
+    resize();
+    const observer=new ResizeObserver(resize);observer.observe(viewport);
+    return()=>observer.disconnect();
+  },[]);
   return (
     <section className="court-home-hero" id="top">
       <div className="court-home-shade" />
@@ -102,7 +111,7 @@ export default function Hero() {
   </div>
 
   <div className="court-phone-shell cs-hero-dashboard-screen">
-    <div className="cs-hero-dashboard-viewport">
+    <div className="cs-hero-dashboard-viewport" ref={phoneViewport} style={{'--cs-phone-scale':phoneScale}}>
       <iframe name="courtstreak-mini-app" title="Interactive CourtStreak app with sample data" src={import.meta.env.BASE_URL+'preview/phone'} loading="lazy" allow="camera 'none'; microphone 'none'; geolocation 'none'"/>
     </div>
     <div className="cs-hero-preview-caption"><span><i/>Interactive sample</span><Link to="/preview/player" aria-label="Open the full CourtStreak preview">Expand<ArrowUpRight size={12}/></Link></div>
