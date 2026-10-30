@@ -102,12 +102,10 @@ export default function Hero() {
   </div>
 
   <div className="court-phone-shell cs-hero-dashboard-screen">
-    <div className="cs-hero-dashboard-viewport" aria-hidden="true">
-      <iframe title="CourtStreak dashboard with fictional sample data" src={import.meta.env.BASE_URL+'preview/phone'} loading="lazy" tabIndex={-1} scrolling="no" allow="camera 'none'; microphone 'none'; geolocation 'none'"/>
+    <div className="cs-hero-dashboard-viewport">
+      <iframe name="courtstreak-mini-app" title="Interactive CourtStreak app with sample data" src={import.meta.env.BASE_URL+'preview/phone'} loading="lazy" allow="camera 'none'; microphone 'none'; geolocation 'none'"/>
     </div>
-    <Link className="cs-hero-dashboard-link" to="/preview/player" aria-label="Explore the CourtStreak player dashboard">
-      <span>Actual dashboard · Sample player<ArrowUpRight size={13}/></span>
-    </Link>
+    <div className="cs-hero-preview-caption"><span><i/>Interactive sample</span><Link to="/preview/player" aria-label="Open the full CourtStreak preview">Expand<ArrowUpRight size={12}/></Link></div>
   </div>
 </div>
 </div>

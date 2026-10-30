@@ -16,8 +16,10 @@ import '../customer-preview.css';
 import PreviewMembership from '../components/MembershipPreview.jsx';
 import PreviewAudienceLinks from '../components/PreviewAudienceLinks.jsx';
 import PreviewWelcome from '../components/PreviewWelcome.jsx';
+import {isMiniPreview} from '../lib/miniPreview.mjs';
 
 export default function CustomerPreview() {
+  const miniPreview=isMiniPreview();
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   const incomingInvite = searchParams.get('invite') || '';
@@ -33,8 +35,8 @@ export default function CustomerPreview() {
   useEffect(() => { document.body.classList.add('cs-customer-preview'); return () => document.body.classList.remove('cs-customer-preview'); }, []);
   if (location.pathname.replace(/\/$/, '') === '/preview') return <PreviewWelcome inviteCode={inviteCode} />;
   return <div className="cs-preview-shell">
-    <div className="cs-preview-content"><header className="cs-preview-banner"><div><strong>EXPLORE COURTSTREAK</strong><span>Sample data · No results saved</span></div><Link to={inviteCode ? `/training-circles/join/${encodeURIComponent(inviteCode)}` : '/create-account'}>{inviteCode ? 'Back to Your Invite →' : 'Join CourtStreak →'}</Link></header>
-      {location.pathname.replace(/\/$/, '') === '/preview/player' && <PreviewAudienceLinks compact />}
+    <div className="cs-preview-content">{!miniPreview&&<header className="cs-preview-banner"><div><strong>EXPLORE COURTSTREAK</strong><span>Sample data · No results saved</span></div><Link to={inviteCode ? `/training-circles/join/${encodeURIComponent(inviteCode)}` : '/create-account'}>{inviteCode ? 'Back to Your Invite →' : 'Join CourtStreak →'}</Link></header>}
+      {!miniPreview&&location.pathname.replace(/\/$/, '') === '/preview/player' && <PreviewAudienceLinks compact />}
       <Routes>
         <Route index element={<PreviewWelcome inviteCode={inviteCode} />} />
         <Route path="player" element={<Dashboard previewOnly />} />

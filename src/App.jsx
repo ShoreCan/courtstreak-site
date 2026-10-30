@@ -1,5 +1,6 @@
 import React, { lazy, Suspense, useLayoutEffect } from 'react';
-import { Routes, Route, Link, useLocation } from 'react-router-dom';
+import { Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
+import {isMiniPreview} from './lib/miniPreview.mjs';
 import Home from './pages/Home.jsx';
 const CourtStreakExperience = lazy(() => import('./features/courtstreak-ui/CourtStreakExperience'));
 const BallHandling = lazy(() => import('./pages/BallHandling.jsx'));
@@ -70,13 +71,19 @@ function RouteScrollReset() {
 
 export default function App() {
   const location = useLocation();
+  const miniPreview=isMiniPreview();
+  useLayoutEffect(()=>{
+    if(!miniPreview)return;
+    document.documentElement.classList.add('cs-mini-app-preview');
+    return()=>document.documentElement.classList.remove('cs-mini-app-preview');
+  },[miniPreview]);
   return (
     <AppErrorBoundary key={location.pathname === "/preview" || location.pathname.startsWith("/preview/") ? "customer-preview" : location.pathname}>
       <RouteScrollReset />
       <Suspense fallback={<main className="cs-welcome-page"><section className="cs-welcome-card"><h1>Opening CourtStreak…</h1></section></main>}>
       <Routes>
         <Route path="/experience-lab" element={<CourtStreakExperience />} />
-      <Route path="/" element={<Home />} />
+      <Route path="/" element={miniPreview?<Navigate to="/preview/phone" replace/>:<Home />} />
       <Route path="/preview/phone" element={<div className="cs-phone-app-sample"><Dashboard previewOnly /></div>} />
       <Route path="/preview/hub/*" element={<Hub preview />} />
       <Route path="/account/restore-player" element={<RequireAccount><RestorePlayer /></RequireAccount>} />
@@ -242,7 +249,7 @@ export default function App() {
       </Routes>
       </Suspense>
       <PlayerAppNav />
-      <PreviewTour />
+      {!miniPreview&&<PreviewTour />}
     </AppErrorBoundary>
   );
 }

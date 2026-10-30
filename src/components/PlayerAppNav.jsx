@@ -39,7 +39,7 @@ export default function PlayerAppNav() {
   const previewOnly = location.pathname === '/preview' || location.pathname.startsWith('/preview/');
   const navigate = usePreviewNavigate(previewOnly);
   const previewPath = location.pathname.slice('/preview'.length);
-  const pathname = previewOnly ? (previewPath === '/player' ? '/dashboard' : previewPath.replace(/^\/circles(?=\/|$)/, '/training-circles')) : location.pathname;
+  const pathname = previewOnly ? (['/player','/phone'].includes(previewPath.replace(/\/$/,'')) ? '/dashboard' : previewPath.replace(/^\/circles(?=\/|$)/, '/training-circles')) : location.pathname;
   const [trainMenuOpen, setTrainMenuOpen] = useState(false);
   const [logoutError, setLogoutError] = useState('');
   const [loggingOut, setLoggingOut] = useState(false);
