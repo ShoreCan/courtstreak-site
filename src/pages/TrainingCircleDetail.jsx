@@ -1,3 +1,4 @@
+import {loadAccountUser,accountLoginPath} from '../lib/accountFlow.mjs';
 // CourtStreak quality update v1
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
@@ -199,13 +200,10 @@ export default function TrainingCircleDetail({ previewOnly = false }) {
     setPageError('');
     try {
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    const user = await loadAccountUser(supabase);
 
-    if (userError || !user) {
-      navigate('/login', { replace: true });
+    if (!user) {
+      navigate(accountLoginPath(`/training-circles/${circleId}`), {replace:true});
       return;
     }
 

@@ -12,10 +12,17 @@
 .cs-front-controls button:disabled{opacity:.65;cursor:wait}
 .cs-front-check small{display:block;color:#adc0d4;font-size:11px;line-height:1.55}
 .cs-mobile-drill-quick-actions{display:none}
+.cs-drill-detail-media:has(.cs-motion-demo){position:relative;min-height:370px}
 @media(max-width:700px){
   .cs-drill-detail-shell{gap:12px!important;padding:12px!important;margin-top:10px!important}
+  .cs-drill-detail-copy{display:contents}
+  .cs-drill-detail-copy>.cs-lab-eyebrow{margin-top:7px}
+  .cs-drill-detail-media{order:1}
+  .cs-drill-detail-copy>:is(.cs-drill-guide,.cs-iphone-camera-details){order:2}
+  .cs-drill-detail-copy>:is(.cs-drill-primary-actions,.cs-drill-start-note){order:3}
   .cs-drill-detail-media,.cs-drill-detail-media video,.cs-drill-detail-placeholder{min-height:0!important;height:auto!important;max-height:220px!important;aspect-ratio:16/9!important}
   .cs-drill-detail-media video{width:100%!important;object-fit:contain!important;background:#081525}
+  .cs-drill-detail-media:has(.cs-motion-demo){height:270px!important;min-height:270px!important;max-height:270px!important;aspect-ratio:auto!important}
   .cs-drill-detail-copy h1{font-size:clamp(27px,8vw,36px)!important;margin:5px 0 10px!important}
   .cs-drill-detail-meta{gap:5px!important}
   .cs-drill-detail-meta>span{padding:6px 8px!important;font-size:10px!important}

@@ -4,7 +4,7 @@ import {useAppearance} from '../AppearanceControl.jsx';
 import '../../cs-mobile-drill-fix.css';
 import './pound-entry-studio.css';
 
-export default function PoundTrainingEntry({onCamera,onManual}){
+export default function PoundTrainingEntry({onCamera,onManual,previewOnly=false}){
  const appearance=useAppearance();
  return <section className="cs-iphone-entry-card cs-entry-studio" data-appearance={appearance} aria-label="Choose your tracking method">
   <div className="cs-iphone-entry-heading">
@@ -12,8 +12,8 @@ export default function PoundTrainingEntry({onCamera,onManual}){
    <strong>Your reps. Your replay.</strong>
    <p>20 seconds. Live counting. Every rep on replay.</p>
   </div>
-  <button className="cs-iphone-entry-ai" type="button" onClick={onCamera}><span><b>Open AI tracker</b></span><FiArrowUpRight aria-hidden="true"/></button>
+  <button className="cs-iphone-entry-ai" type="button" onClick={onCamera}><span><b>{previewOnly?'Try the AI training preview':'Open AI tracker'}</b></span><FiArrowUpRight aria-hidden="true"/></button>
   <button className="cs-iphone-entry-manual" type="button" onClick={onManual}><span><b>Use a timer instead</b></span><FiArrowUpRight aria-hidden="true"/></button>
-  <small className="cs-iphone-entry-disclaimer">AI preview · Review your count. No XP or Circle score is posted.</small>
+  <small className="cs-iphone-entry-disclaimer">{previewOnly?'Sample round · Camera off. No results saved.':'AI preview · Review your count. No XP or Circle score is posted.'}</small>
  </section>;
 }

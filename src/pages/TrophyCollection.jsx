@@ -1,3 +1,4 @@
+import {loadAccountUser,accountLoginPath} from '../lib/accountFlow.mjs';
 import React, { useEffect, useMemo, useState } from 'react';
 import usePreviewNavigate from '../lib/usePreviewNavigate.js';
 import { PREVIEW_ACHIEVEMENTS } from '../lib/previewData.js';
@@ -119,13 +120,11 @@ export default function TrophyCollection({ previewOnly = false }) {
     let isMounted = true;
 
     async function loadCollection() {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+      const user = await loadAccountUser(supabase);
+      if (!isMounted) return;
 
-      if (userError || !user) {
-        navigate('/login');
+      if (!user) {
+        navigate(accountLoginPath('/trophies'), {replace:true});
         return;
       }
 

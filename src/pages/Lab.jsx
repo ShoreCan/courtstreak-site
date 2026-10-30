@@ -1,3 +1,4 @@
+import {loadAccountUser,accountLoginPath} from '../lib/accountFlow.mjs';
 import { favoriteCache } from '../lib/favoriteCache.mjs';
 import { getDrillVideo } from '../data/drillVideos.js';
 import usePreviewNavigate from '../lib/usePreviewNavigate.js';
@@ -85,9 +86,10 @@ export default function Lab({ previewOnly = false }) {
         return;
       }
 
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        navigate('/login', { replace: true });
+      const user = await loadAccountUser(supabase);
+      if (!mounted) return;
+      if (!user) {
+        navigate(accountLoginPath('/lab'), {replace:true});
         return;
       }
 

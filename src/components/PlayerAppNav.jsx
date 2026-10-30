@@ -48,6 +48,7 @@ export default function PlayerAppNav() {
   const isAppRoute = appRoutes.some((route) => routeStartsWith(pathname, route));
   const isFocusedExperience =
     pathname.includes('/session') ||
+    pathname === '/ai-training' ||
     pathname.startsWith('/training/ball-handling') ||
     pathname.startsWith('/training-circles/join');
 

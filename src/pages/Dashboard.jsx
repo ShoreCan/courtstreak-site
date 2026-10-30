@@ -1,3 +1,4 @@
+import {loadAccountUser,accountLoginPath} from '../lib/accountFlow.mjs';
 import NotificationBell from "../hub/NotificationBell.jsx";
 // CourtStreak quality update v1
 import WeeklyActivity from "../components/WeeklyActivity.jsx";
@@ -96,13 +97,11 @@ export default function Dashboard({ previewOnly = false }) {
         return;
       }
 
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+      const user = await loadAccountUser(supabase);
+      if (!isMounted) return;
 
-      if (userError || !user) {
-        navigate("/login");
+      if (!user) {
+        navigate(accountLoginPath('/dashboard'), {replace:true});
         return;
       }
 

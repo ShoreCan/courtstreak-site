@@ -1,3 +1,4 @@
+import {loadAccountUser,accountLoginPath} from '../lib/accountFlow.mjs';
 import '../courtstreak-mobile-settings-fix.css';
 // CourtStreak quality update v1
 import React, { useEffect, useState } from 'react';
@@ -59,15 +60,12 @@ export default function Settings({ previewOnly = false }) {
         return;
       }
 
-      const {
-        data: { user: currentUser },
-        error: userError,
-      } = await supabase.auth.getUser();
+      const currentUser = await loadAccountUser(supabase);
 
       if (!isMounted) return;
 
-      if (userError || !currentUser) {
-        navigate('/login', { replace: true });
+      if (!currentUser) {
+        navigate(accountLoginPath('/settings'), {replace:true});
         return;
       }
 
@@ -397,7 +395,7 @@ export default function Settings({ previewOnly = false }) {
 
                 <div className="cs-settings-save-row">
                   <span>
-                    Saved to your account.
+                    {previewOnly ? 'Account changes are disabled in this preview.' : 'Preferences save to your account.'}
                   </span>
 
                   <button type="submit" disabled={previewOnly || saving || !user}>

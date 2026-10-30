@@ -9,6 +9,7 @@ import TrainingStart from './TrainingStart.jsx';
 import Settings from './Settings.jsx';
 import Profile from './Profile.jsx';
 import TrophyCollection from './TrophyCollection.jsx';
+import TrainingPreview from './TrainingPreview.jsx';
 import TrainingCircles from './TrainingCircles.jsx';
 import TrainingCircleDetail from './TrainingCircleDetail.jsx';
 import '../customer-preview.css';
@@ -32,7 +33,7 @@ export default function CustomerPreview() {
   useEffect(() => { document.body.classList.add('cs-customer-preview'); return () => document.body.classList.remove('cs-customer-preview'); }, []);
   if (location.pathname.replace(/\/$/, '') === '/preview') return <PreviewWelcome inviteCode={inviteCode} />;
   return <div className="cs-preview-shell">
-    <div className="cs-preview-content"><header className="cs-preview-banner"><div><strong>EXPLORE COURTSTREAK</strong><span>Sample player data · Browsing only</span></div><Link to={inviteCode ? `/training-circles/join/${encodeURIComponent(inviteCode)}` : '/create-account'}>{inviteCode ? 'Back to Your Invite →' : 'Join CourtStreak →'}</Link></header>
+    <div className="cs-preview-content"><header className="cs-preview-banner"><div><strong>EXPLORE COURTSTREAK</strong><span>Sample data · No results saved</span></div><Link to={inviteCode ? `/training-circles/join/${encodeURIComponent(inviteCode)}` : '/create-account'}>{inviteCode ? 'Back to Your Invite →' : 'Join CourtStreak →'}</Link></header>
       {location.pathname.replace(/\/$/, '') === '/preview/player' && <PreviewAudienceLinks compact />}
       <Routes>
         <Route index element={<PreviewWelcome inviteCode={inviteCode} />} />
@@ -41,6 +42,7 @@ export default function CustomerPreview() {
         <Route path="workout" element={<Workout previewOnly />} />
         <Route path="lab" element={<Lab previewOnly />} />
         <Route path="lab/drill/:drillKey" element={<LabDrillDetail previewOnly />} />
+        <Route path="ai-training" element={<TrainingPreview />} />
         <Route path="lab/drill/:drillKey/session" element={<PreviewMembership inviteCode={inviteCode} />} />
         <Route path="progress" element={<Progress previewOnly />} />
         <Route path="circles" element={<TrainingCircles previewOnly />} />

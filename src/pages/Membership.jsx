@@ -1,3 +1,4 @@
+import {loadAccountUser,accountLoginPath} from '../lib/accountFlow.mjs';
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ExternalLink, CreditCard, Receipt, Users } from 'lucide-react';
@@ -16,10 +17,10 @@ export default function Membership() {
     async function load(){
       try {
         if(!supabase)throw Error('Membership information is temporarily unavailable. Please reload or contact support.');
-        const {data:auth,error:userError}=await supabase.auth.getUser();
+        const user=await loadAccountUser(supabase);
         if(!mounted)return;
-        if(userError || !auth?.user){navigate('/login');return;}
-        const {data,error}=await supabase.from('subscriptions').select('status, current_period_end').eq('user_id',auth.user.id).order('current_period_end',{ascending:false,nullsFirst:false}).limit(1).maybeSingle();
+        if(!user){navigate(accountLoginPath('/membership'),{replace:true});return;}
+        const {data,error}=await supabase.from('subscriptions').select('status, current_period_end').eq('user_id',user.id).order('current_period_end',{ascending:false,nullsFirst:false}).limit(1).maybeSingle();
         if(error)throw Error('Your membership details could not load. Please reload or contact support.');
         if(mounted)setSubscription(data);
       }catch(error){if(mounted)setErrorMessage(error.message);}

@@ -1,3 +1,4 @@
+import {loadAccountUser,accountLoginPath} from '../lib/accountFlow.mjs';
 import '../courtstreak-mobile-settings-fix.css';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -54,13 +55,11 @@ export default function Profile({ previewOnly = false }) {
         return;
       }
 
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+      const user = await loadAccountUser(supabase);
+      if (!isMounted) return;
 
-      if (userError || !user) {
-        navigate('/login');
+      if (!user) {
+        navigate(accountLoginPath('/profile'), {replace:true});
         return;
       }
 

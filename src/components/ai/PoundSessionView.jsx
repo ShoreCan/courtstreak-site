@@ -5,8 +5,9 @@ import CountedReplay from './CountedReplay.jsx';
 import PoundDemo from './PoundDemo.jsx';
 import { getDrillVideo } from '../../data/drillVideos.js';
 import './iphone-pound-test.css';
+import '../../training-moments.css';
 
-export const TRACKER_PRESENTATION_REVISION = 'STUDIO 04';
+export const TRACKER_PRESENTATION_REVISION = 'STUDIO 07';
 export function CourtStreakMark() {
   return <svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><circle cx="16" cy="16" r="13"/><path d="M3 16h26M16 3v26M6.5 6.5c10.5 4 15 8.5 19 19M25.5 6.5c-10.5 4-15 8.5-19 19"/></svg>;
 }
@@ -49,7 +50,7 @@ export default function PoundSessionView({ ui, ratio, live, ended, ballLocked, v
             {phase === 'active' && ui.go && <div className="cs-iphone-countdown cs-iphone-go"><strong>GO.</strong></div>}
           </section>
           {training && <div className={`cs-iphone-live ${phase === 'recording-only' ? 'is-partial' : ''}`}>
-            <div><span>{phase === 'recording-only' ? 'PARTIAL REPS' : 'REPS'}</span><strong>{ui.count}</strong></div>
+            <div><span>{phase === 'recording-only' ? 'PARTIAL REPS' : 'REPS'}</span><strong key={ui.count}>{ui.count}</strong></div>
             <div><span>{phase === 'review' ? 'REVIEWING' : 'TIME LEFT'}</span><strong>{String(ui.left).padStart(2, '0')}<small>s</small></strong></div>
             <div className="cs-studio-time-track" role="progressbar" aria-label="Round time remaining" aria-valuemin={0} aria-valuemax={20} aria-valuenow={ui.left}><span style={{ width: `${ui.left / 20 * 100}%` }}/></div>
           </div>}

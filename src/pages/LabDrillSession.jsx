@@ -1,6 +1,7 @@
 // CourtStreak quality update v1
 import { saveResultContext } from '../lib/resultContext.js';
 import { confirmedSessionReceipt } from '../lib/sessionReceipt.mjs';
+import { createRoundClock } from '../lib/roundClock.mjs';
 import ShareTraining from '../components/ShareTraining.jsx';
 import TrainingVisibility from '../components/TrainingVisibility.jsx';
 import React, { useEffect, useRef, useState } from 'react';
@@ -10,6 +11,7 @@ import { supabase } from '../lib/supabaseClient.js';
 import { requireTrainingAccess } from '../lib/trainingAccess.js';
 import DrillGuide from '../components/DrillGuide.jsx';
 import { isPoundCameraMode } from '../lib/ai/trackerConfiguration.mjs';
+import '../training-moments.css';
 
 const LocalPoundPilot = import.meta.env.DEV ? React.lazy(() => import('../components/ai/LocalPoundPilot.jsx')) : null;
 const IPhonePoundTest = React.lazy(() => import('../components/ai/IPhonePoundTest.jsx'));
@@ -34,7 +36,7 @@ export default function LabDrillSession() {
   if (import.meta.env.DEV && ['localhost', '127.0.0.1'].includes(window.location.hostname) && drillKey === 'right-hand-pound' && new URLSearchParams(location.search).get('mode') === 'ai-test') {
     return <React.Suspense fallback={<main className="cs-session-page">Opening camera test…</main>}><LocalPoundPilot /></React.Suspense>;
   }
-  return <GuidedLabDrillSession />;
+  return <GuidedLabDrillSession key={drillKey} />;
 }
 function GuidedLabDrillSession() {
   const { drillKey } = useParams();
@@ -54,6 +56,10 @@ function GuidedLabDrillSession() {
   const attemptRef = useRef(null);
   const savingRef = useRef(false);
   const receiptRef = useRef(null);
+  const submittedRepsRef = useRef(null);
+  const roundClock = useRef(null);
+  if (!roundClock.current) roundClock.current = createRoundClock();
+  const clockPhase = useRef(null);
   const [comparisonSaved, setComparisonSaved] = useState(true);
   const durationRef = useRef(0);
   useEffect(() => {
@@ -70,19 +76,25 @@ function GuidedLabDrillSession() {
     void load(); return () => { active = false; };
   }, [drillKey]);
   useEffect(() => {
-    if (phase !== 'countdown') return;
-    if (countdown <= 0) { setPhase('active'); return; }
-    const timer = setTimeout(() => setCountdown((value) => value - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [phase, countdown]);
+    const clock = roundClock.current;
+    if (!['countdown', 'active'].includes(phase)) { clock.reset(); clockPhase.current = null; return; }
+    if (clockPhase.current !== phase) {
+      clock.start(phase === 'countdown' ? 5 : durationRef.current);
+      clockPhase.current = phase;
+    }
+    if (paused || document.hidden) { clock.pause(); if (document.hidden) setPaused(true); return; }
+    clock.resume();
+    const tick = () => {
+      const remaining = clock.seconds();
+      if (phase === 'countdown') setCountdown(remaining); else setSecondsLeft(remaining);
+      if (remaining === 0) setPhase(phase === 'countdown' ? 'active' : 'finished');
+    };
+    tick();
+    const timer = setInterval(tick, 100);
+    return () => { clearInterval(timer); clock.pause(); };
+  }, [phase, paused]);
   useEffect(() => {
-    if (phase !== 'active' || paused) return;
-    if (secondsLeft <= 0) { setPhase('finished'); return; }
-    const timer = setTimeout(() => setSecondsLeft((value) => Math.max(0, value - 1)), 1000);
-    return () => clearTimeout(timer);
-  }, [phase, secondsLeft, paused]);
-  useEffect(() => {
-    const onHidden = () => { if (document.hidden && phase === 'active') { setPaused(true); setMessage('Paused while CourtStreak is off screen. Resume when you are ready.'); } };
+    const onHidden = () => { if (document.hidden && ['countdown', 'active'].includes(phase)) { roundClock.current.pause(); setPaused(true); setMessage('Paused while CourtStreak is off screen. Resume when you are ready.'); } };
     document.addEventListener('visibilitychange', onHidden); return () => document.removeEventListener('visibilitychange', onHidden);
   }, [phase]);
   async function start() {
@@ -93,16 +105,16 @@ function GuidedLabDrillSession() {
       const result = await supabase.rpc('begin_lab_drill_attempt', { p_drill_key: drill.drill_key, p_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', p_shared_circle_ids: [...new Set([...sharedCircleIds, ...(challenge?.circleId ? [challenge.circleId] : [])])] });
       if (result.error) throw new Error('Drill recording is not available yet. Please contact support; no training has been recorded.');
       const attempt = Array.isArray(result.data) ? result.data[0] : result.data;
-      if (!attempt?.attempt_id || !Number.isInteger(attempt.duration_seconds)) throw new Error('The training timer could not be prepared. Please try again.');
+      if (!attempt?.attempt_id || !Number.isInteger(attempt.duration_seconds) || attempt.duration_seconds <= 0) throw new Error('The training timer could not be prepared. Please try again.');
       durationRef.current = attempt.duration_seconds;
-      attemptRef.current = attempt.attempt_id; receiptRef.current = null;
+      attemptRef.current = attempt.attempt_id; receiptRef.current = null; submittedRepsRef.current = null;
       setSecondsLeft(attempt.duration_seconds); setCountdown(5); setReps(''); setPaused(false); setPhase('countdown');
     } catch (error) { setMessage(error.message); }
     finally { savingRef.current = false; setSaving(false); }
   }
   async function save() {
     if (phase !== 'finished' || secondsLeft !== 0 || !attemptRef.current || savingRef.current) return;
-    const numericReps = Number(reps);
+    const numericReps = receiptRef.current ? submittedRepsRef.current : Number(reps);
     if (!reps.trim() || !Number.isSafeInteger(numericReps) || numericReps < 0 || numericReps > 10000) { setMessage('Enter a whole number from 0 to 10,000. Count only clean reps.'); return; }
     savingRef.current = true; setSaving(true); setMessage('');
     try {
@@ -112,6 +124,7 @@ function GuidedLabDrillSession() {
         if (result.error) throw new Error('Your result could not be saved. Keep this screen open and retry.');
         const receipt = confirmedSessionReceipt(result.data);
         receiptRef.current = receipt;
+        submittedRepsRef.current = numericReps;
         setComparisonSaved(await saveResultContext(receipt.session_id, drill, durationRef.current));
       }
       if (challenge?.id) {
@@ -123,15 +136,17 @@ function GuidedLabDrillSession() {
     finally { savingRef.current = false; setSaving(false); }
   }
   const clock = `${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')}`;
-  return <main className="cs-session-page"><header className="cs-session-topbar"><button onClick={() => navigate(`/lab/drill/${drillKey}`)}><FiArrowLeft /> Drill details</button><span>GUIDED DRILL</span></header>
-    <section className="cs-session-shell"><div>{drill && <DrillGuide drill={drill} />}</div><aside className="cs-session-panel"><span className="cs-lab-eyebrow">GUIDED MANUAL</span><h1>{drill?.name || 'Preparing your drill…'}</h1><p>Follow the full timer, then enter your clean reps. Camera access is not required.</p>
-      <div className="cs-session-timer">{phase === 'countdown' ? countdown : clock}</div>
+  return <main className="cs-session-page cs-guided-session" data-phase={phase}><header className="cs-session-topbar"><button onClick={() => navigate(`/lab/drill/${drillKey}`)}><FiArrowLeft /> Drill details</button><span>GUIDED DRILL</span></header>
+    <section className="cs-session-shell"><aside className="cs-session-panel"><span className="cs-lab-eyebrow">GUIDED MANUAL</span><h1>{drill?.name || 'Preparing your drill…'}</h1><p>{phase === 'saved' ? 'Your work is in the books.' : phase === 'countdown' ? paused ? 'Countdown paused.' : 'Get set. Start at zero.' : phase === 'active' ? paused ? 'Take a breath. Resume when ready.' : 'Find your rhythm. Stay in control.' : 'Finish the timer. Enter your clean reps.'}</p>
+      {!['saved', 'error', 'loading'].includes(phase) && <div className="cs-session-timer" aria-label={phase === 'countdown' ? 'Countdown' : 'Time remaining'}><strong key={phase === 'countdown' ? countdown : 'clock'}>{phase === 'countdown' ? countdown : clock}</strong></div>}
+      {phase === 'active' && <progress className="cs-round-progress" value={secondsLeft} max={durationRef.current || 1} aria-label="Round time remaining" />}
       {phase === 'ready' && <TrainingVisibility onReady={setVisibilityReady} value={sharedCircleIds} onChange={setSharedCircleIds} lockedCircleId={challenge?.circleId} />}
       {phase === 'ready' && <button className="cs-session-primary" disabled={saving || !visibilityReady} onClick={start}><FiPlay /> {saving ? 'Preparing…' : 'Start countdown'}</button>}
       {phase === 'active' && <button className="cs-session-primary" onClick={() => { setPaused(!paused); setMessage(''); }}>{paused ? 'Resume' : 'Pause'}</button>}
-      {phase === 'finished' && <div className="cs-session-result"><label htmlFor="session-reps">Clean reps completed</label><input id="session-reps" type="number" inputMode="numeric" min="0" max="10000" step="1" value={reps} onChange={(event) => setReps(event.target.value)} /><p>Timer completed · Result self-reported</p><button className="cs-session-primary" disabled={saving} onClick={save}>{saving ? 'Saving…' : 'Save result'}</button></div>}
+      {phase === 'countdown' && paused && <button className="cs-session-primary" onClick={() => { setPaused(false); setMessage(''); }}>Resume countdown</button>}
+      {phase === 'finished' && <div className="cs-session-result"><label htmlFor="session-reps">Clean reps completed</label><input id="session-reps" type="number" inputMode="numeric" min="0" max="10000" step="1" value={reps} disabled={saving || Boolean(receiptRef.current)} onChange={(event) => setReps(event.target.value)} /><p>Timer completed · Result self-reported</p><button className="cs-session-primary" disabled={saving} onClick={save}>{saving ? 'Saving…' : receiptRef.current ? 'Retry Circle post' : 'Save result'}</button></div>}
       {phase === 'saved' && <div className="cs-session-result"><FiCheck /><h2>Result saved.</h2>{!comparisonSaved && <p>Comparison details could not save. Your result is still in history.</p>}<ShareTraining text={`CourtStreak: ${drill.name} · ${durationRef.current}s · ${reps} clean reps · Self-reported result.`} /><p>Your recorded drill appears in Progress. This counts as a single drill, rather than a full workout.</p><button className="cs-session-primary" onClick={() => navigate(challenge ? `/training-circles/${challenge.circleId}` : '/progress')}>View {challenge ? 'Circle' : 'Progress'}</button></div>}
       {message && <p className="cs-session-message" role="alert">{message}</p>}
       {['countdown', 'active'].includes(phase) && <button onClick={() => { setPhase('ready'); setSecondsLeft(drill.default_duration_seconds); attemptRef.current = null; setMessage('Round canceled. No result was saved.'); }}>Cancel round</button>}
-    </aside></section></main>;
+    </aside><div className="cs-session-guide">{drill && <DrillGuide drill={drill} />}</div></section></main>;
 }

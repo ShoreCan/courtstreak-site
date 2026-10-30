@@ -1,3 +1,4 @@
+import {loadAccountUser,accountLoginPath} from '../lib/accountFlow.mjs';
 // CourtStreak quality update v1
 import { comparisonGroups, resultValue as metricValue } from '../lib/trainingMetrics.js';
 import { loadResultContexts, loadTrainingHistory } from '../lib/resultContext.js';
@@ -89,10 +90,10 @@ export default function Progress({ previewOnly = false }) {
         return;
       }
 
-      const { data: authData, error: authError } = await supabase.auth.getUser();
-      const user = authData?.user;
-      if (authError || !user) {
-        navigate('/login');
+      const user = await loadAccountUser(supabase);
+      if (!active) return;
+      if (!user) {
+        navigate(accountLoginPath('/progress'), {replace:true});
         return;
       }
 

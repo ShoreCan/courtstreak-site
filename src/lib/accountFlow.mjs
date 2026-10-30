@@ -20,6 +20,13 @@ export function accountAccessStatus({data,error}){
  if(error.name==='AuthSessionMissingError'||[401,403].includes(error.status)||['session_not_found','refresh_token_not_found','refresh_token_already_used','bad_jwt','user_not_found','user_banned','not_authenticated'].includes(error.code))return 'logged-out';
  return 'error';
 }
+export async function loadAccountUser(client){
+ if(!client)throw new Error('Your sign-in could not be checked. Please try again.');
+ const result=await client.auth.getUser();
+ if(accountAccessStatus(result)==='error')throw new Error('Your sign-in could not be checked. Please try again.');
+ return accountAccessStatus(result)==='ready'?result.data.user:null;
+}
+export function accountLoginPath(next){return '/login'+contextQuery({next:safeAccountReturn(next)});}
 export function accountContext(params,from){
  const raw=params.get('invite')?.trim();
  return {invite:raw&&raw.length<=512?raw:null,accept:params.get('accept')==='1',next:safeAccountReturn(params.get('next'))||safeAccountReturn(from),checkout:params.get('checkout')==='membership'};

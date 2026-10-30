@@ -10,6 +10,7 @@ import './quality-polish.css';
 import './iphone-polish.css';
 import './theme.css';
 import './lib/appearance.mjs';
+import './training-moments.css';
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>

@@ -1,3 +1,4 @@
+import {loadAccountUser,accountLoginPath} from '../lib/accountFlow.mjs';
 import { favoriteCache } from '../lib/favoriteCache.mjs';
 import { getDrillVideo } from '../data/drillVideos.js';
 import usePreviewNavigate from '../lib/usePreviewNavigate.js';
@@ -5,6 +6,7 @@ import { PREVIEW_DRILLS } from '../data/previewDrills.js';
 import DrillGuide from '../components/DrillGuide.jsx';
 import FrontCameraCheck from '../components/ai/FrontCameraCheck.jsx';
 import PoundTrainingEntry from '../components/ai/PoundTrainingEntry.jsx';
+import PoundDemo from '../components/ai/PoundDemo.jsx';
 import { CURRENT_POUND_SESSION_PATH } from '../lib/ai/trackerConfiguration.mjs';
 import '../cs-mobile-drill-fix.css';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -46,7 +48,7 @@ export default function LabDrillDetail({ previewOnly = false }) {
 
   useEffect(() => {
     let mounted = true;
-    setLoading(true); setErrorMessage(''); setVideoFailed(false); setFavoriteMessage('');
+    setLoading(true); setErrorMessage(''); setVideoFailed(false); setFavoriteMessage(''); setIsFavorite(false); setDrill(null); setSection(null);
 
     async function loadDrill() {
       if (previewOnly) {
@@ -61,9 +63,10 @@ export default function LabDrillDetail({ previewOnly = false }) {
         return;
       }
 
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await loadAccountUser(supabase);
+      if (!mounted) return;
       if (!user) {
-        navigate('/login', { replace: true });
+        navigate(accountLoginPath(`/lab/drill/${drillKey}`), {replace:true});
         return;
       }
       setUserId(user.id);
@@ -171,6 +174,8 @@ export default function LabDrillDetail({ previewOnly = false }) {
         <div className="cs-drill-detail-media">
           {getDrillVideo(drill) && !videoFailed ? (
             <video src={getDrillVideo(drill)} controls playsInline preload="metadata" onError={() => setVideoFailed(true)} />
+          ) : drill.drill_key === 'right-hand-pound' ? (
+            <PoundDemo />
           ) : (
             <div className="cs-drill-detail-placeholder">
               <div className="cs-lab-ball cs-lab-ball-large">
@@ -190,18 +195,18 @@ export default function LabDrillDetail({ previewOnly = false }) {
           {favoriteMessage && <p role="status">{favoriteMessage}</p>}
           <div className="cs-drill-detail-meta">
             <span>{formatHand(drill.hand)}</span>
-            <span><FiClock /> {drill.default_duration_seconds} sec</span>
-            <span><FiStar /> +{Math.min(10, drill.xp_reward)} XP</span>
-            <span>Guided Manual</span>
+            <span><FiClock /> {drill.drill_key === 'right-hand-pound' ? 'Timer · ' : ''}{drill.default_duration_seconds} sec</span>
+            <span><FiStar /> {drill.drill_key === 'right-hand-pound' ? 'Timer ' : ''}+{Math.min(10, drill.xp_reward)} XP</span>
+            <span>{drill.drill_key === 'right-hand-pound' ? 'AI or timer' : 'Guided manual'}</span>
             <button type="button" className={`cs-drill-favorite ${isFavorite ? 'is-favorite' : ''}`} onClick={toggleFavorite} disabled={favoriteBusy} aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}><FiHeart /><span>{isFavorite ? 'Saved' : 'Save'}</span></button>
           </div>
 
-          <div className={`cs-mobile-drill-quick-actions ${!previewOnly && drill.drill_key === 'right-hand-pound' ? 'cs-has-ai-choice' : ''}`}>
-            {!( !previewOnly && drill.drill_key === 'right-hand-pound') && <button className="cs-drill-start-button" type="button" onClick={() => navigate(`/lab/drill/${drill.drill_key}/session`)}><FiPlay /> Start This Drill</button>}
+          {drill.drill_key !== 'right-hand-pound' && <div className="cs-mobile-drill-quick-actions">
+            <button className="cs-drill-start-button" type="button" onClick={() => navigate(`/lab/drill/${drill.drill_key}/session`)}><FiPlay /> Start This Drill</button>
             <button className="cs-drill-challenge-button" type="button" onClick={() => navigate('/training-circles', { state: { challengeDraft: { sourceType: 'drill', sourceKey: drill.drill_key, sourceName: drill.name, sourcePayload: { durationSeconds: drill.default_duration_seconds }, challengeType: 'score' } } })}><FiUsers /> Challenge a Circle</button>
-          </div>
-          {!previewOnly && drill.drill_key === 'right-hand-pound' && (
-            <PoundTrainingEntry onCamera={() => navigate(CURRENT_POUND_SESSION_PATH)} onManual={() => navigate('/lab/drill/right-hand-pound/session')} />
+          </div>}
+          {drill.drill_key === 'right-hand-pound' && (
+            <PoundTrainingEntry previewOnly={previewOnly} onCamera={previewOnly ? () => navigate('/preview/ai-training') : () => navigate(CURRENT_POUND_SESSION_PATH)} onManual={() => navigate('/lab/drill/right-hand-pound/session')} />
           )}
           {!previewOnly && drill.drill_key === 'right-hand-pound' && <details className="cs-iphone-camera-details"><summary>Check front-camera framing <span>Optional setup</span></summary><FrontCameraCheck /></details>}
           <DrillGuide drill={drill} showVideo={false} />

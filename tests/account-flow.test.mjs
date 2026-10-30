@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {safeAccountReturn,accountContext,contextQuery,accountRole,resolveAccountDestination,signInAndResolve,authErrorMessage} from '../src/lib/accountFlow.mjs';
+import {safeAccountReturn,accountContext,contextQuery,accountRole,resolveAccountDestination,signInAndResolve,authErrorMessage,loadAccountUser,accountLoginPath} from '../src/lib/accountFlow.mjs';
 
 test('login preserves protected destinations including billing, Circle, assignment and tracker routes',()=>{
  for(const path of ['/membership','/settings#privacy-settings','/training-circles/crew-123','/assigned-training/a-b/c-d','/lab/drill/right-hand-pound/session?mode=iphone-fresh-frame-test','/family-hub?view=parent'])assert.equal(safeAccountReturn(path),path);
@@ -57,4 +57,17 @@ test('network failures do not masquerade as a signed-out account', async () => {
   assert.equal(accountAccessStatus({error:{status:401}}), 'logged-out');
   assert.equal(accountAccessStatus({error:{name:'AuthRetryableFetchError',status:0}}), 'error');
   assert.equal(accountAccessStatus({error:{status:503}}), 'error');
+});
+
+test('page reloads keep connection failures on the current page instead of signing the player out',async()=>{
+ const user={id:'test-player'};
+ assert.equal(await loadAccountUser({auth:{getUser:async()=>({data:{user}})}}),user);
+ assert.equal(await loadAccountUser({auth:{getUser:async()=>({error:{name:'AuthSessionMissingError'}})}}),null);
+ assert.equal(await loadAccountUser({auth:{getUser:async()=>({data:{user:null}})}}),null);
+ await assert.rejects(loadAccountUser({auth:{getUser:async()=>({error:{name:'AuthRetryableFetchError',status:0}})}}),/sign-in could not/);
+ await assert.rejects(loadAccountUser({auth:{getUser:async()=>{throw Error('Network interrupted');}}}));
+});
+test('an expired session keeps the original drill or Circle destination in the login URL',()=>{
+ for(const next of ['/lab/drill/right-hand-pound','/training-circles/crew-123','/settings'])assert.equal(new URLSearchParams(accountLoginPath(next).split('?')[1]).get('next'),next);
+ assert.equal(accountLoginPath('https://external.test'),'/login');
 });
