@@ -19,6 +19,7 @@ const Login = lazy(() => import('./pages/Login.jsx'));
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword.jsx'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword.jsx'));
 const Dashboard = lazy(() => import('./pages/Dashboard.jsx'));
+const CrossoverCameraTest = lazy(() => import('./components/ai/IPhonePoundTest.jsx'));
 const Welcome = lazy(() => import('./pages/Welcome.jsx'));
 const Workout = lazy(() => import('./pages/Workout.jsx'));
 const Lab = lazy(() => import('./pages/Lab.jsx'));
@@ -85,6 +86,7 @@ export default function App() {
         <Route path="/experience-lab" element={<CourtStreakExperience />} />
       <Route path="/" element={miniPreview?<Navigate to="/preview/phone" replace/>:<Home />} />
       <Route path="/preview/phone" element={<div className="cs-phone-app-sample"><Dashboard previewOnly /></div>} />
+      <Route path="/tracker-tests/crossovers" element={<CrossoverCameraTest drillKey="stationary-crossover" standalone />} />
       <Route path="/preview/hub/*" element={<Hub preview />} />
       <Route path="/account/restore-player" element={<RequireAccount><RestorePlayer /></RequireAccount>} />
       <Route path="/hub" element={<RequireAccount><HubEntry /></RequireAccount>} />

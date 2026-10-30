@@ -6,7 +6,7 @@ export const POSITION_CONFIRM_SECONDS = .9;
 // Setup framing is separate from rep validation. A wide stance or a small
 // held-ball adjustment is allowed; the body, feet, right wrist and ball still
 // have to be visible, and a visible hand must be holding the selected ball.
-export function evaluateCameraSetup(person, ball, w, h) {
+export function evaluateCameraSetup(person, ball, w, h, {handMode='right'}={}) {
   const r = { body:false, hand:false, ball:!!ball, floor:false, owned:false, rightHand:false, valid:false, message:'' };
   if (!person) { r.message='Looking for your body. Face the camera with your basketball visible.'; return r; }
   const visible = (i, confidence=.2) => person.confidence[i]>=confidence &&
@@ -14,7 +14,7 @@ export function evaluateCameraSetup(person, ball, w, h) {
   const b=person.box, ph=b[3]-b[1], pw=b[2]-b[0];
   r.body=pw>=w*.10 && ph>=h*.28 && ph<=h*.98 &&
     b[0]>=-w*.02 && b[2]<=w*1.02 && b[1]>=-h*.02 && b[3]<=h*1.02 && visible(0);
-  r.hand=visible(10,.22) && [5,6,11,12].filter(i=>visible(i)).length>=3;
+  r.hand=visible(10,.22) && (handMode!=='both'||visible(9,.22)) && [5,6,11,12].filter(i=>visible(i)).length>=3;
   const feet=[15,16].filter(i=>visible(i));
   r.floor=feet.length===2 && Math.max(...feet.map(i=>person.xy[i][1]))<h*.92 &&
     Math.min(...feet.map(i=>person.xy[i][1]))>h*.35;
@@ -25,7 +25,7 @@ export function evaluateCameraSetup(person, ball, w, h) {
       'Your body looks small in the picture. Tilt the phone to center yourself; move closer only if you still look small.';
     return r;
   }
-  if (!r.hand) { r.message='Keep your right wrist and torso visible'; return r; }
+  if (!r.hand) { r.message=handMode==='both'?'Keep both wrists and your torso visible':'Keep your right wrist and torso visible'; return r; }
   if (!r.floor) {
     r.message=feet.length<2 ? 'Both feet are not clearly detected. Keep them visible and uncrossed.' :
       Math.max(...feet.map(i=>person.xy[i][1]))>=h*.92 ? 'Your feet are near the bottom edge. Tilt the phone down slightly to include floor below them.' :

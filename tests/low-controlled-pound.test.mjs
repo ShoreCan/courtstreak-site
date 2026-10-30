@@ -27,7 +27,7 @@ test('saved COUNT 07 inputs use the same low counter and validator as live',()=>
  const r=trial(),replay=replayProfileCounter(r.evidence);assert.equal(replay.available,true);assert.equal(replay.accepted,8);assert.equal(replay.matchesRecordedAcceptedEvents,true);
 });
 test('live initialization and countdown reset share the revision-aware control factory',()=>{
- const source=fs.readFileSync(new URL('../src/components/ai/IPhonePoundTest.jsx',import.meta.url),'utf8');assert.match(source,/resetPoundTrackingCounter\(s\)/);
+ const source=fs.readFileSync(new URL('../src/components/ai/IPhonePoundTest.jsx',import.meta.url),'utf8');assert.match(source,/resetSessionTrackingCounter\(s\)/);
  const state=createPoundTrackingState();assert.equal(state.validator.lowControlledPounds,true);state.validator.count=5;resetPoundTrackingCounter(state);assert.equal(state.validator.lowControlledPounds,true);assert.equal(state.validator.count,0);
 });
 const opts={handContinuity:true,objectBackgroundRadius:true,timedContinuity:true,strongContinuity:true,corroboratedContinuity:true,floorContinuity:true,turnContinuity:true,directionalPeaks:true,timeWindows:true,earlyConfirmation:true};

@@ -4,26 +4,26 @@ import { cameraReadiness } from './cameraReadiness.mjs';
 export const SETUP_GUIDANCE_REVISION = 'SETUP 02';
 export const SETUP_HELP_SECONDS = 12;
 
-export function setupCondition(checks, speedReady, lockReady) {
+export function setupCondition(checks, speedReady, lockReady, {handMode='right'}={}) {
   // Acquiring/calibrating the ball can use either visible hand. Before the
   // countdown, confirm the right hand used by the right-pound validator.
-  const rightHandChecks = checks.valid && checks.rightHand === false
+  const rightHandChecks = handMode==='right' && checks.valid && checks.rightHand === false
     ? {...checks, valid:false, message:'Hold the ball beside your right hip, with your right wrist visible.'}
     : checks;
   return cameraReadiness(rightHandChecks, speedReady, lockReady);
 }
 
-export function setupInstruction(checks, speedReady, lockReady, condition) {
+export function setupInstruction(checks, speedReady, lockReady, condition, {handMode='right'}={}) {
   if (checks.refreshingBody) return {key:'refresh', stage:'frame', title:'Keep your position.', message:'Rechecking your view. You do not need to move.'};
   if (!checks.body || !checks.hand || !checks.floor) return {
     key:checks.issue || condition.message, stage:'frame', title:'Fit yourself in the picture.', message:condition.message,
   };
-  if (!checks.ball) return {key:'ball', stage:'ball', title:'Show your basketball.', message:'Your framing is good. Hold the ball beside your right hip, clear of your torso.'};
+  if (!checks.ball) return {key:'ball', stage:'ball', title:'Show your basketball.', message:handMode==='either'?'Your framing is good. Hold the ball in either hand, clear of your torso.':'Your framing is good. Hold the ball beside your right hip, clear of your torso.'};
   if (checks.issue==='ball-edge') return {key:'ball-edge',stage:'ball',title:'Keep the ball in view.',message:condition.message};
-  if (!checks.owned || checks.rightHand === false) return {key:'hand', stage:'ball', title:'Ball in your right hand.', message:'Hold the ball beside your right hip, with your right wrist visible.'};
+  if (!checks.owned || (handMode==='right'&&checks.rightHand === false)) return {key:'hand', stage:'ball', title:handMode==='either'?'Hold the ball in one hand.':'Ball in your right hand.', message:handMode==='either'?'Keep both wrists visible and hold the ball clearly in either hand.':'Hold the ball beside your right hip, with your right wrist visible.'};
   if (!lockReady) return {key:'lock', stage:'ball', title:'Basketball found.', message:'Hold it comfortably while we confirm your ball.'};
   if (!speedReady) return {key:'speed', stage:'ready', title:'You’re in position.', message:'Checking tracking speed. Keep the phone still.'};
-  return {key:'ready', stage:'ready', title:'You’re ready.', message:'Keep the ball in your right hand. Your countdown starts automatically.'};
+  return {key:'ready', stage:'ready', title:'You’re ready.', message:handMode==='either'?'Hold the ball in either hand. Your countdown starts automatically.':'Keep the ball in your right hand. Your countdown starts automatically.'};
 }
 
 // A single missed landmark must not send a new instruction to someone who is

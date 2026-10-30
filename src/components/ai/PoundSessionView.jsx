@@ -14,10 +14,11 @@ export function CourtStreakMark() {
 const checks = [['body', 'Body', FiMaximize], ['hand', 'Wrist', FiTarget], ['ball', 'Ball', CourtStreakMark], ['floor', 'Floor', FiSmartphone]];
 const titles = { idle: 'Ready when you are.', loading: 'Warming up the camera.', setup: 'Step into the frame.', countdown: 'Hold for Go.', active: 'Stay in your rhythm.', review: 'Checking the last rep.', 'recording-only': 'Count paused. Video rolling.', error: 'Let’s try again.' };
 
-export default function PoundSessionView({ ui, ratio, live, ended, ballLocked, videoRef, overlayRef, resultPanelRef, clip, countedClip, replayChanges, preparing, canSave, savedClip, sharing, shareMessage, filename, originalFilename, versions, onBack, onOpen, onRetrySetup, onManual, onStop, onSaveEvidence, onPrepareVideo, onUseOriginal, onShareVideo }) {
+export default function PoundSessionView({ drillKey='right-hand-pound', ui, ratio, live, ended, ballLocked, videoRef, overlayRef, resultPanelRef, clip, countedClip, replayChanges, preparing, canSave, savedClip, sharing, shareMessage, filename, originalFilename, versions, onBack, onOpen, onRetrySetup, onManual, onStop, onSaveEvidence, onPrepareVideo, onUseOriginal, onShareVideo }) {
+  const crossover=drillKey==='stationary-crossover',drillName=crossover?'Crossovers':'Right-hand pound';
   const [guide, setGuide] = useState('landscape');
   const appearance = useAppearance();
-  const demoVideoUrl = getDrillVideo({ drill_key: 'right-hand-pound' });
+  const demoVideoUrl = getDrillVideo({ drill_key: drillKey });
   const phase = ui.phase;
   const training = ['active', 'review', 'recording-only'].includes(phase);
   const positioning = ['setup', 'countdown'].includes(phase);
@@ -34,7 +35,7 @@ export default function PoundSessionView({ ui, ratio, live, ended, ballLocked, v
         <span className="cs-studio-private" title="Camera video stays on your device"><FiShield/><span className="cs-sr-only">Private camera</span></span>
       </header>
       <div className="cs-studio-heading">
-        <div><p className="cs-studio-eyebrow">AI TRAINING <span/> BALL HANDLING</p><h1>{ended ? phase === 'finished' ? 'Round complete' : 'Your partial round' : 'Right-hand pound'}<span>.</span></h1></div>
+        <div><p className="cs-studio-eyebrow">{crossover?'CROSSOVER TEST 01':'AI TRAINING'} <span/> BALL HANDLING</p><h1>{ended ? phase === 'finished' ? 'Round complete' : 'Your partial round' : drillName}<span>.</span></h1></div>
         <span className="cs-studio-duration"><FiClock/>20 seconds</span>
       </div>
       <ol className="cs-iphone-steps" aria-label="Session progress">{['Set up', 'Train', 'Replay'].map((label, index) => <li key={label} className={index === step ? 'current' : index < step ? 'complete' : ''} aria-current={index === step ? 'step' : undefined}><b>{index < step ? <FiCheck/> : index + 1}</b><span>{label}</span>{index < 2 && <i aria-hidden="true"/>}</li>)}</ol>
@@ -63,15 +64,15 @@ export default function PoundSessionView({ ui, ratio, live, ended, ballLocked, v
           {['idle', 'error'].includes(phase) && <>
             <button type="button" className="cs-iphone-primary" onClick={onOpen}><FiCamera/><span>{phase === 'error' ? 'Try camera again' : 'Enable camera'}</span><FiArrowRight/></button>
             <span className="cs-studio-under-button">Position check → 5-second countdown → Go</span>
-            <p className="cs-setup-before">Once the camera is ready, hold the ball beside your right hip. Wait for Go before dribbling.</p>
-            <details className="cs-studio-visual-help"><summary>Need a visual?<FiChevronDown/></summary><div className="cs-studio-demo-slot"><PoundDemo videoUrl={demoVideoUrl}/></div><p>Right hand. Floor bounce. Back under control.</p></details>
+            <p className="cs-setup-before">{crossover?'Once the camera is ready, show both wrists and hold the ball in either hand. Wait for Go before crossing over.':'Once the camera is ready, hold the ball beside your right hip. Wait for Go before dribbling.'}</p>
+            <details className="cs-studio-visual-help"><summary>{crossover?"What counts as one rep?":"Need a visual?"}<FiChevronDown/></summary>{crossover?<><p>One hand → floor bounce → opposite hand under control.</p><p>Right to left is one rep. Left to right is another. A pass without a bounce or an uncontrolled receipt does not count.</p></>:<><div className="cs-studio-demo-slot"><PoundDemo videoUrl={demoVideoUrl}/></div><p>Right hand. Floor bounce. Back under control.</p></>}</details>
           </>}
           {phase === 'loading' && <><div className="cs-studio-loading-track" role="progressbar" aria-label="Loading camera and tracking"><span/></div><p className="cs-setup-before">Keep this page open. You can position the phone while tracking prepares.</p><button type="button" className="cs-studio-stop" onClick={onStop}>Cancel setup</button></>}
           {positioning && <>
             {phase==='setup'&&<><ol className="cs-setup-stages" aria-label="Camera setup progress">{['Your frame','Your ball','Ready'].map((label,index)=><li key={label} className={index<stageIndex?'complete':index===stageIndex?'current':''} aria-current={index===stageIndex?'step':undefined}><b>{index<stageIndex?<FiCheck/>:index+1}</b>{label}</li>)}</ol><div className="cs-iphone-progress" role="progressbar" aria-label="Position confirmation" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(ui.progress * 100)}><span style={{ width: `${ui.progress * 100}%` }}/></div></>}
             <small>{ui.rechecking ? 'A quick recheck. Your countdown keeps its place.' : phase==='countdown'?'Begin dribbling only after Go.':'Countdown starts automatically when your frame and ball are ready.'}</small>
             {phase==='setup'&&ui.setupSlow&&<div className="cs-setup-recovery" role="status"><strong>Setup taking longer?</strong><p>We haven’t confirmed a reliable view yet. Retry the camera check, or use the timer.</p><button type="button" className="cs-iphone-secondary" onClick={onRetrySetup}><FiRefreshCw/>Retry camera check</button><button type="button" className="cs-studio-text-button" onClick={onManual}>Use the timer instead<FiArrowRight/></button></div>}
-            <details className="cs-setup-details"><summary>Camera check details<FiChevronDown/></summary><div className="cs-iphone-checks" aria-label="Live position checks">{checks.map(([key, label, Icon]) => <div key={key} className={ui.checks[key] ? 'pass' : ''}><Icon/><span>{label}</span><b>{ui.checks[key] ? <FiCheck/> : '…'}</b><span className="cs-sr-only">{ui.checks[key] ? 'ready' : 'checking'}</span></div>)}</div><p>{ui.setupBlocker||'Checks are ready.'}</p><button type="button" className="cs-studio-text-button" onClick={onSaveEvidence}><FiDownload/>Save setup details</button></details>
+            <details className="cs-setup-details"><summary>Camera check details<FiChevronDown/></summary><div className="cs-iphone-checks" aria-label="Live position checks">{checks.map(([key, label, Icon]) => <div key={key} className={ui.checks[key] ? 'pass' : ''}><Icon/><span>{crossover&&key==='hand'?'Both wrists':label}</span><b>{ui.checks[key] ? <FiCheck/> : '…'}</b><span className="cs-sr-only">{ui.checks[key] ? 'ready' : 'checking'}</span></div>)}</div><p>{ui.setupBlocker||'Checks are ready.'}</p><button type="button" className="cs-studio-text-button" onClick={onSaveEvidence}><FiDownload/>Save setup details</button></details>
           </>}
           {phase==='error'&&<button type="button" className="cs-studio-text-button" onClick={onSaveEvidence}><FiDownload/>Save setup details</button>}
           {phase === 'recording-only' && <p className="cs-studio-partial-note"><FiInfo/>Your partial count is frozen. Recording continues until Time.</p>}
@@ -87,7 +88,7 @@ export default function PoundSessionView({ ui, ratio, live, ended, ballLocked, v
       {ended && <section className="cs-iphone-review" ref={resultPanelRef} tabIndex={-1} aria-label="Round score and video replay">
         <div className={`cs-iphone-score ${phase === 'interrupted' ? 'is-partial' : ''}`}>
           <div className="cs-studio-score-art" aria-hidden="true"><CourtStreakMark/></div>
-          <div className="cs-studio-score-intro"><span className="cs-iphone-score-kicker">{phase === 'finished' ? <FiCheckCircle/> : <FiInfo/>}{phase === 'finished' ? 'ROUND COMPLETE' : 'PARTIAL SESSION'}</span><h2>{phase === 'finished' ? 'Work put in.' : 'Keep what you earned.'}</h2><p>Right-hand pound · {phase === 'finished' ? '20 seconds' : 'Incomplete round'}</p></div>
+          <div className="cs-studio-score-intro"><span className="cs-iphone-score-kicker">{phase === 'finished' ? <FiCheckCircle/> : <FiInfo/>}{phase === 'finished' ? 'ROUND COMPLETE' : 'PARTIAL SESSION'}</span><h2>{phase === 'finished' ? 'Work put in.' : 'Keep what you earned.'}</h2><p>{drillName} · {phase === 'finished' ? '20 seconds' : 'Incomplete round'}</p></div>
           <div className="cs-iphone-score-number"><strong>{ui.count}</strong><span>{phase === 'finished' ? 'detected reps' : 'partial reps'}</span></div>
           {phase === 'interrupted' && <div className="cs-studio-interruption"><FiInfo/><p>{ui.message}</p></div>}
         </div>
@@ -108,7 +109,7 @@ export default function PoundSessionView({ ui, ratio, live, ended, ballLocked, v
             <button type="button" className="cs-studio-again" onClick={onOpen}><FiRefreshCw/> Train again<FiArrowRight/></button>
           </aside>
         </div>
-        <div className="cs-studio-review-bottom"><p><FiInfo/> AI preview · Review your count. No XP or Circle score is posted.</p>{(ui.total > 0||ui.evidence.frames?.length>0) && <details className="cs-iphone-evidence"><summary>Session details<FiChevronDown/></summary><div><p>{ui.total>0?`Ball visible in ${Math.round(ui.detected / ui.total * 100)}% of processed frames. Visibility is not an accuracy score.`:'Setup stopped before Go. You can still save the camera-check details.'}</p><p>Save details with the matching video to report a problem. Nothing uploads automatically.</p><button type="button" className="cs-iphone-secondary" onClick={onSaveEvidence}><FiDownload/> Save test details</button></div></details>}</div>
+        <div className="cs-studio-review-bottom"><p><FiInfo/>{crossover?"Crossover test · Review every transfer. No XP or Circle score is posted.":"AI preview · Review your count. No XP or Circle score is posted."}</p>{(ui.total > 0||ui.evidence.frames?.length>0) && <details className="cs-iphone-evidence"><summary>Session details<FiChevronDown/></summary><div><p>{ui.total>0?`Ball visible in ${Math.round(ui.detected / ui.total * 100)}% of processed frames. Visibility is not an accuracy score.`:'Setup stopped before Go. You can still save the camera-check details.'}</p><p>Save details with the matching video to report a problem. Nothing uploads automatically.</p><button type="button" className="cs-iphone-secondary" onClick={onSaveEvidence}><FiDownload/> Save test details</button></div></details>}</div>
       </section>}
       <footer className="cs-studio-footer"><span><FiShield/> Private until you share.</span><details><summary>Build details<FiChevronDown/></summary><p>{versions.check} · {TRACKER_PRESENTATION_REVISION}<br/>{versions.counter} · {versions.camera} · {versions.frame} · {versions.identity}<br/>{ui.fps > 0 ? `${ui.fps.toFixed(1)} tracking frames/sec` : 'Camera is off'}<br/>Records from Go until Time while the camera stays healthy.</p></details></footer>
     </div>

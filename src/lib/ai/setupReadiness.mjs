@@ -10,13 +10,13 @@ export const SETUP_REFRESH_BRIDGE_SECONDS=.65;
 // is never "ready" until fresh body/wrist evidence returns. Active rep checks
 // and pose freshness limits do not use this clock.
 export class SetupReadinessClock {
- constructor(){this.clock=new ReadinessClock();this.lastVerifiedAt=-Infinity;}
+ constructor(options={}){this.options=options;this.clock=new ReadinessClock();this.lastVerifiedAt=-Infinity;}
  reset(now=null,{retainPosition=false}={}){
   this.clock.reset(now);
   if(!retainPosition)this.lastVerifiedAt=-Infinity;
  }
  update(now,checks,speedReady,lockReady){
-  const condition=setupCondition(checks,speedReady,lockReady);
+  const condition=setupCondition(checks,speedReady,lockReady,this.options);
   if(condition.valid)this.lastVerifiedAt=now;
   else if(!checks.refreshingBody||!checks.ball||!speedReady||!lockReady)this.lastVerifiedAt=-Infinity;
   const refreshExpired=checks.refreshingBody===true&&Number.isFinite(this.lastVerifiedAt)&&now-this.lastVerifiedAt>=BALL_LOCK_GRACE_SECONDS;

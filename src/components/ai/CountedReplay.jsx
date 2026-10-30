@@ -15,7 +15,7 @@ export default function CountedReplay({src,changes,events,finalCount,completed})
   const video=player.current;if(!video)return;
   setSelected(event.rep);setAtEnd(false);setMessage('');
   try{
-   video.currentTime=replayStart(event.time,video.duration);
+   video.currentTime=replayStart(event.time,video.duration,event.reviewFrom);
    void video.play().catch(()=>setMessage('Tap Play to review the selected rep.'));
    region.current?.scrollIntoView({block:'start',behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
   }catch{setMessage('Play the replay once, then tap a rep to review it.');}

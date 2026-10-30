@@ -1,7 +1,7 @@
 export const REP_REVIEW_REVISION = 'REPLAY 03';
 
-export function replayStart(time, duration = Infinity) {
-  const start = Math.max(0, Number.isFinite(time) ? time - .35 : 0);
+export function replayStart(time, duration = Infinity, reviewFrom) {
+  const start = Math.max(0, Number.isFinite(reviewFrom) ? Math.min(reviewFrom, Number.isFinite(time)?time:Infinity) : Number.isFinite(time) ? time - .35 : 0);
   return Number.isFinite(duration) ? Math.min(start, Math.max(0, duration - .01)) : start;
 }
 
@@ -18,9 +18,10 @@ export class RoundEvidence {
     this.limit = limit; this.nextFrame = 1; this.droppedFrames = 0;
   }
   record({ capturedAt, sourceVideoTime, inputPhase, phase, roi, balls, person, selected, ms, timings, fps, poseUpdated, poseAge, poseCapturedAt, poseInferenceMs, positionChecks,
-    passStartedAt, ballFrameRefreshed, setupReadiness, counterFrame, proposedCount, count, selectionDecisions, ballProposalMinimumScore, proposals = [], confirmed = [] }) {
+    passStartedAt, ballFrameRefreshed, setupReadiness, counterFrame, proposedCount, count, selectionDecisions, ballProposalMinimumScore, handoffState, proposals = [], confirmed = [] }) {
     const frameId = this.nextFrame++;
     this.frames.push({ frameId, capturedAt, sourceVideoTime, inputPhase, phase, roi: [...roi],
+      ...(handoffState?{handoffState:{...handoffState}}:{}),
       balls: balls.map(copyDetection), person: copyDetection(person), selected: copyDetection(selected),
       ...(selectionDecisions?{selectionDecisions:selectionDecisions.map(d=>({...d}))}:{}),
       ...(Number.isFinite(ballProposalMinimumScore)?{ballProposalMinimumScore}:{}),
@@ -30,7 +31,7 @@ export class RoundEvidence {
     for (const event of confirmed) this.repEvents.push({ rep: event.count,
       time: event.event_timestamp_exact ?? event.event_time_seconds,
       confirmedOnFrame: frameId, confirmedAt: capturedAt, counterFrame: event.event_frame,
-      path: event.validation_path });
+      path: event.validation_path,...(event.from_hand?{fromHand:event.from_hand,toHand:event.to_hand,floorTime:event.floor_contact_time_seconds,reviewFrom:Math.max(0,event.release_time_seconds),controlEvidence:event.control_evidence}:{}) });
   }
   export({ startedAt = null, ...metadata }) {
     return { schema: 'courtstreak-round-evidence-v1', reviewRevision: REP_REVIEW_REVISION, ...metadata,

@@ -21,7 +21,7 @@ test('unknown or missing revisions cannot silently replay COUNT 03',()=>{
 });
 test('live setup and countdown reset share the version-aware counter factory',()=>{
  const text=fs.readFileSync(new URL('../src/components/ai/IPhonePoundTest.jsx',import.meta.url),'utf8');
- assert.match(text,/createPoundTrackingState\(freshFrames\)/);assert.match(text,/resetPoundTrackingCounter\(s\)/);
+ assert.match(text,/createSessionTrackingState\(freshFrames,drillKey\)/);assert.match(text,/resetSessionTrackingCounter\(s\)/);
  const state=createPoundTrackingState();state.counter.update(0,[400,80],720);resetPoundTrackingCounter(state);assert.equal(state.counter.points.length,0);assert.equal(state.counter.lowControlledPounds,true);assert.equal(state.validator.lowControlledPounds,true);
  const c=createPoundCounter('COUNT 05');assert.equal(c.timeWindows,true);assert.equal(c.directionalPeaks,true);
  assert.equal(createPoundCounter('COUNT 03').timeWindows,false);
