@@ -6,6 +6,7 @@ import { BALL_TRACKER_REVISION, EXPERIMENTAL_COUNTER_REVISION, BALL_IDENTITY_REV
 import { resetPoundTrackingIdentity } from '../../lib/ai/poundTrackingState.mjs';
 import {createSessionTrackingState,resetSessionTrackingCounter,updateSessionCounter,sessionROI,CROSSOVER_DRILL_KEY} from '../../lib/ai/sessionTracking.mjs';
 import {CROSSOVER_RULE,CROSSOVER_TEST_REVISION} from '../../lib/ai/crossoverCounter.mjs';
+import {sessionObservationPolicy,poseFrameSkew} from '../../lib/ai/sessionObservationPolicy.mjs';
 import { TRACKER_CHECK_REVISION } from '../../lib/ai/trackerConfiguration.mjs';
 import { TRACKER_BUILD_INFO } from '../../lib/ai/trackerBuildInfo.mjs';
 import { BALL_PROPOSAL_POLICY_REVISION, ballProposalMinimumScore } from '../../lib/ai/ballProposalPolicy.mjs';
@@ -31,6 +32,7 @@ const requestFrontCamera=()=>navigator.mediaDevices.getUserMedia({audio:false,vi
 function machine(freshFrames=true,drillKey='right-hand-pound'){return {...createSessionTrackingState(freshFrames,drillKey),phase:'idle',gate:new CameraPositionGate(),readiness:new SetupReadinessClock({handMode:drillKey===CROSSOVER_DRILL_KEY?'either':'right'}),guidance:new SetupGuidance(),calibration:new FramedCalibration(),evidence:new RoundEvidence(),poseClock:new PoseRefreshClock(),person:null,ball:null,poseAt:-Infinity,times:[],goodSince:null,progress:0,count:0,left:DURATION,countdown:5,fps:0,checks:empty,message:'Set your phone on stable floor-level support, facing you. Fit your head, feet and some floor in the picture.',lastInference:0,started:null,detected:0,total:0};}
 export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-pound',standalone=false}){
  const crossover=drillKey===CROSSOVER_DRILL_KEY,drillName=crossover?'Crossovers':'Right-Hand Pound',fileKey=crossover?'crossovers':'right-hand-pound',setupOptions={handMode:crossover?'either':'right'},cameraOptions={handMode:crossover?'both':'right'};
+ const observationPolicy=sessionObservationPolicy(drillKey,freshFrames);
  const navigate=useNavigate(),video=useRef(null),overlay=useRef(null),frame=useRef(null),m=useRef(null),detector=useRef(null),stream=useRef(null),raf=useRef(0),mounted=useRef(true),token=useRef(0),wake=useRef(null),audio=useRef(null);
  if(!m.current)m.current=machine(freshFrames,drillKey);
  const [ui,setUI]=useState({...m.current}),[ratio,setRatio]=useState(16/9);
@@ -123,19 +125,19 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
   s.sized=true;
   const c=f.getContext('2d');c.save();c.translate(w,0);c.scale(-1,1);c.drawImage(v,0,0,w,h);c.restore();
   try{
-   const inputPhase=s.phase,bodyWorker=d.poseWorker;
+   const inputPhase=s.phase,bodyWorker=d.poseWorker,poseInputVideoTime=s.videoTime;
    let poseUpdated=false;
    const acceptBody=()=>{
     const body=bodyWorker?.latest;
-    if(body&&body.id!==s.poseResultId){s.poseResultId=body.id;s.person=physicalPoseSides(body.person,true);s.poseAt=body.capturedAt;s.poseMs=body.ms;s.poseClock.completed(body.completedAt);poseUpdated=true;}
+    if(body&&body.id!==s.poseResultId){s.poseResultId=body.id;s.person=physicalPoseSides(body.person,true);s.poseAt=body.capturedAt;s.poseVideoTime=body.sourceVideoTime;s.poseMs=body.ms;s.poseClock.completed(body.completedAt);poseUpdated=true;}
    };
    acceptBody();
    if(bodyWorker?.error){interrupt(bodyWorker.error.message,{preserveVideo:true});if(s.phase==='setup')fail(bodyWorker.error.message);return;}
-   const withPose=!bodyWorker&&s.poseClock.shouldRun(now,Number.isFinite(s.poseAt)),roi=['active','review'].includes(s.phase)?sessionROI(s,s.person,w,h):[0,0,w,h];
+   const withPose=!bodyWorker&&(observationPolicy.poseEveryPass||s.poseClock.shouldRun(now,Number.isFinite(s.poseAt))),roi=['active','review'].includes(s.phase)?sessionROI(s,s.person,w,h):[0,0,w,h];
    // Even a "no person" result gets the normal resting interval; looking for
    // someone outside the camera must not turn into continuous body inference.
    if(bodyWorker&&s.poseClock.shouldRun(now,!!bodyWorker.latest))bodyWorker.request(f,{capturedAt:now,sourceVideoTime:s.videoTime});
-   const result=await d.detect(f,roi,withPose,freshFrames?{minimumBallScore:ballProposalMinimumScore({phase:s.phase,calibrated:s.tracker.ready(),weakContinuity:s.tracker.weakContinuity}),refreshBallFrame:()=>{
+   const result=await d.detect(f,roi,withPose,freshFrames?{minimumBallScore:ballProposalMinimumScore({phase:s.phase,calibrated:s.tracker.ready(),weakContinuity:s.tracker.weakContinuity}),refreshBallFrame:observationPolicy.refreshBallFrame?()=>{
     if(!mounted.current||currentToken!==token.current||s!==m.current||!stream.current||['error','interrupted','finished','recording-only'].includes(s.phase))return null;
     if(v.readyState<2||v.paused)return null;
     if(v.videoWidth/v.videoHeight!==rawRatio){toSetup('Camera orientation changed. Stay in view while we check your new framing.');return null;}
@@ -144,7 +146,7 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
     const capturedAt=performance.now()/1000,sourceVideoTime=v.currentTime;
     c.save();c.translate(w,0);c.scale(-1,1);c.drawImage(v,0,0,w,h);c.restore();
     return {frame:f,capturedAt,sourceVideoTime};
-   }}:undefined);
+   }:undefined}:undefined);
    if(!mounted.current||currentToken!==token.current)return;
    if(s!==m.current){raf.current=requestAnimationFrame(loop);return;}
    if(['error','interrupted','finished','recording-only'].includes(s.phase))return;
@@ -153,7 +155,7 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
    const completed=performance.now()/1000;s.lastInference=completed;
    s.times.push(completed);s.times=s.times.filter(t=>completed-t<3);
    s.fps=s.times.length>1?(s.times.length-1)/(completed-s.times[0]):0;
-   if(withPose){s.person=physicalPoseSides(result.person,true);s.poseAt=passStartedAt;s.poseClock.completed(completed);poseUpdated=true;}
+   if(withPose){s.person=physicalPoseSides(result.person,true);s.poseAt=passStartedAt;s.poseVideoTime=poseInputVideoTime;const pt=result.timings?.pose;s.poseMs=pt?pt.preprocessMs+pt.inferenceMs+pt.decodeMs:null;s.poseClock.completed(completed);poseUpdated=true;}
    acceptBody();
    const framePerson=poseForFrame(s.person,s.poseAt,now,completed);
    const phase=['active','review'].includes(s.phase)?'drill':s.phase;
@@ -167,7 +169,7 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
    s.checks=checks;
    const speedReady=s.times.length>=16&&completed-s.times[0]>=1.5&&s.fps>=10&&completed-passStartedAt<.35;
    let frameProposals=[],frameConfirmed=[],setupReadiness;
-   const recordEvidence=()=>s.evidence.record({capturedAt:now,sourceVideoTime:s.videoTime,inputPhase,phase:s.phase,roi,balls:result.balls,person:framePerson,selected:s.ball,selectionDecisions:s.tracker.decisions,ballProposalMinimumScore:result.ballProposalMinimumScore,ms:result.ms,timings:result.timings,fps:s.fps,poseUpdated,poseAge:completed-s.poseAt,poseCapturedAt:s.poseAt,poseInferenceMs:s.poseMs??null,passStartedAt,ballFrameRefreshed:!!result.ballFrameRefreshed,positionChecks:checks,setupReadiness,counterFrame:s.counter.points.at(-1)?.frame??null,proposedCount:s.counter.count,count:s.count,proposals:frameProposals,confirmed:frameConfirmed,...(crossover?{handoffState:s.counter.snapshot()}:{} )});
+   const recordEvidence=()=>s.evidence.record({capturedAt:now,sourceVideoTime:s.videoTime,inputPhase,phase:s.phase,roi,balls:result.balls,person:framePerson,selected:s.ball,selectionDecisions:s.tracker.decisions,ballProposalMinimumScore:result.ballProposalMinimumScore,ms:result.ms,timings:result.timings,fps:s.fps,poseUpdated,poseAge:completed-s.poseAt,poseCapturedAt:s.poseAt,poseSourceVideoTime:s.poseVideoTime,poseFrameSkewSeconds:poseFrameSkew(now,s.poseAt),poseInferenceMs:s.poseMs??null,passStartedAt,ballFrameRefreshed:!!result.ballFrameRefreshed,positionChecks:checks,setupReadiness,counterFrame:s.counter.points.at(-1)?.frame??null,proposedCount:s.counter.count,count:s.count,proposals:frameProposals,confirmed:frameConfirmed,...(crossover?{handoffState:s.counter.snapshot()}:{} )});
    if(s.phase==='setup'){
     const readiness=s.readiness.update(now,checks,speedReady,s.tracker.ready()),condition=readiness.condition;
     setupReadiness={speedReady,ballLockReady:s.tracker.ready(),conditionValid:condition.valid,refreshBridged:readiness.refreshBridged,elapsed:readiness.elapsed,reset:readiness.reset};
@@ -236,7 +238,7 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
    if(id!==token.current||!mounted.current)return;
    m.current.cameraReady=true;setRatio(video.current.videoWidth/video.current.videoHeight||16/9);m.current.message='Your camera is on. Preparing tracking; first use can take a moment.';publish(true);
    if(detector.current?.poseWorker?.error){await detector.current.close();detector.current=null;}
-   if(!detector.current){const loaded=await loadDetector(import.meta.env.BASE_URL,()=>{if(id===token.current){m.current.message='Your camera is on. Preparing tracking; first use can take a moment.';publish();}},{asyncPose:freshFrames});if(id!==token.current||!mounted.current){await loaded.close();return;}detector.current=loaded;}
+   if(!detector.current){const loaded=await loadDetector(import.meta.env.BASE_URL,()=>{if(id===token.current){m.current.message='Your camera is on. Preparing tracking; first use can take a moment.';publish();}},{asyncPose:observationPolicy.asyncPose});if(id!==token.current||!mounted.current){await loaded.close();return;}detector.current=loaded;}
    if(id!==token.current||!mounted.current)return;
    await detector.current.idle();
    if(id!==token.current||!mounted.current)return;
@@ -282,13 +284,15 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
   finally{if(videoExport.current===controller)videoExport.current=null;}
  }
  useEffect(()=>{
-  if(ended&&clip.status==='ready'&&countedClip.status==='idle')void prepareCountedVideo();
- },[ended,clip.status,countedClip.status]);
+  if(ended&&clip.status==='ready'&&countedClip.status==='idle'){
+   if(crossover)useOriginalVideo();else void prepareCountedVideo();
+  }
+ },[ended,clip.status,countedClip.status,crossover]);
  function useOriginalVideo(){videoExport.current?.abort();videoExport.current=null;setCountedClip({...emptyCountedClip,status:'original'});}
  function saveEvidence(){
   const s=m.current;
   const data=s.evidence.export({startedAt:s.started,baseSourceCommit:TRACKER_BUILD_INFO.sourceCommit,buildInfo:TRACKER_BUILD_INFO,trackerCheckRevision:crossover?CROSSOVER_TEST_REVISION:TRACKER_CHECK_REVISION,trackerConfiguration:s.configuration,trackerRevision:s.configuration.counterRevision,...(s.configuration.identityRevision?{ballIdentityRevision:s.configuration.identityRevision}:{}),cameraRevision:CAMERA_SETUP_REVISION,readinessRevision:CAMERA_REVIEW_REVISION,detectorInputMode:detector.current?.liveInputMode??'legacy',controlRevision:CONTROL_REVISION,poseScheduleRevision:POSE_SCHEDULE_REVISION,poseExecutionRevision:detector.current?.poseWorker?POSE_EXECUTION_REVISION:'sequential',poseMode:detector.current?.poseMode??'sequential',liveFrameRevision:freshFrames?LIVE_FRAME_REVISION:'FRAME 00',poseSideConvention:'Original physical person; detector image is mirrored',
-   drillKey,...(crossover?{repDefinition:CROSSOVER_RULE}:{}),timerSeconds:DURATION,phase:s.phase,message:s.message,displayedCount:s.count,presentationRevision:TRACKER_PRESENTATION_REVISION,setupGuidanceRevision:SETUP_GUIDANCE_REVISION,setupTimingRevision:SETUP_TIMING_REVISION,setupStartedAt:s.setupStartedAt??null,setupBlocker:s.setupBlocker??null,latestPositionChecks:s.checks,
+   drillKey,...(crossover?{repDefinition:CROSSOVER_RULE}:{}),observationPolicy,poseProvider:detector.current?.poseWorker?'wasm':detector.current?.provider,timerSeconds:DURATION,phase:s.phase,message:s.message,displayedCount:s.count,presentationRevision:TRACKER_PRESENTATION_REVISION,setupGuidanceRevision:SETUP_GUIDANCE_REVISION,setupTimingRevision:SETUP_TIMING_REVISION,setupStartedAt:s.setupStartedAt??null,setupBlocker:s.setupBlocker??null,latestPositionChecks:s.checks,
    framesWithSelectedBall:s.detected,trainingFrames:s.total,ballCoverage:s.total?s.detected/s.total:null,
    provider:detector.current?.provider,detectorInputRevision:detector.current?.inputRevision,ballProposalPolicyRevision:BALL_PROPOSAL_POLICY_REVISION,detectorResources:detector.current?.resourceSummary,modelManifest:detector.current?.modelManifest,runtime:{userAgent:navigator.userAgent,hardwareConcurrency:navigator.hardwareConcurrency??null},cameraSettingsAtStart:s.cameraSettingsAtStart,frameSize:[frame.current?.width,frame.current?.height],
    recordingAvailable:!!clip.blob,videoRevision:VIDEO_OVERLAY_REVISION,recordingRevision:RECORDING_TAIL_REVISION,countingStoppedAt:s.countingStoppedAt??null,recordedUntil:s.recordedUntil??null,interruptionReason:s.interruptionReason??null,videoExport:countedClip.exportInfo??null,countDisplayStartedAt:countTimeline.current.startedAt,

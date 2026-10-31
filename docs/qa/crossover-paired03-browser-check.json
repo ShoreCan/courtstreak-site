@@ -1,0 +1,433 @@
+{
+  "policy": {
+    "revision": "PAIRED 01",
+    "asyncPose": false,
+    "poseEveryPass": true,
+    "refreshBallFrame": false
+  },
+  "provider": "wasm",
+  "poseMode": "sequential",
+  "pairedCalls": 18,
+  "withBody": 18,
+  "bothWrists": 18,
+  "betweenModelRefreshes": 0,
+  "rows": [
+    {
+      "round": 0,
+      "image": 0,
+      "person": true,
+      "bothWrists": true,
+      "balls": 2,
+      "ms": 562.0999999996275,
+      "timings": {
+        "pose": {
+          "preprocessMs": 20.700000000186265,
+          "inferenceMs": 364.20000000018626,
+          "decodeMs": 1.099999999627471
+        },
+        "ball": {
+          "preprocessMs": 3.5,
+          "inferenceMs": 172.20000000018626,
+          "decodeMs": 0.19999999972060323
+        }
+      },
+      "refreshed": false
+    },
+    {
+      "round": 0,
+      "image": 1,
+      "person": true,
+      "bothWrists": true,
+      "balls": 2,
+      "ms": 547.1000000000931,
+      "timings": {
+        "pose": {
+          "preprocessMs": 10.700000000186265,
+          "inferenceMs": 358.10000000009313,
+          "decodeMs": 0.599999999627471
+        },
+        "ball": {
+          "preprocessMs": 2.6000000000931323,
+          "inferenceMs": 175,
+          "decodeMs": 0.10000000009313226
+        }
+      },
+      "refreshed": false
+    },
+    {
+      "round": 0,
+      "image": 2,
+      "person": true,
+      "bothWrists": true,
+      "balls": 4,
+      "ms": 538.5999999996275,
+      "timings": {
+        "pose": {
+          "preprocessMs": 11.099999999627471,
+          "inferenceMs": 349.5,
+          "decodeMs": 0.10000000009313226
+        },
+        "ball": {
+          "preprocessMs": 2.8999999999068677,
+          "inferenceMs": 174.90000000037253,
+          "decodeMs": 0
+        }
+      },
+      "refreshed": false
+    },
+    {
+      "round": 0,
+      "image": 3,
+      "person": true,
+      "bothWrists": true,
+      "balls": 2,
+      "ms": 519.9000000003725,
+      "timings": {
+        "pose": {
+          "preprocessMs": 11.300000000279397,
+          "inferenceMs": 341.10000000009313,
+          "decodeMs": 0.8999999999068677
+        },
+        "ball": {
+          "preprocessMs": 2.3999999999068677,
+          "inferenceMs": 164.20000000018626,
+          "decodeMs": 0
+        }
+      },
+      "refreshed": false
+    },
+    {
+      "round": 0,
+      "image": 4,
+      "person": true,
+      "bothWrists": true,
+      "balls": 2,
+      "ms": 534.7999999998137,
+      "timings": {
+        "pose": {
+          "preprocessMs": 9.899999999906868,
+          "inferenceMs": 340,
+          "decodeMs": 2
+        },
+        "ball": {
+          "preprocessMs": 4.7000000001862645,
+          "inferenceMs": 178.10000000009313,
+          "decodeMs": 0.09999999962747097
+        }
+      },
+      "refreshed": false
+    },
+    {
+      "round": 0,
+      "image": 5,
+      "person": true,
+      "bothWrists": true,
+      "balls": 1,
+      "ms": 510.29999999981374,
+      "timings": {
+        "pose": {
+          "preprocessMs": 11.700000000186265,
+          "inferenceMs": 329.89999999990687,
+          "decodeMs": 0
+        },
+        "ball": {
+          "preprocessMs": 2.1000000000931323,
+          "inferenceMs": 166.59999999962747,
+          "decodeMs": 0
+        }
+      },
+      "refreshed": false
+    },
+    {
+      "round": 1,
+      "image": 0,
+      "person": true,
+      "bothWrists": true,
+      "balls": 2,
+      "ms": 503,
+      "timings": {
+        "pose": {
+          "preprocessMs": 3.7999999998137355,
+          "inferenceMs": 334.8000000002794,
+          "decodeMs": 0.10000000009313226
+        },
+        "ball": {
+          "preprocessMs": 2.1999999997206032,
+          "inferenceMs": 162.10000000009313,
+          "decodeMs": 0
+        }
+      },
+      "refreshed": false
+    },
+    {
+      "round": 1,
+      "image": 1,
+      "person": true,
+      "bothWrists": true,
+      "balls": 2,
+      "ms": 496.29999999981374,
+      "timings": {
+        "pose": {
+          "preprocessMs": 3.5,
+          "inferenceMs": 329.29999999981374,
+          "decodeMs": 0.10000000009313226
+        },
+        "ball": {
+          "preprocessMs": 2.2000000001862645,
+          "inferenceMs": 161.09999999962747,
+          "decodeMs": 0
+        }
+      },
+      "refreshed": false
+    },
+    {
+      "round": 1,
+      "image": 2,
+      "person": true,
+      "bothWrists": true,
+      "balls": 4,
+      "ms": 516.1000000000931,
+      "timings": {
+        "pose": {
+          "preprocessMs": 3.7000000001862645,
+          "inferenceMs": 338,
+          "decodeMs": 0.09999999962747097
+        },
+        "ball": {
+          "preprocessMs": 2,
+          "inferenceMs": 172.3000000002794,
+          "decodeMs": 0
+        }
+      },
+      "refreshed": false
+    },
+    {
+      "round": 1,
+      "image": 3,
+      "person": true,
+      "bothWrists": true,
+      "balls": 2,
+      "ms": 507.39999999990687,
+      "timings": {
+        "pose": {
+          "preprocessMs": 3.7999999998137355,
+          "inferenceMs": 336,
+          "decodeMs": 0
+        },
+        "ball": {
+          "preprocessMs": 2.1000000000931323,
+          "inferenceMs": 165.5,
+          "decodeMs": 0
+        }
+      },
+      "refreshed": false
+    },
+    {
+      "round": 1,
+      "image": 4,
+      "person": true,
+      "bothWrists": true,
+      "balls": 2,
+      "ms": 544.6999999997206,
+      "timings": {
+        "pose": {
+          "preprocessMs": 3.5,
+          "inferenceMs": 368.59999999962747,
+          "decodeMs": 0
+        },
+        "ball": {
+          "preprocessMs": 2.8000000002793968,
+          "inferenceMs": 169.6999999997206,
+          "decodeMs": 0.10000000009313226
+        }
+      },
+      "refreshed": false
+    },
+    {
+      "round": 1,
+      "image": 5,
+      "person": true,
+      "bothWrists": true,
+      "balls": 1,
+      "ms": 499.10000000009313,
+      "timings": {
+        "pose": {
+          "preprocessMs": 3.3999999999068677,
+          "inferenceMs": 332.89999999990687,
+          "decodeMs": 0
+        },
+        "ball": {
+          "preprocessMs": 2.1999999997206032,
+          "inferenceMs": 160.3000000002794,
+          "decodeMs": 0.10000000009313226
+        }
+      },
+      "refreshed": false
+    },
+    {
+      "round": 2,
+      "image": 0,
+      "person": true,
+      "bothWrists": true,
+      "balls": 2,
+      "ms": 500.5,
+      "timings": {
+        "pose": {
+          "preprocessMs": 4,
+          "inferenceMs": 327.70000000018626,
+          "decodeMs": 0.20000000018626451
+        },
+        "ball": {
+          "preprocessMs": 2.2999999998137355,
+          "inferenceMs": 166.29999999981374,
+          "decodeMs": 0
+        }
+      },
+      "refreshed": false
+    },
+    {
+      "round": 2,
+      "image": 1,
+      "person": true,
+      "bothWrists": true,
+      "balls": 2,
+      "ms": 515,
+      "timings": {
+        "pose": {
+          "preprocessMs": 3.6000000000931323,
+          "inferenceMs": 343.1999999997206,
+          "decodeMs": 0
+        },
+        "ball": {
+          "preprocessMs": 2.3000000002793968,
+          "inferenceMs": 165.79999999981374,
+          "decodeMs": 0.10000000009313226
+        }
+      },
+      "refreshed": false
+    },
+    {
+      "round": 2,
+      "image": 2,
+      "person": true,
+      "bothWrists": true,
+      "balls": 4,
+      "ms": 502.39999999990687,
+      "timings": {
+        "pose": {
+          "preprocessMs": 3.5,
+          "inferenceMs": 335.10000000009313,
+          "decodeMs": 0
+        },
+        "ball": {
+          "preprocessMs": 2,
+          "inferenceMs": 161.59999999962747,
+          "decodeMs": 0.10000000009313226
+        }
+      },
+      "refreshed": false
+    },
+    {
+      "round": 2,
+      "image": 3,
+      "person": true,
+      "bothWrists": true,
+      "balls": 2,
+      "ms": 505.89999999990687,
+      "timings": {
+        "pose": {
+          "preprocessMs": 3.3999999999068677,
+          "inferenceMs": 335,
+          "decodeMs": 0
+        },
+        "ball": {
+          "preprocessMs": 2,
+          "inferenceMs": 165.39999999990687,
+          "decodeMs": 0.10000000009313226
+        }
+      },
+      "refreshed": false
+    },
+    {
+      "round": 2,
+      "image": 4,
+      "person": true,
+      "bothWrists": true,
+      "balls": 2,
+      "ms": 505.8000000002794,
+      "timings": {
+        "pose": {
+          "preprocessMs": 3.5,
+          "inferenceMs": 333.89999999990687,
+          "decodeMs": 0.10000000009313226
+        },
+        "ball": {
+          "preprocessMs": 2,
+          "inferenceMs": 166.3000000002794,
+          "decodeMs": 0
+        }
+      },
+      "refreshed": false
+    },
+    {
+      "round": 2,
+      "image": 5,
+      "person": true,
+      "bothWrists": true,
+      "balls": 1,
+      "ms": 509,
+      "timings": {
+        "pose": {
+          "preprocessMs": 3.6000000000931323,
+          "inferenceMs": 334.10000000009313,
+          "decodeMs": 0
+        },
+        "ball": {
+          "preprocessMs": 2.2999999998137355,
+          "inferenceMs": 169,
+          "decodeMs": 0
+        }
+      },
+      "refreshed": false
+    }
+  ],
+  "physicalIphoneSpeedMeasured": false,
+  "liveAccuracyMeasured": false,
+  "scope": "Browser execution smoke test on six saved images; not a live GPU or iPhone benchmark.",
+  "modelManifest": {
+    "version": 1,
+    "counter_baseline": "0.7.8",
+    "ball": {
+      "file": "courtstreak-ball.onnx",
+      "size": 512,
+      "output_shape": [
+        1,
+        300,
+        6
+      ],
+      "source_weights": "yolo26n.pt",
+      "source_sha256": "9b09cc8bf347f0fc8a5f7657480587f25db09b34bf33b0652110fb03a8ad4fef",
+      "sha256": "6d6490cbaa8fc24cbd05f6db88274f7db6b4a180100dbedb5876e7bed7d80820"
+    },
+    "pose": {
+      "file": "courtstreak-pose.onnx",
+      "size": 640,
+      "output_shape": [
+        1,
+        56,
+        8400
+      ],
+      "source_weights": "yolo11n-pose.pt",
+      "source_sha256": "869e83fcdffdc7371fa4e34cd8e51c838cc729571d1635e5141e3075e9319dc0",
+      "sha256": "f0fe983de02d0dfb734c52ca21c539bffdcc9c76a86dc5457e16c262d84e6022"
+    }
+  },
+  "moduleSha256": {
+    "sessionObservationPolicy.mjs": "f73084d71ce61743e868b9dda9a7d73ed3a56d988ab579314a1fbdaf02199850",
+    "iphoneDetector.mjs": "f3f171ac978390da0129e7a0e61081117c84ffa5a32e45eb2020d73c53fdc3b6",
+    "detectionPass.mjs": "4557b87950b590803451bf28341842326fc6822660f989abf239a9bd5d5f2700",
+    "detectorExecution.mjs": "cf6d973cd1b9ed0f07c53b5176136801a8961085a7e3095f12ed7ed0fa0f81a4",
+    "detectorInput.mjs": "4cf816ca5032fea1e9902bc2bc91d918a6d390800865d271252024e789f71132",
+    "detectorOutput.mjs": "7dde2b6834d70fb0982d83779a6f8510b89dc42554cd113e8301d7d313971ffc"
+  }
+}
