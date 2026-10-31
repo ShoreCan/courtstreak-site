@@ -5,7 +5,7 @@ import { loadDetector } from '../../lib/ai/iphoneDetector.mjs';
 import { BALL_TRACKER_REVISION, EXPERIMENTAL_COUNTER_REVISION, BALL_IDENTITY_REVISION, geometry } from '../../lib/ai/poundCore.mjs';
 import { resetPoundTrackingIdentity } from '../../lib/ai/poundTrackingState.mjs';
 import {createSessionTrackingState,resetSessionTrackingCounter,updateSessionCounter,sessionROI,CROSSOVER_DRILL_KEY} from '../../lib/ai/sessionTracking.mjs';
-import {CROSSOVER_RULE} from '../../lib/ai/crossoverCounter.mjs';
+import {CROSSOVER_RULE,CROSSOVER_TEST_REVISION} from '../../lib/ai/crossoverCounter.mjs';
 import { TRACKER_CHECK_REVISION } from '../../lib/ai/trackerConfiguration.mjs';
 import { TRACKER_BUILD_INFO } from '../../lib/ai/trackerBuildInfo.mjs';
 import { BALL_PROPOSAL_POLICY_REVISION, ballProposalMinimumScore } from '../../lib/ai/ballProposalPolicy.mjs';
@@ -287,7 +287,7 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
  function useOriginalVideo(){videoExport.current?.abort();videoExport.current=null;setCountedClip({...emptyCountedClip,status:'original'});}
  function saveEvidence(){
   const s=m.current;
-  const data=s.evidence.export({startedAt:s.started,baseSourceCommit:TRACKER_BUILD_INFO.sourceCommit,buildInfo:TRACKER_BUILD_INFO,trackerCheckRevision:TRACKER_CHECK_REVISION,trackerConfiguration:s.configuration,trackerRevision:s.configuration.counterRevision,...(s.configuration.identityRevision?{ballIdentityRevision:s.configuration.identityRevision}:{}),cameraRevision:CAMERA_SETUP_REVISION,readinessRevision:CAMERA_REVIEW_REVISION,detectorInputMode:detector.current?.liveInputMode??'legacy',controlRevision:CONTROL_REVISION,poseScheduleRevision:POSE_SCHEDULE_REVISION,poseExecutionRevision:detector.current?.poseWorker?POSE_EXECUTION_REVISION:'sequential',poseMode:detector.current?.poseMode??'sequential',liveFrameRevision:freshFrames?LIVE_FRAME_REVISION:'FRAME 00',poseSideConvention:'Original physical person; detector image is mirrored',
+  const data=s.evidence.export({startedAt:s.started,baseSourceCommit:TRACKER_BUILD_INFO.sourceCommit,buildInfo:TRACKER_BUILD_INFO,trackerCheckRevision:crossover?CROSSOVER_TEST_REVISION:TRACKER_CHECK_REVISION,trackerConfiguration:s.configuration,trackerRevision:s.configuration.counterRevision,...(s.configuration.identityRevision?{ballIdentityRevision:s.configuration.identityRevision}:{}),cameraRevision:CAMERA_SETUP_REVISION,readinessRevision:CAMERA_REVIEW_REVISION,detectorInputMode:detector.current?.liveInputMode??'legacy',controlRevision:CONTROL_REVISION,poseScheduleRevision:POSE_SCHEDULE_REVISION,poseExecutionRevision:detector.current?.poseWorker?POSE_EXECUTION_REVISION:'sequential',poseMode:detector.current?.poseMode??'sequential',liveFrameRevision:freshFrames?LIVE_FRAME_REVISION:'FRAME 00',poseSideConvention:'Original physical person; detector image is mirrored',
    drillKey,...(crossover?{repDefinition:CROSSOVER_RULE}:{}),timerSeconds:DURATION,phase:s.phase,message:s.message,displayedCount:s.count,presentationRevision:TRACKER_PRESENTATION_REVISION,setupGuidanceRevision:SETUP_GUIDANCE_REVISION,setupTimingRevision:SETUP_TIMING_REVISION,setupStartedAt:s.setupStartedAt??null,setupBlocker:s.setupBlocker??null,latestPositionChecks:s.checks,
    framesWithSelectedBall:s.detected,trainingFrames:s.total,ballCoverage:s.total?s.detected/s.total:null,
    provider:detector.current?.provider,detectorInputRevision:detector.current?.inputRevision,ballProposalPolicyRevision:BALL_PROPOSAL_POLICY_REVISION,detectorResources:detector.current?.resourceSummary,modelManifest:detector.current?.modelManifest,runtime:{userAgent:navigator.userAgent,hardwareConcurrency:navigator.hardwareConcurrency??null},cameraSettingsAtStart:s.cameraSettingsAtStart,frameSize:[frame.current?.width,frame.current?.height],
@@ -319,7 +319,7 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
   clip={clip} countedClip={countedClip} replayChanges={replayChanges} preparing={preparing}
   canSave={canSave} savedClip={savedClip} sharing={sharing} shareMessage={shareMessage}
   filename={filename} originalFilename={originalFilename}
-  versions={{counter:m.current.configuration.counterRevision,camera:CAMERA_SETUP_REVISION,frame:LIVE_FRAME_REVISION,identity:m.current.configuration.identityRevision??BALL_IDENTITY_REVISION,check:crossover?'CROSSOVER TEST 01':TRACKER_CHECK_REVISION}}
+  versions={{counter:m.current.configuration.counterRevision,camera:CAMERA_SETUP_REVISION,frame:LIVE_FRAME_REVISION,identity:m.current.configuration.identityRevision??BALL_IDENTITY_REVISION,check:crossover?CROSSOVER_TEST_REVISION:TRACKER_CHECK_REVISION}}
   onBack={()=>navigate(standalone?'/':`/lab/drill/${drillKey}`)} onOpen={open}
   onRetrySetup={()=>open({restart:true})} onManual={()=>navigate(standalone?`/preview/lab/drill/${drillKey}`:`/lab/drill/${drillKey}/session`)}
   onStop={()=>{token.current++;cancelAnimationFrame(raf.current);m.current.phase='interrupted';m.current.message='Attempt stopped. Recheck your position when ready.';stopCamera();publish();}}

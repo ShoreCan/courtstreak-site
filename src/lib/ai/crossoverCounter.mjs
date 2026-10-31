@@ -1,4 +1,5 @@
-export const CROSSOVER_COUNTER_REVISION='CROSS 01';
+export const CROSSOVER_COUNTER_REVISION='CROSS 02';
+export const CROSSOVER_TEST_REVISION='CROSSOVER TEST 02';
 export const CROSSOVER_RULE='controlled hand → observed floor bounce → opposite hand under control';
 const distance=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
 const opposite=hand=>hand==='right'?'left':'right';
@@ -17,13 +18,13 @@ function observation(frame,measurement,person,time){
 // This pilot follows possession, a floor turn and the receiving hand. It does
 // not count midline crossings, use knee height, or infer a bounce from a pass.
 export class CrossoverCounter {
- constructor(){this.frame=0;this.count=0;this.points=[];this.context=[];this.confirmed=[];this.rejected=[];this.pending=[];this.held=null;this.flight=null;this.proposalsThisFrame=[];this.lastDecision='waiting_for_hand';}
+ constructor({legacy=false}={}){this.legacy=legacy;this.frame=0;this.count=0;this.points=[];this.context=[];this.confirmed=[];this.rejected=[];this.pending=[];this.held=null;this.flight=null;this.proposalsThisFrame=[];this.lastDecision='waiting_for_hand';}
  reject(reason,row){
   if(this.flight)this.rejected.push({from_hand:this.flight.source.owner.hand,event_frame:row.frame,event_time_seconds:row.time,control_status:reason,floor_contact_time_seconds:this.flight.floor?.time??null});
   this.flight=null;this.held=null;this.pending=[];this.lastDecision=reason;
  }
  begin(source,row){
-  this.flight={source,last:source,peak:source,floor:null,receiving:[],lastSeen:source.time};
+  this.flight={source,last:source,peak:source,floor:null,receiving:[],sourceReturns:[],lastSeen:source.time};
   this.pending=[{from_hand:source.owner.hand,started_at:source.time}];
   this.lastDecision='following_release';
  }
@@ -41,7 +42,11 @@ export class CrossoverCounter {
    return [];
   }
   if(!this.flight){
-   if(row.owner){this.held=row;this.lastDecision='hand_controlled';return [];}
+   // The free hand can be nearer during the downward crossing. Retain the
+   // releasing hand until a bounce and controlled return verify a transfer.
+   const descendingChange=!this.legacy&&this.held&&row.owner&&row.owner.hand!==this.held.owner.hand&&
+    now-this.held.time<=.65&&row.measurement[1]>=this.held.measurement[1]-this.held.measurement[2]*.1;
+   if(row.owner&&!descendingChange){this.held=row;this.lastDecision='hand_controlled';return [];}
    if(!this.held||now-this.held.time>.65){this.held=null;return [];}
    const d=this.held.measurement[2];
    if(row.measurement[1]-this.held.measurement[1]<d*.2)return [];
@@ -64,28 +69,34 @@ export class CrossoverCounter {
     this.proposalsThisFrame.push({event_frame:peak.frame,event_timestamp_exact:peak.time,event_time_seconds:peak.time,from_hand:flight.source.owner.hand,validation_path:'crossover_floor_turn',bottom_center_y:peak.measurement[1],ball_scale_pixels:scale});
    }
   }
+  let secondBounce=false;
   if(flight.floor){
    flight.returnHigh=Math.min(flight.returnHigh??row.measurement[1],row.measurement[1]);
    const bottom=row.measurement[1]+row.measurement[2]*.5;
    // A second trip to the floor without a verified receipt is a loose ball.
-   if(row.feetY!==null&&row.measurement[1]-flight.returnHigh>=d*.5&&bottom>=row.feetY-d*.65){
+   secondBounce=row.feetY!==null&&row.measurement[1]-flight.returnHigh>=d*.5&&bottom>=row.feetY-d*.65;
+   if(this.legacy&&secondBounce){
     this.reject('rejected_second_bounce_without_receipt',row);this.held=row.owner?row:null;return [];
    }
   }
   const sourceHand=flight.source.owner.hand;
   if(row.owner?.hand===sourceHand){
    // Wrist proximity at the beginning of a release is not a completed return.
-   if(flight.floor){this.reject('rejected_same_hand_return',row);this.held=row;return [];}
+   if(flight.floor){
+    if(this.legacy){this.reject('rejected_same_hand_return',row);this.held=row;return [];}
+    flight.sourceReturns.push(row);flight.sourceReturns=flight.sourceReturns.slice(-8);
+   }
    if(now-flight.source.time<.2){flight.last=row;return [];}
   }
   if(row.owner?.hand===opposite(sourceHand)){
-   if(!flight.floor){this.reject('rejected_no_floor_bounce',row);this.held=row;return [];}
-   flight.receiving.push(row);flight.receiving=flight.receiving.slice(-8);
+   if(!flight.floor&&this.legacy){this.reject('rejected_no_floor_bounce',row);this.held=row;return [];}
+   if(flight.floor){flight.receiving.push(row);flight.receiving=flight.receiving.slice(-8);}
   }
-  const best=flight.receiving.filter(r=>r.owner.distance<=1.15).sort((a,b)=>a.owner.distance-b.owner.distance)[0];
-  let control=null;
-  if(best){
-   const controlled=flight.receiving.some(prior=>{
+  const receipt=samples=>{
+   const best=samples.filter(r=>r.owner.distance<=1.15).sort((a,b)=>a.owner.distance-b.owner.distance)[0];
+   let control=null;
+   if(best){
+   const controlled=samples.some(prior=>{
     if(prior===row||!row.owner||row.owner.hand!==prior.owner.hand||row.time-prior.time<.04||row.time-prior.time>.2)return false;
     const motion=distance(row.measurement,prior.measurement),wristMotion=distance(row.owner.wrist,prior.owner.wrist);
     const relativeBefore=prior.measurement.slice(0,2).map((v,i)=>v-prior.owner.wrist[i]),relativeNow=row.measurement.slice(0,2).map((v,i)=>v-row.owner.wrist[i]);
@@ -94,7 +105,10 @@ export class CrossoverCounter {
    const redirected=now>best.time&&now-best.time<=.25&&row.measurement[1]-best.measurement[1]>=d*.18;
    if(controlled)control='observed_hand_control';
    else if(redirected)control='receiving_hand_redirect';
-  }
+   }
+   return {best,control};
+  };
+  const {best,control}=receipt(flight.receiving);
   if(control){
    if(best.time>=deadline){this.reject('rejected_after_deadline',row);this.held=row.owner?row:null;return [];}
    const event={count:++this.count,event_frame:best.frame,event_timestamp_exact:best.time,event_time_seconds:+best.time.toFixed(3),floor_contact_time_seconds:flight.floor.time,release_time_seconds:flight.source.time,from_hand:sourceHand,to_hand:opposite(sourceHand),validation_path:'controlled_crossover',control_evidence:control,control_status:'confirmed',receiving_hand_distance_ball_diameters:best.owner.distance};
@@ -104,10 +118,23 @@ export class CrossoverCounter {
    else if(row.owner)this.held=row;
    return [event];
   }
+  if(!this.legacy&&flight.floor){
+   // Proximity to the releasing wrist on the way up is not, by itself,
+   // possession. Verify the same control evidence used for the other hand.
+   if(receipt(flight.sourceReturns).control){this.reject('rejected_same_hand_return',row);this.held=row.owner?row:null;return [];}
+   // A low, quick receiving hand may already have sent the next bounce. Give
+   // its observed receipt/redirect a decision before rejecting a loose ball.
+   if(secondBounce){this.reject('rejected_second_bounce_without_receipt',row);this.held=row.owner?row:null;return [];}
+  }
   if(best&&now-best.time>.3&&(!row.owner||row.owner.hand!==best.owner.hand)){this.reject('rejected_uncontrolled_receipt',row);this.held=null;return [];}
   flight.last=row;
   return [];
  }
+}
+
+export function createCrossoverCounter(revision=CROSSOVER_COUNTER_REVISION){
+ if(!['CROSS 01','CROSS 02'].includes(revision))throw new Error(`Unsupported crossover counter revision: ${revision}`);
+ return new CrossoverCounter({legacy:revision==='CROSS 01'});
 }
 
 export function crossoverROI(person,tracker,w,h){

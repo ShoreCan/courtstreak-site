@@ -1,5 +1,5 @@
 import {createPoundTrackingState,resetPoundTrackingCounter,resetPoundTrackingIdentity} from './poundTrackingState.mjs';
-import {CrossoverCounter,CROSSOVER_COUNTER_REVISION,crossoverROI} from './crossoverCounter.mjs';
+import {createCrossoverCounter,CROSSOVER_COUNTER_REVISION,crossoverROI} from './crossoverCounter.mjs';
 export const CROSSOVER_DRILL_KEY='stationary-crossover';
 export function createSessionTrackingState(freshFrames,drillKey){
  const state=createPoundTrackingState(freshFrames);
@@ -10,7 +10,7 @@ export function createSessionTrackingState(freshFrames,drillKey){
 }
 export function resetSessionTrackingCounter(state){
  if(!state.crossover)return resetPoundTrackingCounter(state);
- state.counter=new CrossoverCounter();state.validator=state.counter;
+ state.counter=createCrossoverCounter(state.configuration.counterRevision);state.validator=state.counter;
 }
 export function updateSessionCounter(state,time,measurement,person,height,deadline){
  if(state.crossover){const confirmed=state.validator.update([],measurement,person,time,deadline);return {confirmed,proposals:state.counter.proposalsThisFrame};}

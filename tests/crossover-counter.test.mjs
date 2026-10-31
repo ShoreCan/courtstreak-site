@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {CrossoverCounter,crossoverROI} from '../src/lib/ai/crossoverCounter.mjs';
+import {CrossoverCounter,createCrossoverCounter,crossoverROI} from '../src/lib/ai/crossoverCounter.mjs';
 import {createSessionTrackingState,resetSessionTrackingCounter,updateSessionCounter,sessionROI} from '../src/lib/ai/sessionTracking.mjs';
 import {evaluateCameraSetup} from '../src/lib/ai/cameraSetup.mjs';
 import {setupCondition,setupInstruction,shiftPreGoTimeline} from '../src/lib/ai/setupGuidance.mjs';
@@ -27,6 +27,17 @@ for(const fps of [10,15,30])for(const period of [.4,.6,.8])test(`ball identity a
 test('a hand-to-hand pass without a floor bounce is not a rep',()=>assert.equal(trial({noBounce:true}).counter.count,0));
 test('one-handed pounds never count as crossovers',()=>assert.equal(trial({sameHand:true}).counter.count,0));
 test('controlled low crossovers do not require a knee-height apex',()=>assert.equal(trial({handY:560,bottom:630}).counter.count,6));
+for(const start of ['right','left'])for(const fps of [10,15,30])test(`quick low ${start}-hand crossovers accept the receiving redirect before the next floor approach at ${fps} fps`,()=>assert.equal(trial({start,fps,period:.4,hold:0,handY:560,bottom:630,reps:12}).counter.count,12));
+test('the releasing hand stays fixed when the free wrist is briefly nearer during descent',()=>{
+ const frames=[[-.1,840,350],[0,840,350],[.1,840,350],[.2,780,450],[.3,680,560],[.4,640,630],[.5,560,540],[.6,480,430],[.7,440,350],[.8,440,350]],current=new CrossoverCounter(),old=createCrossoverCounter('CROSS 01');
+ for(const [t,x,y] of frames){const p=person();if(t===.2){p.xy[9]=[720,460];p.xy[10]=[840,400];}for(const c of [current,old])c.update([],[x,y,60],p,t,20);}
+ assert.equal(old.count,0);assert.equal(current.count,1);assert.equal(current.confirmed[0].from_hand,'right');assert.equal(current.confirmed[0].to_hand,'left');
+});
+test('a brief source-wrist proximity on the upward return does not cancel the eventual opposite-hand receipt',()=>{
+ const frames=[[-.1,840,350],[0,840,350],[.1,770,460],[.2,700,580],[.3,640,630],[.4,580,540],[.5,520,440],[.6,440,350],[.7,440,350]],current=new CrossoverCounter(),old=createCrossoverCounter('CROSS 01');
+ for(const [t,x,y] of frames){const p=person();if(t===.4)p.xy[10]=[550,530];for(const c of [current,old])c.update([],[x,y,60],p,t,20);}
+ assert.equal(old.count,0);assert.equal(current.count,1);
+});
 test('holding or moving a stationary ball between wrists does not create a bounce',()=>{
  const c=new CrossoverCounter(),p=person();for(let i=0;i<120;i++)c.update([],[840-i*400/120,350,60],p,i/30,20);assert.equal(c.count,0);
 });
@@ -85,7 +96,7 @@ test('the crossover ball search covers both hands and stays in the image',()=>{
 test('reset and countdown rebasing retain the crossover counter and its hand context',()=>{
  const state=createSessionTrackingState(true,'stationary-crossover'),p=person();state.counter.update([],[840,350,60],p,-.2,20);shiftPreGoTimeline(state,.3);
  assert.equal(state.counter.points[0].timestamp,-.5);assert.equal(state.validator.context[0].time,-.5);assert.equal(state.counter.held.time,-.5);
- resetSessionTrackingCounter(state);assert.equal(state.counter,state.validator);assert.equal(state.counter.count,0);assert.equal(state.configuration.counterRevision,'CROSS 01');
+ resetSessionTrackingCounter(state);assert.equal(state.counter,state.validator);assert.equal(state.counter.count,0);assert.equal(state.configuration.counterRevision,'CROSS 02');
 });
 test('saved test details reproduce the count and retain both hand and full-flight replay evidence',()=>{
  const {frames}=trial({hold:0,reps:12,fps:15}),c=new CrossoverCounter(),evidence=new RoundEvidence();
@@ -93,8 +104,13 @@ test('saved test details reproduce the count and retain both hand and full-fligh
   const confirmed=c.update([],row.measurement,row.person,row.time,20),selected=row.measurement?ball(...row.measurement):null;
   evidence.record({capturedAt:100+row.time,sourceVideoTime:20+row.time,inputPhase:row.time<0?'countdown':'active',phase:row.time<0?'countdown':'active',roi:[0,0,1280,720],balls:selected?[selected]:[],selected,person:row.person,positionChecks:{},counterFrame:c.frame,count:c.count,proposedCount:c.count,confirmed,handoffState:c.snapshot()});
  }
- const data=evidence.export({startedAt:100,drillKey:'stationary-crossover',trackerRevision:'CROSS 01',timerSeconds:20,displayedCount:c.count}),replay=replayCrossovers(data);
+ const data=evidence.export({startedAt:100,drillKey:'stationary-crossover',trackerRevision:'CROSS 02',timerSeconds:20,displayedCount:c.count}),replay=replayCrossovers(data);
  assert.equal(replay.count,12);assert.deepEqual(replay.countedReps.map(e=>[e.from_hand,e.to_hand]),c.confirmed.map(e=>[e.from_hand,e.to_hand]));
  assert.ok(data.frames.every(f=>f.handoffState));
  for(const rep of data.countedReps){assert.ok(rep.reviewFrom<=rep.floorTime&&rep.floorTime<rep.time);assert.equal(replayStart(rep.time,20,rep.reviewFrom),rep.reviewFrom);}
+});
+test('historical CROSS 01 replay remains available and unsupported revisions fail explicitly',()=>{
+ const frames=trial({fps:15,period:.4,hold:0,handY:560,bottom:630,reps:12}).frames,old=createCrossoverCounter('CROSS 01');
+ for(const r of frames)old.update([],r.measurement,r.person,r.time,20);
+ assert.equal(old.count,1);assert.throws(()=>createCrossoverCounter('CROSS 99'),/Unsupported/);
 });
