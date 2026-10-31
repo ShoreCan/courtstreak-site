@@ -39,7 +39,7 @@ test('pairing does not make inadequate processing speed pass the countdown',()=>
  for(let i=0;i<60;i++)assert.equal(c.update(i*.15,checks,false,true).ready,false);
 });
 test('evidence retains zero frame skew and independent video timestamps',()=>{
- const e=new RoundEvidence();e.record({capturedAt:1,sourceVideoTime:2,phase:'active',inputPhase:'active',roi:[0,0,1280,720],balls:[],person:null,selected:null,positionChecks:{},poseCapturedAt:1,poseSourceVideoTime:2,poseFrameSkewSeconds:0});
- const row=e.export({startedAt:1}).frames[0];assert.equal(row.poseFrameSkewSeconds,0);assert.equal(row.poseSourceVideoTime,2);
+ const e=new RoundEvidence();e.record({capturedAt:1,sourceVideoTime:2,phase:'active',inputPhase:'active',roi:[0,0,1280,720],balls:[],person:null,selected:null,positionChecks:{},poseCapturedAt:1,poseSourceVideoTime:2,poseFrameSkewSeconds:0,sourceVideoFrameNumber:12});
+ const row=e.export({startedAt:1}).frames[0];assert.equal(row.poseFrameSkewSeconds,0);assert.equal(row.poseSourceVideoTime,2);assert.equal(row.sourceVideoFrameNumber,12);
  assert.ok(Math.abs(poseFrameSkew(1.4,1)-.4)<1e-9);assert.equal(poseFrameSkew(1,-Infinity),null);
 });

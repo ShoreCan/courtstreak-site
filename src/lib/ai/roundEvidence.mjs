@@ -18,12 +18,13 @@ export class RoundEvidence {
     this.limit = limit; this.nextFrame = 1; this.droppedFrames = 0;
   }
   record({ capturedAt, sourceVideoTime, inputPhase, phase, roi, balls, person, selected, ms, timings, fps, poseUpdated, poseAge, poseCapturedAt, poseInferenceMs, positionChecks,
-    passStartedAt, ballFrameRefreshed, setupReadiness, counterFrame, proposedCount, count, selectionDecisions, ballProposalMinimumScore, handoffState, poseSourceVideoTime, poseFrameSkewSeconds, proposals = [], confirmed = [] }) {
+    passStartedAt, ballFrameRefreshed, setupReadiness, counterFrame, proposedCount, count, selectionDecisions, ballProposalMinimumScore, handoffState, poseSourceVideoTime, poseFrameSkewSeconds, sourceVideoFrameNumber, proposals = [], confirmed = [] }) {
     const frameId = this.nextFrame++;
     this.frames.push({ frameId, capturedAt, sourceVideoTime, inputPhase, phase, roi: [...roi],
       ...(handoffState?{handoffState:{...handoffState}}:{}),
       ...(Number.isFinite(poseSourceVideoTime)?{poseSourceVideoTime}:{}),
       ...(Number.isFinite(poseFrameSkewSeconds)?{poseFrameSkewSeconds}:{}),
+      ...(Number.isFinite(sourceVideoFrameNumber)?{sourceVideoFrameNumber}:{}),
       balls: balls.map(copyDetection), person: copyDetection(person), selected: copyDetection(selected),
       ...(selectionDecisions?{selectionDecisions:selectionDecisions.map(d=>({...d}))}:{}),
       ...(Number.isFinite(ballProposalMinimumScore)?{ballProposalMinimumScore}:{}),

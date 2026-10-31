@@ -1,5 +1,5 @@
 export const CROSSOVER_COUNTER_REVISION='CROSS 02';
-export const CROSSOVER_TEST_REVISION='CROSSOVER TEST 03';
+export const CROSSOVER_TEST_REVISION='CROSSOVER TEST 04';
 export const CROSSOVER_RULE='controlled hand → observed floor bounce → opposite hand under control';
 const distance=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
 const opposite=hand=>hand==='right'?'left':'right';

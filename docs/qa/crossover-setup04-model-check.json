@@ -1,0 +1,138 @@
+{
+  "purpose": "Local browser comparison; not an iPhone throughput or rep accuracy result",
+  "provider": "wasm",
+  "frames": [
+    {
+      "sample": 1,
+      "upscaled": {
+        "body": true,
+        "wrists": [
+          0.9778369069099426,
+          0.9872868657112122
+        ],
+        "ballCount": 2,
+        "timings": {
+          "pose": {
+            "preprocessMs": 39.299999999813735,
+            "inferenceMs": 424.09999999962747,
+            "decodeMs": 4.1000000005587935
+          },
+          "ball": {
+            "preprocessMs": 4.3999999994412065,
+            "inferenceMs": 177,
+            "decodeMs": 0.10000000055879354
+          }
+        }
+      },
+      "native": {
+        "body": true,
+        "wrists": [
+          0.978052020072937,
+          0.9873847961425781
+        ],
+        "ballCount": 2,
+        "timings": {
+          "pose": {
+            "preprocessMs": 4.400000000372529,
+            "inferenceMs": 370.3999999994412,
+            "decodeMs": 0.40000000037252903
+          },
+          "ball": {
+            "preprocessMs": 2.7999999998137355,
+            "inferenceMs": 175.20000000018626,
+            "decodeMs": 0.09999999962747097
+          }
+        }
+      },
+      "maxBodyBoxCoordinateDifference": 0.8911787986754689
+    },
+    {
+      "sample": 2,
+      "upscaled": {
+        "body": true,
+        "wrists": [
+          0.8565542697906494,
+          0.9496129751205444
+        ],
+        "ballCount": 3,
+        "timings": {
+          "pose": {
+            "preprocessMs": 21.899999999441206,
+            "inferenceMs": 331.20000000018626,
+            "decodeMs": 0.6000000005587935
+          },
+          "ball": {
+            "preprocessMs": 2.5,
+            "inferenceMs": 161.20000000018626,
+            "decodeMs": 0
+          }
+        }
+      },
+      "native": {
+        "body": true,
+        "wrists": [
+          0.85548996925354,
+          0.9484584331512451
+        ],
+        "ballCount": 3,
+        "timings": {
+          "pose": {
+            "preprocessMs": 3.3999999994412065,
+            "inferenceMs": 327.6000000005588,
+            "decodeMs": 3.699999999254942
+          },
+          "ball": {
+            "preprocessMs": 4.5,
+            "inferenceMs": 161.90000000037253,
+            "decodeMs": 0
+          }
+        }
+      },
+      "maxBodyBoxCoordinateDifference": 0.12410192489642213
+    },
+    {
+      "sample": 3,
+      "upscaled": {
+        "body": true,
+        "wrists": [
+          0.9776796102523804,
+          0.9895671010017395
+        ],
+        "ballCount": 1,
+        "timings": {
+          "pose": {
+            "preprocessMs": 22.09999999962747,
+            "inferenceMs": 325.5,
+            "decodeMs": 0.10000000055879354
+          },
+          "ball": {
+            "preprocessMs": 2.699999999254942,
+            "inferenceMs": 161.90000000037253,
+            "decodeMs": 0
+          }
+        }
+      },
+      "native": {
+        "body": true,
+        "wrists": [
+          0.9774292707443237,
+          0.9894974231719971
+        ],
+        "ballCount": 1,
+        "timings": {
+          "pose": {
+            "preprocessMs": 3.6000000005587935,
+            "inferenceMs": 328.3999999994412,
+            "decodeMs": 0.20000000018626451
+          },
+          "ball": {
+            "preprocessMs": 2.2999999998137355,
+            "inferenceMs": 161.80000000074506,
+            "decodeMs": 0
+          }
+        }
+      },
+      "maxBodyBoxCoordinateDifference": 0.2319788932800293
+    }
+  ]
+}

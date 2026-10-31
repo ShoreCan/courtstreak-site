@@ -1,7 +1,7 @@
 import { cameraReadiness } from './cameraReadiness.mjs';
 
 // Presentation only. Raw, fresh checks still decide readiness and counting.
-export const SETUP_GUIDANCE_REVISION = 'SETUP 02';
+export const SETUP_GUIDANCE_REVISION = 'SETUP 03';
 export const SETUP_HELP_SECONDS = 12;
 
 export function setupCondition(checks, speedReady, lockReady, {handMode='right'}={}) {
@@ -13,10 +13,10 @@ export function setupCondition(checks, speedReady, lockReady, {handMode='right'}
   return cameraReadiness(rightHandChecks, speedReady, lockReady);
 }
 
-export function setupInstruction(checks, speedReady, lockReady, condition, {handMode='right'}={}) {
+function setupInstructionDetails(checks, speedReady, lockReady, condition, {handMode='right'}={}) {
   if (checks.refreshingBody) return {key:'refresh', stage:'frame', title:'Keep your position.', message:'Rechecking your view. You do not need to move.'};
   if (!checks.body || !checks.hand || !checks.floor) return {
-    key:checks.issue || condition.message, stage:'frame', title:'Fit yourself in the picture.', message:condition.message,
+    key:checks.cue || checks.issue || condition.message, stage:'frame', title:'Fit yourself in the picture.', message:condition.message,
   };
   if (!checks.ball) return {key:'ball', stage:'ball', title:'Show your basketball.', message:handMode==='either'?'Your framing is good. Hold the ball in either hand, clear of your torso.':'Your framing is good. Hold the ball beside your right hip, clear of your torso.'};
   if (checks.issue==='ball-edge') return {key:'ball-edge',stage:'ball',title:'Keep the ball in view.',message:condition.message};
@@ -24,6 +24,13 @@ export function setupInstruction(checks, speedReady, lockReady, condition, {hand
   if (!lockReady) return {key:'lock', stage:'ball', title:'Basketball found.', message:'Hold it comfortably while we confirm your ball.'};
   if (!speedReady) return {key:'speed', stage:'ready', title:'You’re in position.', message:'Checking tracking speed. Keep the phone still.'};
   return {key:'ready', stage:'ready', title:'You’re ready.', message:handMode==='either'?'Hold the ball in either hand. Your countdown starts automatically.':'Keep the ball in your right hand. Your countdown starts automatically.'};
+}
+
+const screenWords=Object.freeze({'find-body':'STEP INTO VIEW','center-body':'MOVE TO THE CENTER','step-back':'STEP BACK','look-at-phone':'LOOK AT THE PHONE','move-closer':'MOVE CLOSER','both-wrists':'SHOW BOTH WRISTS','right-wrist':'SHOW YOUR RIGHT WRIST','show-feet':'SHOW BOTH FEET','tilt-down':'TILT PHONE DOWN','tilt-up':'TILT PHONE UP','show-ball':'SHOW YOUR BALL','center-ball':'CENTER YOUR BALL','hold-ball':'HOLD YOUR BALL','hold-position':'HOLD POSITION'});
+export function setupInstruction(checks,speedReady,lockReady,condition,options){
+ const next=setupInstructionDetails(checks,speedReady,lockReady,condition,options);
+ const cue=['refresh','speed','ready','lock'].includes(next.key)?'hold-position':next.key==='hand'?'hold-ball':next.key==='ball'?'show-ball':checks.cue;
+ return {...next,screenText:screenWords[cue]||'HOLD POSITION'};
 }
 
 // A single missed landmark must not send a new instruction to someone who is

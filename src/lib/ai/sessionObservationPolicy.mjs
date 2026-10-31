@@ -1,5 +1,5 @@
-export const CROSSOVER_OBSERVATION_REVISION='PAIRED 01';
-const crossover=Object.freeze({revision:CROSSOVER_OBSERVATION_REVISION,asyncPose:false,poseEveryPass:true,refreshBallFrame:false});
+export const CROSSOVER_OBSERVATION_REVISION='PAIRED 02';
+const crossover=Object.freeze({revision:CROSSOVER_OBSERVATION_REVISION,asyncPose:false,poseEveryPass:true,refreshBallFrame:false,nativeCapture:true});
 const currentPound=Object.freeze({revision:'WORKER 01 / FRAME 02',asyncPose:true,poseEveryPass:false,refreshBallFrame:true});
 const legacyPound=Object.freeze({revision:'SEQUENTIAL / FRAME 00',asyncPose:false,poseEveryPass:false,refreshBallFrame:false});
 

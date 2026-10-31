@@ -1,0 +1,218 @@
+[
+  {
+    "appearance": "dark",
+    "cue": "STEP BACK",
+    "cueScrollWidth": 242,
+    "cueWidth": 242,
+    "fontSize": "32px",
+    "pageWidth": 305,
+    "width": 305
+  },
+  {
+    "appearance": "dark",
+    "cue": "SHOW BOTH WRISTS",
+    "cueScrollWidth": 242,
+    "cueWidth": 242,
+    "fontSize": "32px",
+    "pageWidth": 305,
+    "width": 305
+  },
+  {
+    "appearance": "dark",
+    "cue": "HOLD POSITION",
+    "cueScrollWidth": 242,
+    "cueWidth": 242,
+    "fontSize": "32px",
+    "pageWidth": 305,
+    "width": 305
+  },
+  {
+    "appearance": "light",
+    "cue": "STEP BACK",
+    "cueScrollWidth": 242,
+    "cueWidth": 242,
+    "fontSize": "32px",
+    "pageWidth": 305,
+    "width": 305
+  },
+  {
+    "appearance": "light",
+    "cue": "SHOW BOTH WRISTS",
+    "cueScrollWidth": 242,
+    "cueWidth": 242,
+    "fontSize": "32px",
+    "pageWidth": 305,
+    "width": 305
+  },
+  {
+    "appearance": "light",
+    "cue": "HOLD POSITION",
+    "cueScrollWidth": 242,
+    "cueWidth": 242,
+    "fontSize": "32px",
+    "pageWidth": 305,
+    "width": 305
+  },
+  {
+    "appearance": "dark",
+    "cue": "STEP BACK",
+    "cueScrollWidth": 298,
+    "cueWidth": 298,
+    "fontSize": "39px",
+    "pageWidth": 375,
+    "width": 375
+  },
+  {
+    "appearance": "dark",
+    "cue": "SHOW BOTH WRISTS",
+    "cueScrollWidth": 298,
+    "cueWidth": 298,
+    "fontSize": "39px",
+    "pageWidth": 375,
+    "width": 375
+  },
+  {
+    "appearance": "dark",
+    "cue": "HOLD POSITION",
+    "cueScrollWidth": 298,
+    "cueWidth": 298,
+    "fontSize": "39px",
+    "pageWidth": 375,
+    "width": 375
+  },
+  {
+    "appearance": "light",
+    "cue": "STEP BACK",
+    "cueScrollWidth": 298,
+    "cueWidth": 298,
+    "fontSize": "39px",
+    "pageWidth": 375,
+    "width": 375
+  },
+  {
+    "appearance": "light",
+    "cue": "SHOW BOTH WRISTS",
+    "cueScrollWidth": 298,
+    "cueWidth": 298,
+    "fontSize": "39px",
+    "pageWidth": 375,
+    "width": 375
+  },
+  {
+    "appearance": "light",
+    "cue": "HOLD POSITION",
+    "cueScrollWidth": 298,
+    "cueWidth": 298,
+    "fontSize": "39px",
+    "pageWidth": 375,
+    "width": 375
+  },
+  {
+    "appearance": "dark",
+    "cue": "STEP BACK",
+    "cueScrollWidth": 480,
+    "cueWidth": 480,
+    "fontSize": "54px",
+    "pageWidth": 577,
+    "width": 577
+  },
+  {
+    "appearance": "dark",
+    "cue": "SHOW BOTH WRISTS",
+    "cueScrollWidth": 480,
+    "cueWidth": 480,
+    "fontSize": "54px",
+    "pageWidth": 577,
+    "width": 577
+  },
+  {
+    "appearance": "dark",
+    "cue": "HOLD POSITION",
+    "cueScrollWidth": 480,
+    "cueWidth": 480,
+    "fontSize": "54px",
+    "pageWidth": 577,
+    "width": 577
+  },
+  {
+    "appearance": "light",
+    "cue": "STEP BACK",
+    "cueScrollWidth": 480,
+    "cueWidth": 480,
+    "fontSize": "54px",
+    "pageWidth": 577,
+    "width": 577
+  },
+  {
+    "appearance": "light",
+    "cue": "SHOW BOTH WRISTS",
+    "cueScrollWidth": 480,
+    "cueWidth": 480,
+    "fontSize": "54px",
+    "pageWidth": 577,
+    "width": 577
+  },
+  {
+    "appearance": "light",
+    "cue": "HOLD POSITION",
+    "cueScrollWidth": 480,
+    "cueWidth": 480,
+    "fontSize": "54px",
+    "pageWidth": 577,
+    "width": 577
+  },
+  {
+    "appearance": "dark",
+    "cue": "STEP BACK",
+    "cueScrollWidth": 476,
+    "cueWidth": 476,
+    "fontSize": "54px",
+    "pageWidth": 1009,
+    "width": 1009
+  },
+  {
+    "appearance": "dark",
+    "cue": "SHOW BOTH WRISTS",
+    "cueScrollWidth": 476,
+    "cueWidth": 476,
+    "fontSize": "54px",
+    "pageWidth": 1009,
+    "width": 1009
+  },
+  {
+    "appearance": "dark",
+    "cue": "HOLD POSITION",
+    "cueScrollWidth": 476,
+    "cueWidth": 476,
+    "fontSize": "54px",
+    "pageWidth": 1009,
+    "width": 1009
+  },
+  {
+    "appearance": "light",
+    "cue": "STEP BACK",
+    "cueScrollWidth": 476,
+    "cueWidth": 476,
+    "fontSize": "54px",
+    "pageWidth": 1009,
+    "width": 1009
+  },
+  {
+    "appearance": "light",
+    "cue": "SHOW BOTH WRISTS",
+    "cueScrollWidth": 476,
+    "cueWidth": 476,
+    "fontSize": "54px",
+    "pageWidth": 1009,
+    "width": 1009
+  },
+  {
+    "appearance": "light",
+    "cue": "HOLD POSITION",
+    "cueScrollWidth": 476,
+    "cueWidth": 476,
+    "fontSize": "54px",
+    "pageWidth": 1009,
+    "width": 1009
+  }
+]

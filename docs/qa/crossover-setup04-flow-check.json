@@ -1,0 +1,38 @@
+{
+  "environment": "Desktop Chromium, local synthetic 30fps canvas camera and synthetic 140ms detector; not physical iPhone validation",
+  "secureContext": "HTTP-only QA bundle mocks the application HTTPS guard; the production HTTPS guard remains present",
+  "phase": "error",
+  "count": 0,
+  "elapsedSeconds": 30.080200000000186,
+  "reason": "speed",
+  "capturedFrames": 201,
+  "phasesRecorded": [
+    "setup"
+  ],
+  "canonicalFrameSize": [
+    1280,
+    2276
+  ],
+  "nativeCaptureFrameSize": [
+    720,
+    1280
+  ],
+  "saveSetupDetailsDownloadedAndParsed": true,
+  "finalFrameClockRun": {
+    "environment": "Fixed-rate synthetic video source with synthetic zero-delay detector; cloud presentation callbacks limited to about 1/sec",
+    "elapsedSeconds": 30.04209999999963,
+    "reason": "speed",
+    "phase": "error",
+    "count": 0,
+    "frames": 30,
+    "uniqueSourceFrameNumbers": 30,
+    "mode": "video-frame-callback",
+    "noGoWithInadequateSpeed": true,
+    "healthyDeviceGoNotConfirmedByThisRun": true
+  },
+  "timerFallback": {
+    "noLoginRequired": true,
+    "countdownThen20SecondRoundThenTime": true,
+    "automaticCountOrResultPosting": false
+  }
+}

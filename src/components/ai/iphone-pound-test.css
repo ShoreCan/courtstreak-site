@@ -212,6 +212,11 @@
 
 /* One instruction at a time; raw diagnostics remain available on demand. */
 .cs-setup-before{font-size:12px;line-height:1.7;color:var(--muted);margin:15px 0}
+.cs-setup-budget{font-size:11px;line-height:1.6;color:var(--muted);margin:12px 0 0}
+.cs-setup-screen-cue{position:absolute;left:5%;right:5%;bottom:6%;padding:16px 18px;background:#071321ed;border:1px solid #ffffff35;border-radius:12px;color:#fff;text-align:center;pointer-events:none;box-shadow:0 6px 24px #0003}
+.cs-setup-screen-cue>span{display:block;color:#ffb386;font-size:10px;font-weight:700;letter-spacing:.18em;margin-bottom:6px}
+.cs-setup-screen-cue>strong{display:block;color:#fff;font-size:clamp(30px,10vw,54px);font-weight:850;line-height:1.05;letter-spacing:-.035em;text-wrap:balance}
+.cs-standalone-timer{max-width:440px;margin:auto;padding:32px 0}.cs-standalone-timer h1{font-size:32px}.cs-standalone-timer>p{color:var(--muted);font-size:14px;line-height:1.6}.cs-timer-display{padding:36px 15px;text-align:center;border:1px solid var(--line);border-radius:16px;background:var(--surface);margin:26px 0}.cs-timer-display>span{display:block;color:var(--accent);font-size:15px;letter-spacing:.16em;font-weight:800}.cs-timer-display>strong{display:block;font-size:clamp(64px,20vw,110px);line-height:1.2;font-variant-numeric:tabular-nums;color:var(--ink);letter-spacing:-.04em}
 .cs-setup-stages{display:flex;list-style:none;padding:0;margin:22px 0 12px;gap:16px}
 .cs-setup-stages li{display:flex;gap:7px;align-items:center;font-size:11px;color:var(--muted)}
 .cs-setup-stages b{display:grid;place-items:center;width:22px;height:22px;border:1px solid var(--line);border-radius:50%;font-size:10px;flex-shrink:0}

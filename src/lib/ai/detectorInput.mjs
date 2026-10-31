@@ -1,5 +1,15 @@
 export const DETECTOR_INPUT_REVISION = 'INPUT 01';
 
+// A native-size frozen image can describe a larger canonical coordinate
+// space. Crop native pixels once; decoded boxes and wrists remain canonical.
+export function detectorSourceCrop(source,roi){
+ const [x,y,x2,y2]=roi;
+ if(!source?.image)return [source,x,y,x2-x,y2-y];
+ const image=source.image,sx=image.width/source.width,sy=image.height/source.height;
+ if(![sx,sy].every(n=>Number.isFinite(n)&&n>0))throw new Error('Invalid frozen camera frame.');
+ return [image,x*sx,y*sy,(x2-x)*sx,(y2-y)*sy];
+}
+
 // Detection is sequential. Keep a canvas and CHW buffer for each model instead
 // of resizing one canvas and allocating megabytes of Float32 storage per pass.
 export class DetectorInput {
@@ -14,7 +24,7 @@ export class DetectorInput {
     const scale=Math.min(size/w,size/h), dw=Math.round(w*scale), dh=Math.round(h*scale);
     const px=Math.round((size-dw)/2-.1), py=Math.round((size-dh)/2-.1), c=this.context;
     c.fillStyle='rgb(114,114,114)'; c.fillRect(0,0,size,size);
-    c.drawImage(source,x,y,w,h,px,py,dw,dh);
+    c.drawImage(...detectorSourceCrop(source,roi),px,py,dw,dh);
     const rgba=c.getImageData(0,0,size,size).data, n=size*size, data=this.data;
     for (let i=0;i<n;i++) { data[i]=rgba[i*4]/255; data[n+i]=rgba[i*4+1]/255; data[n*2+i]=rgba[i*4+2]/255; }
     return { data, transform:{x,y,scale,px,py} };
@@ -34,7 +44,7 @@ export class LegacyDetectorInput {
     const canvas=this.canvas;
     if(canvas.width!==size){canvas.width=canvas.height=size;this.context=canvas.getContext('2d',{willReadFrequently:true});}
     const ctx=this.context;
-    ctx.fillStyle='rgb(114,114,114)';ctx.fillRect(0,0,size,size);ctx.drawImage(source,x,y,w,h,px,py,dw,dh);
+    ctx.fillStyle='rgb(114,114,114)';ctx.fillRect(0,0,size,size);ctx.drawImage(...detectorSourceCrop(source,roi),px,py,dw,dh);
     const rgba=ctx.getImageData(0,0,size,size).data,n=size*size,data=new Float32Array(n*3);
     for(let i=0;i<n;i++){data[i]=rgba[i*4]/255;data[n+i]=rgba[i*4+1]/255;data[n*2+i]=rgba[i*4+2]/255;}
     return {data,transform:{x,y,scale,px,py}};
