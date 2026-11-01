@@ -1,6 +1,6 @@
 // Brief detector flicker pauses setup; sustained loss requires a new lock.
 // Only fresh, valid observations advance the clock or allow Go.
-export const CAMERA_REVIEW_REVISION = 'CAMERA 04';
+export const CAMERA_REVIEW_REVISION = 'CAMERA 05';
 export const SETUP_GRACE_SECONDS = .65;
 export const BALL_LOCK_GRACE_SECONDS = 1.5;
 
@@ -11,13 +11,16 @@ export function cameraReadiness(checks, speedReady, lockReady) {
   const valid = checks.valid && !bodyRecheck && speedReady && lockReady;
   const ballRecheck = checks.body && checks.hand && checks.floor &&
     (!checks.ball || (checks.valid && !lockReady));
+  const speedRecheck = checks.valid && !bodyRecheck && lockReady && !speedReady;
   const message = bodyRecheck ? checks.message || 'Refreshing body and wrist tracking. Keep your position.' : !checks.valid ? checks.message : !speedReady ?
     'Checking tracking speed on this phone. Keep the phone still.' : !lockReady ?
     'Body framing is good. Rechecking the ball lock; hold the ball comfortably.' :
     'Position locked. Small movements are okay; wait for Go.';
   // Switching from ball reacquisition to a queued body refresh is still a
   // detector interruption. It must not shorten the existing recovery window.
-  return { valid, recoveryGrace: (ballRecheck || bodyRecheck) && speedReady ? BALL_LOCK_GRACE_SECONDS : SETUP_GRACE_SECONDS, message };
+  // A brief processing dip pauses confirmation without discarding its place.
+  // Fresh framing, ownership, lock and speed must all pass again before Go.
+  return { valid, recoveryGrace: speedRecheck || ((ballRecheck || bodyRecheck) && speedReady) ? BALL_LOCK_GRACE_SECONDS : SETUP_GRACE_SECONDS, message };
 }
 
 export class ReadinessClock {

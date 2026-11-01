@@ -7,7 +7,7 @@ export function createSessionTrackingState(freshFrames,drillKey){
  if(drillKey!==CROSSOVER_DRILL_KEY)return state;
  state.crossover=true;
  const observationPolicy=sessionObservationPolicy(drillKey,freshFrames);
- state.configuration=Object.freeze({...state.configuration,id:`${CROSSOVER_COUNTER_REVISION.replaceAll(' ','')}/${state.configuration.id}/TWOHAND01/${observationPolicy.revision.replaceAll(' ','')}`,counterRevision:CROSSOVER_COUNTER_REVISION,identityRevision:state.configuration.identityRevision+' + TWOHAND 01',identityOptions:Object.freeze({...state.configuration.identityOptions,twoHandedMotion:true}),counterOptions:Object.freeze({oppositeHand:true,floorEvidence:true,kneeHeightRule:false}),observationPolicy});
+ state.configuration=Object.freeze({...state.configuration,id:`${CROSSOVER_COUNTER_REVISION.replaceAll(' ','')}/${state.configuration.id}/TWOHAND01/${observationPolicy.revision.replaceAll(' ','')}`,counterRevision:CROSSOVER_COUNTER_REVISION,identityRevision:state.configuration.identityRevision+' + TWOHAND 01',identityOptions:Object.freeze({...state.configuration.identityOptions,twoHandedMotion:true}),counterOptions:Object.freeze({oppositeHand:true,floorEvidence:true,kneeHeightRule:false,sizeOutlierRecovery:true}),observationPolicy});
  resetPoundTrackingIdentity(state);resetSessionTrackingCounter(state);return state;
 }
 export function resetSessionTrackingCounter(state){

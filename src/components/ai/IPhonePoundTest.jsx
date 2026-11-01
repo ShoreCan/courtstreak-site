@@ -22,10 +22,11 @@ import { POSE_EXECUTION_REVISION, poseForFrame } from '../../lib/ai/poseWorkerCl
 import { POSE_SCHEDULE_REVISION, PoseRefreshClock } from '../../lib/ai/poseRefreshClock.mjs';
 import { CAMERA_SETUP_REVISION, CameraPositionGate, evaluateCameraSetup } from '../../lib/ai/cameraSetup.mjs';
 import { LIVE_FRAME_REVISION } from '../../lib/ai/detectionPass.mjs';
-import { SETUP_GUIDANCE_REVISION, SETUP_HELP_SECONDS, SetupGuidance, FramedCalibration, setupInstruction, shiftPreGoTimeline } from '../../lib/ai/setupGuidance.mjs';
+import { SETUP_GUIDANCE_REVISION, SETUP_HELP_SECONDS, SetupGuidance, FramedCalibration, CALM_SETUP_START, setupInstruction, shiftPreGoTimeline } from '../../lib/ai/setupGuidance.mjs';
 import {SetupAttempt,SETUP_ATTEMPT_REVISION,MODEL_LOADING_LIMIT_SECONDS} from '../../lib/ai/setupAttempt.mjs';
 import {createCameraPassScheduler} from '../../lib/ai/cameraPassScheduler.mjs';
 import StandaloneDrillTimer from './StandaloneDrillTimer.jsx';
+import {PhonePlacement,PHONE_PLACEMENT_REVISION} from '../../lib/ai/phonePlacement.mjs';
 import {VideoFrameClock,VIDEO_FRAME_CLOCK_REVISION} from '../../lib/ai/videoFrameClock.mjs';
 import PoundSessionView,{TRACKER_PRESENTATION_REVISION} from './PoundSessionView.jsx';
 const DURATION=20;
@@ -33,7 +34,7 @@ const empty={body:false,hand:false,ball:false,floor:false,owned:false};
 const emptyClip={status:'idle',url:'',blob:null};
 const emptyCountedClip={...emptyClip,progress:0};
 const requestFrontCamera=()=>navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{exact:'user'},width:{ideal:1280},height:{ideal:720},frameRate:{ideal:30}}});
-function machine(freshFrames=true,drillKey='right-hand-pound'){return {...createSessionTrackingState(freshFrames,drillKey),phase:'idle',gate:new CameraPositionGate(),readiness:new SetupReadinessClock({handMode:drillKey===CROSSOVER_DRILL_KEY?'either':'right'}),guidance:new SetupGuidance(),calibration:new FramedCalibration(),evidence:new RoundEvidence(),poseClock:new PoseRefreshClock(),person:null,ball:null,poseAt:-Infinity,times:[],goodSince:null,progress:0,count:0,left:DURATION,countdown:5,fps:0,checks:empty,message:'Set your phone on stable support, angled toward you. Fit your head, feet and some floor in the picture.',lastInference:0,started:null,detected:0,total:0};}
+function machine(freshFrames=true,drillKey='right-hand-pound'){return {...createSessionTrackingState(freshFrames,drillKey),phase:'idle',gate:new CameraPositionGate(),readiness:new SetupReadinessClock({handMode:drillKey===CROSSOVER_DRILL_KEY?'either':'right'}),guidance:new SetupGuidance(1.2,{minimumHold:2,initial:CALM_SETUP_START}),calibration:new FramedCalibration(),evidence:new RoundEvidence(),poseClock:new PoseRefreshClock(),person:null,ball:null,poseAt:-Infinity,times:[],goodSince:null,progress:0,count:0,left:DURATION,countdown:5,fps:0,checks:empty,message:'Set your phone on stable support, angled toward you. Fit your head, feet and some floor in the picture.',lastInference:0,started:null,detected:0,total:0};}
 export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-pound',standalone=false}){
  const crossover=drillKey===CROSSOVER_DRILL_KEY,drillName=crossover?'Crossovers':'Right-Hand Pound',fileKey=crossover?'crossovers':'right-hand-pound',setupOptions={handMode:crossover?'either':'right'},cameraOptions={handMode:crossover?'both':'right'};
  const observationPolicy=sessionObservationPolicy(drillKey,freshFrames);
@@ -43,6 +44,7 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
  const [ui,setUI]=useState({...m.current}),[ratio,setRatio]=useState(16/9),[manual,setManual]=useState(false);
  const recorder=useRef(null),recordTimer=useRef(null),recordURL=useRef(''),recordVersion=useRef(0),resultPanel=useRef(null),evidenceURL=useRef(''),videoClock=useRef(null);
  if(!videoClock.current)videoClock.current=new VideoFrameClock();
+ const setupHistory=useRef([]);
  const countTimeline=useRef(new DisplayedCountTimeline()),countedURL=useRef(''),videoExport=useRef(null);
  const [clip,setClip]=useState(emptyClip),[shareMessage,setShareMessage]=useState(''),[sharing,setSharing]=useState(false);
  const [countedClip,setCountedClip]=useState(emptyCountedClip);
@@ -95,8 +97,17 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
  const stopCamera=()=>{stopRecording();videoClock.current.stop();stream.current?.getTracks().forEach(t=>t.stop());stream.current=null;wake.current?.release().catch(()=>{});wake.current=null;};
  const fail=(message)=>{const s=m.current;s.phase='error';s.message=message;stopCamera();publish();};
  const toSetup=(message=crossover?'Fit your head, both wrists, feet and a little floor in the picture. Hold the ball in either hand.':'Fit your head, feet and a little floor in the picture. Hold the ball beside your right hip.')=>{
-  const previous=m.current;if(['active','review'].includes(previous.phase))discardRecording();detector.current?.poseWorker?.reset();m.current={...machine(freshFrames,drillKey),phase:'setup',cameraReady:true,setupStartedAt:performance.now()/1000,lastInference:previous.lastInference,sized:previous.sized,videoFrameClockMode:previous.videoFrameClockMode,setupAttempt:new SetupAttempt(performance.now()/1000),cameraSettingsAtStart:previous.cameraSettingsAtStart,message};publish();
+  const previous=m.current;if(['active','review'].includes(previous.phase))discardRecording();detector.current?.poseWorker?.reset();m.current={...machine(freshFrames,drillKey),phase:'setup',cameraReady:true,setupStartedAt:performance.now()/1000,lastInference:previous.lastInference,sized:previous.sized,placement:previous.placement,placementState:previous.placementState,modelsReady:previous.modelsReady,videoFrameClockMode:previous.videoFrameClockMode,setupAttempt:new SetupAttempt(performance.now()/1000),cameraSettingsAtStart:previous.cameraSettingsAtStart,message};publish();
  };
+ const advancePlacement=(now=performance.now()/1000)=>{
+  const s=m.current;if(!s.placement||!['placing','settling','loading'].includes(s.phase))return false;
+  const placement=s.placement.snapshot(now,!!s.modelsReady);s.placementState=placement;
+  if(placement.canCheck){toSetup('Hold the ball comfortably while we check your view.');scheduleLoop();return true;}
+  s.phase=placement.stage;
+  s.message=placement.stage==='placing'?'Set your phone on stable support. Take your time choosing a view.':placement.stage==='settling'?'Step into view at your own pace. We’ll check your position afterward.':'Your phone is set. Preparing your session…';
+  publish();return false;
+ };
+ const armPlacement=()=>{const s=m.current;if(s.phase!=='placing'||!s.placement)return;s.placement.arm(performance.now()/1000);advancePlacement();publish(true);};
  const interrupt=(message,{preserveVideo=false}={})=>{
   const s=m.current;
   if(['active','review','recording-only'].includes(s.phase)){
@@ -128,7 +139,7 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
  };
  const loop=async()=>{
   const currentToken=token.current,s=m.current,v=video.current,d=detector.current;
-  if(!mounted.current||!d||!v||!stream.current||['finished','error','interrupted','recording-only'].includes(s.phase))return;
+  if(!mounted.current||!d||!v||!stream.current||!['setup','countdown','active','review'].includes(s.phase))return;
   if(v.readyState<2||v.paused){scheduleLoop();return;}
   const sourceFrame=observationPolicy.nativeCapture?videoClock.current.read():null;
   if(observationPolicy.nativeCapture?(!sourceFrame||sourceFrame.serial===s.videoFrameSerial):v.currentTime===s.videoTime){scheduleLoop(!!observationPolicy.nativeCapture);return;}
@@ -242,7 +253,8 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
   if(mounted.current&&!['finished','error','interrupted','recording-only'].includes(m.current.phase))scheduleLoop(!!observationPolicy.nativeCapture);
  };
  async function open({restart=false}={}){
-  if(['loading','active','review','recording-only'].includes(m.current.phase)||(!restart&&['setup','countdown'].includes(m.current.phase)))return;
+  if(['loading','active','review','recording-only'].includes(m.current.phase)||(!restart&&['placing','settling','setup','countdown'].includes(m.current.phase)))return;
+  const previous=m.current;if(previous.started===null&&previous.setupAttemptState)setupHistory.current=[...setupHistory.current,{phase:previous.phase,attempt:{...previous.setupAttemptState},failure:previous.setupFailure??null,checks:{...previous.checks}}].slice(-5);
   const id=++token.current;scheduler.current.cancel();stopCamera();discardRecording();m.current=machine(freshFrames,drillKey);m.current.phase='loading';m.current.loadingStartedAt=performance.now()/1000;m.current.message='Allow your front camera when your phone asks.';publish();
   try{
    const Audio=window.AudioContext||window.webkitAudioContext;if(Audio){audio.current??=new Audio();void audio.current.resume();}
@@ -259,22 +271,26 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
    video.current.srcObject=camera;await video.current.play();
    if(id!==token.current||!mounted.current)return;
    if(observationPolicy.nativeCapture){videoClock.current.start(video.current);m.current.videoFrameClockMode=videoClock.current.mode;}
-   m.current.cameraReady=true;setRatio(video.current.videoWidth/video.current.videoHeight||16/9);m.current.message='Your camera is on. Preparing tracking; first use can take a moment.';publish(true);
+   m.current.cameraReady=true;setRatio(video.current.videoWidth/video.current.videoHeight||16/9);
+   m.current.placement=new PhonePlacement(performance.now()/1000);m.current.phase='placing';m.current.modelsReady=false;m.current.loadingStartedAt=performance.now()/1000;
+   if(overlay.current)overlay.current.getContext('2d').clearRect(0,0,overlay.current.width,overlay.current.height);
+   advancePlacement();publish(true);
    if(detector.current?.poseWorker?.error){await detector.current.close();detector.current=null;}
-   if(!detector.current){const loaded=await loadDetector(import.meta.env.BASE_URL,()=>{if(id===token.current){m.current.message='Your camera is on. Preparing tracking; first use can take a moment.';publish();}},{asyncPose:observationPolicy.asyncPose});if(id!==token.current||!mounted.current){await loaded.close();return;}detector.current=loaded;}
+   if(!detector.current){const loaded=await loadDetector(import.meta.env.BASE_URL,()=>{if(id===token.current){m.current.preparingTracker=true;publish();}},{asyncPose:observationPolicy.asyncPose});if(id!==token.current||!mounted.current){await loaded.close();return;}detector.current=loaded;}
    if(id!==token.current||!mounted.current)return;
    await detector.current.idle();
    if(id!==token.current||!mounted.current)return;
    if(navigator.wakeLock)navigator.wakeLock.request('screen').then(lock=>{if(id!==token.current||!mounted.current){void lock.release();return;}wake.current=lock;}).catch(()=>{});
-   toSetup();scheduleLoop();
+   m.current.modelsReady=true;m.current.preparingTracker=false;advancePlacement();publish(true);
   }catch(error){if(id!==token.current||!mounted.current)return;const messages={NotAllowedError:'Camera permission was denied. Allow CourtStreak camera access in Safari, then try again.',NotFoundError:'The front camera is unavailable on this device.',OverconstrainedError:'Safari could not select the front camera. Check camera access and try again.'};fail(messages[error.name]||error.message);}
  }
  useEffect(()=>{
   mounted.current=true;
-  const hidden=()=>{if(document.hidden){interrupt('CourtStreak went into the background. Return and enable the camera for a fresh setup check.');if(['loading','setup','countdown'].includes(m.current.phase)){token.current++;m.current.phase='interrupted';m.current.message='Return to CourtStreak and enable the camera again.';stopCamera();publish();}}};
+  const hidden=()=>{if(document.hidden){interrupt('CourtStreak went into the background. Return and enable the camera for a fresh setup check.');if(['loading','placing','settling','setup','countdown'].includes(m.current.phase)){token.current++;m.current.phase='interrupted';m.current.message='Return to CourtStreak and enable the camera again.';stopCamera();publish();}}};
   const rotate=()=>{if(m.current.phase==='recording-only'){interrupt('Phone rotated while preserving the partial attempt.');return;}if(['setup','countdown','active','review'].includes(m.current.phase))toSetup('Phone rotated. Hold the ball comfortably while we check your new framing.');};
   window.addEventListener('orientationchange',rotate);screen.orientation?.addEventListener('change',rotate);
-  const watchdog=setInterval(()=>{const s=m.current,now=performance.now()/1000;if(s.phase==='recording-only'){s.left=Math.max(0,Math.ceil(DURATION-(now-s.started)));publish();return;}if(s.phase==='loading'&&now-s.loadingStartedAt>=MODEL_LOADING_LIMIT_SECONDS){pauseSetup({key:'loading',title:'Tracker loading took too long.',message:'The camera models did not finish preparing. Retry when ready, or use the timer.',elapsed:now-s.loadingStartedAt,limitSeconds:MODEL_LOADING_LIMIT_SECONDS});return;}
+  const watchdog=setInterval(()=>{const s=m.current,now=performance.now()/1000;if(s.phase==='recording-only'){s.left=Math.max(0,Math.ceil(DURATION-(now-s.started)));publish();return;}if(['loading','placing','settling'].includes(s.phase)&&!s.modelsReady&&now-s.loadingStartedAt>=MODEL_LOADING_LIMIT_SECONDS){pauseSetup({key:'loading',title:'Tracker loading took too long.',message:'The camera models did not finish preparing. Retry when ready, or use the timer.',elapsed:now-s.loadingStartedAt,limitSeconds:MODEL_LOADING_LIMIT_SECONDS});return;}
+   if(['placing','settling','loading'].includes(s.phase)&&s.placement){advancePlacement(now);return;}
    if(['setup','countdown'].includes(s.phase)){
     if(!s.lastInference||now-s.lastInference>.8)s.setupAttemptState=s.setupAttempt.update(now,{...s.checks,refreshingBody:true},false,false);
     else s.setupAttemptState=s.setupAttempt.snapshot(now);
@@ -288,7 +304,7 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
  useEffect(()=>{
   if(['finished','interrupted'].includes(ui.phase)){resultPanel.current?.focus({preventScroll:true});resultPanel.current?.scrollIntoView({block:'start',behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});}
  },[ui.phase]);
- const p=ui.phase,live=['setup','countdown','active','review','recording-only'].includes(p),ended=['finished','interrupted'].includes(p);
+ const p=ui.phase,live=['placing','settling','setup','countdown','active','review','recording-only'].includes(p),ended=['finished','interrupted'].includes(p);
  const replayChanges=useMemo(()=>ended?countTimeline.current.snapshot():[],[ended,clip.url,clip.status,ui.count]);
  const preparing=countedClip.status==='preparing',canSave=['ready','original'].includes(countedClip.status),savedClip=countedClip.status==='ready'?countedClip:clip;
  const summary=`CourtStreak · ${drillName} · ${ui.count} detected reps · ${p==='finished'?'20-second round':'Incomplete attempt'}. Camera test result.`;
@@ -322,7 +338,7 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
  function saveEvidence(){
   const s=m.current;
   const data=s.evidence.export({startedAt:s.started,baseSourceCommit:TRACKER_BUILD_INFO.sourceCommit,buildInfo:TRACKER_BUILD_INFO,trackerCheckRevision:crossover?CROSSOVER_TEST_REVISION:TRACKER_CHECK_REVISION,trackerConfiguration:s.configuration,trackerRevision:s.configuration.counterRevision,...(s.configuration.identityRevision?{ballIdentityRevision:s.configuration.identityRevision}:{}),cameraRevision:CAMERA_SETUP_REVISION,readinessRevision:CAMERA_REVIEW_REVISION,detectorInputMode:detector.current?.liveInputMode??'legacy',controlRevision:CONTROL_REVISION,poseScheduleRevision:POSE_SCHEDULE_REVISION,poseExecutionRevision:detector.current?.poseWorker?POSE_EXECUTION_REVISION:'sequential',poseMode:detector.current?.poseMode??'sequential',liveFrameRevision:freshFrames?LIVE_FRAME_REVISION:'FRAME 00',poseSideConvention:'Original physical person; detector image is mirrored',
-   drillKey,...(crossover?{repDefinition:CROSSOVER_RULE,videoFrameClockRevision:VIDEO_FRAME_CLOCK_REVISION,videoFrameClockMode:s.videoFrameClockMode}:{}),observationPolicy,poseProvider:detector.current?.poseWorker?'wasm':detector.current?.provider,timerSeconds:DURATION,phase:s.phase,message:s.message,displayedCount:s.count,presentationRevision:TRACKER_PRESENTATION_REVISION,setupGuidanceRevision:SETUP_GUIDANCE_REVISION,setupTimingRevision:SETUP_TIMING_REVISION,setupAttemptRevision:SETUP_ATTEMPT_REVISION,setupAttempt:s.setupAttemptState??null,setupFailure:s.setupFailure??null,setupStartedAt:s.setupStartedAt??null,setupBlocker:s.setupBlocker??null,latestPositionChecks:s.checks,
+   drillKey,...(crossover?{repDefinition:CROSSOVER_RULE,videoFrameClockRevision:VIDEO_FRAME_CLOCK_REVISION,videoFrameClockMode:s.videoFrameClockMode}:{}),observationPolicy,poseProvider:detector.current?.poseWorker?'wasm':detector.current?.provider,timerSeconds:DURATION,phase:s.phase,message:s.message,displayedCount:s.count,presentationRevision:TRACKER_PRESENTATION_REVISION,setupGuidanceRevision:SETUP_GUIDANCE_REVISION,setupTimingRevision:SETUP_TIMING_REVISION,priorSetupAttempts:setupHistory.current,phonePlacementRevision:PHONE_PLACEMENT_REVISION,phonePlacement:s.placementState??null,setupAttemptRevision:SETUP_ATTEMPT_REVISION,setupAttempt:s.setupAttemptState??null,setupFailure:s.setupFailure??null,setupStartedAt:s.setupStartedAt??null,setupBlocker:s.setupBlocker??null,latestPositionChecks:s.checks,
    framesWithSelectedBall:s.detected,trainingFrames:s.total,ballCoverage:s.total?s.detected/s.total:null,
    provider:detector.current?.provider,detectorInputRevision:detector.current?.inputRevision,ballProposalPolicyRevision:BALL_PROPOSAL_POLICY_REVISION,detectorResources:detector.current?.resourceSummary,modelManifest:detector.current?.modelManifest,runtime:{userAgent:navigator.userAgent,hardwareConcurrency:navigator.hardwareConcurrency??null},cameraSettingsAtStart:s.cameraSettingsAtStart,frameSize:s.frameSize??[frame.current?.width,frame.current?.height],captureFrameSize:s.captureFrameSize??null,
    recordingAvailable:!!clip.blob,videoRevision:VIDEO_OVERLAY_REVISION,recordingRevision:RECORDING_TAIL_REVISION,countingStoppedAt:s.countingStoppedAt??null,recordedUntil:s.recordedUntil??null,interruptionReason:s.interruptionReason??null,videoExport:countedClip.exportInfo??null,countDisplayStartedAt:countTimeline.current.startedAt,
@@ -356,7 +372,7 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
   filename={filename} originalFilename={originalFilename}
   versions={{counter:m.current.configuration.counterRevision,camera:CAMERA_SETUP_REVISION,frame:LIVE_FRAME_REVISION,identity:m.current.configuration.identityRevision??BALL_IDENTITY_REVISION,check:crossover?CROSSOVER_TEST_REVISION:TRACKER_CHECK_REVISION}}
   onBack={()=>navigate(standalone?'/':`/lab/drill/${drillKey}`)} onOpen={open}
-  onRetrySetup={()=>open({restart:true})} onManual={()=>{if(!standalone){navigate(`/lab/drill/${drillKey}/session`);return;}token.current++;scheduler.current.cancel();stopCamera();m.current.phase='error';m.current.message='Camera check paused. Retry when ready.';publish(true);setManual(true);}}
+  onPlacePhone={armPlacement} onRetrySetup={()=>open({restart:true})} onManual={()=>{if(!standalone){navigate(`/lab/drill/${drillKey}/session`);return;}token.current++;scheduler.current.cancel();stopCamera();m.current.phase='error';m.current.message='Camera check paused. Retry when ready.';publish(true);setManual(true);}}
   onStop={()=>{token.current++;scheduler.current.cancel();m.current.phase='interrupted';m.current.message='Attempt stopped. Recheck your position when ready.';stopCamera();publish();}}
   onSaveEvidence={saveEvidence} onPrepareVideo={prepareCountedVideo}
   onUseOriginal={useOriginalVideo} onShareVideo={shareVideo}/>;

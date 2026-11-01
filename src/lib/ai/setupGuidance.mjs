@@ -1,7 +1,7 @@
 import { cameraReadiness } from './cameraReadiness.mjs';
 
 // Presentation only. Raw, fresh checks still decide readiness and counting.
-export const SETUP_GUIDANCE_REVISION = 'SETUP 03';
+export const SETUP_GUIDANCE_REVISION = 'SETUP 04';
 export const SETUP_HELP_SECONDS = 12;
 
 export function setupCondition(checks, speedReady, lockReady, {handMode='right'}={}) {
@@ -16,7 +16,7 @@ export function setupCondition(checks, speedReady, lockReady, {handMode='right'}
 function setupInstructionDetails(checks, speedReady, lockReady, condition, {handMode='right'}={}) {
   if (checks.refreshingBody) return {key:'refresh', stage:'frame', title:'Keep your position.', message:'Rechecking your view. You do not need to move.'};
   if (!checks.body || !checks.hand || !checks.floor) return {
-    key:checks.cue || checks.issue || condition.message, stage:'frame', title:'Fit yourself in the picture.', message:condition.message,
+    key:checks.cue || checks.issue || condition.message, stage:'frame', title:'Let’s check your view.', message:condition.message,
   };
   if (!checks.ball) return {key:'ball', stage:'ball', title:'Show your basketball.', message:handMode==='either'?'Your framing is good. Hold the ball in either hand, clear of your torso.':'Your framing is good. Hold the ball beside your right hip, clear of your torso.'};
   if (checks.issue==='ball-edge') return {key:'ball-edge',stage:'ball',title:'Keep the ball in view.',message:condition.message};
@@ -26,26 +26,30 @@ function setupInstructionDetails(checks, speedReady, lockReady, condition, {hand
   return {key:'ready', stage:'ready', title:'You’re ready.', message:handMode==='either'?'Hold the ball in either hand. Your countdown starts automatically.':'Keep the ball in your right hand. Your countdown starts automatically.'};
 }
 
-const screenWords=Object.freeze({'find-body':'STEP INTO VIEW','center-body':'MOVE TO THE CENTER','step-back':'STEP BACK','look-at-phone':'LOOK AT THE PHONE','move-closer':'MOVE CLOSER','both-wrists':'SHOW BOTH WRISTS','right-wrist':'SHOW YOUR RIGHT WRIST','show-feet':'SHOW BOTH FEET','tilt-down':'TILT PHONE DOWN','tilt-up':'TILT PHONE UP','show-ball':'SHOW YOUR BALL','center-ball':'CENTER YOUR BALL','hold-ball':'HOLD YOUR BALL','hold-position':'HOLD POSITION'});
+const screenWords=Object.freeze({'find-body':'Finding your position','center-body':'Center yourself','step-back':'Step back a little','look-at-phone':'A glance toward the phone','move-closer':'Move a little closer','both-wrists':'Both wrists in view','right-wrist':'Right wrist in view','show-feet':'Both feet in view','tilt-down':'Tilt down slightly','tilt-up':'Tilt up slightly','show-ball':'Finding your ball','center-ball':'Bring the ball inward','hold-ball':'Ball by your side','hold-position':'Hold comfortably'});
 export function setupInstruction(checks,speedReady,lockReady,condition,options){
  const next=setupInstructionDetails(checks,speedReady,lockReady,condition,options);
  const cue=['refresh','speed','ready','lock'].includes(next.key)?'hold-position':next.key==='hand'?'hold-ball':next.key==='ball'?'show-ball':checks.cue;
- return {...next,screenText:screenWords[cue]||'HOLD POSITION'};
+ return {...next,screenText:screenWords[cue]||'Hold comfortably'};
 }
+
+export const CALM_SETUP_START={key:'checking',stage:'frame',title:'Checking your view.',screenText:'Finding your position',message:'Hold the ball comfortably while we check your framing.'};
 
 // A single missed landmark must not send a new instruction to someone who is
 // already correctly positioned. This does not retain stale detector evidence.
 export class SetupGuidance {
-  constructor(delay=.45) { this.delay=delay; this.current=null; this.pending=null; this.since=null; }
+  constructor(delay=.45,{minimumHold=0,initial=null}={}) { this.delay=delay;this.minimumHold=minimumHold;this.current=initial;this.changedAt=null;this.pending=null;this.since=null; }
   update(now, next) {
     if (!this.current) this.current=next;
+    this.changedAt??=now;
     // Let the next actual body observation confirm or contradict the cue.
     // Resetting its debounce on every queued refresh otherwise prevents a
     // 400ms pose worker from ever displaying a stable framing instruction.
     if(next.key==='refresh')return this.current;
     if (this.current.key === next.key) { this.pending=null; this.since=null; return this.current; }
     if (this.pending?.key !== next.key) { this.pending=next; this.since=now; }
-    if (now-this.since >= this.delay) { this.current=this.pending; this.pending=null; this.since=null; }
+    const positive=['ready','lock','speed'].includes(next.key),delay=positive?Math.min(this.delay,.45):this.delay;
+    if (now-this.since >= delay && (positive||now-this.changedAt>=this.minimumHold)) { this.current=this.pending;this.changedAt=now;this.pending=null;this.since=null; }
     return this.current;
   }
 }

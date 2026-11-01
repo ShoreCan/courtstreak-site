@@ -1,5 +1,5 @@
-export const CROSSOVER_COUNTER_REVISION='CROSS 02';
-export const CROSSOVER_TEST_REVISION='CROSSOVER TEST 04';
+export const CROSSOVER_COUNTER_REVISION='CROSS 03';
+export const CROSSOVER_TEST_REVISION='CROSSOVER TEST 05';
 export const CROSSOVER_RULE='controlled hand → observed floor bounce → opposite hand under control';
 const distance=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
 const opposite=hand=>hand==='right'?'left':'right';
@@ -18,7 +18,7 @@ function observation(frame,measurement,person,time){
 // This pilot follows possession, a floor turn and the receiving hand. It does
 // not count midline crossings, use knee height, or infer a bounce from a pass.
 export class CrossoverCounter {
- constructor({legacy=false}={}){this.legacy=legacy;this.frame=0;this.count=0;this.points=[];this.context=[];this.confirmed=[];this.rejected=[];this.pending=[];this.held=null;this.flight=null;this.proposalsThisFrame=[];this.lastDecision='waiting_for_hand';}
+ constructor({legacy=false,sizeOutlierRecovery=false}={}){this.legacy=legacy;this.sizeOutlierRecovery=sizeOutlierRecovery;this.frame=0;this.count=0;this.points=[];this.context=[];this.confirmed=[];this.rejected=[];this.pending=[];this.held=null;this.flight=null;this.proposalsThisFrame=[];this.lastDecision='waiting_for_hand';}
  reject(reason,row){
   if(this.flight)this.rejected.push({from_hand:this.flight.source.owner.hand,event_frame:row.frame,event_time_seconds:row.time,control_status:reason,floor_contact_time_seconds:this.flight.floor?.time??null});
   this.flight=null;this.held=null;this.pending=[];this.lastDecision=reason;
@@ -55,7 +55,17 @@ export class CrossoverCounter {
   const flight=this.flight,d=flight.source.measurement[2];
   if(now-flight.lastSeen>.25){this.reject('rejected_tracking_gap',row);this.held=row.owner?row:null;return [];}
   if(now-flight.source.time>1.8){this.reject('rejected_uncontrolled_flight',row);this.held=row.owner?row:null;return [];}
-  if(row.measurement[2]/d<.65||row.measurement[2]/d>1.5){this.reject('rejected_ball_size_change',row);this.held=null;return [];}
+  if(row.measurement[2]/d<.65||row.measurement[2]/d>1.5){
+   if(!this.sizeOutlierRecovery||!flight.floor){this.reject('rejected_ball_size_change',row);this.held=null;return [];}
+   // A low-confidence false box near a free hand must not erase an observed
+   // floor turn. Ignore its geometry completely. Recovery has the existing
+   // 250ms observation limit and still needs real opposite-hand control.
+   row.measurement=null;row.owner=null;
+   Object.assign(this.points.at(-1),{observed:false,y:null,diameter:null,ignoredReason:'ball_size_outlier'});
+   if(now-flight.lastSeen>.25)this.reject('rejected_ball_size_change',row);
+   else this.lastDecision='waiting_for_consistent_ball_size';
+   return [];
+  }
   flight.lastSeen=now;
   if(row.measurement[1]>flight.peak.measurement[1])flight.peak=row;
   const peak=flight.peak;
@@ -133,8 +143,8 @@ export class CrossoverCounter {
 }
 
 export function createCrossoverCounter(revision=CROSSOVER_COUNTER_REVISION){
- if(!['CROSS 01','CROSS 02'].includes(revision))throw new Error(`Unsupported crossover counter revision: ${revision}`);
- return new CrossoverCounter({legacy:revision==='CROSS 01'});
+ if(!['CROSS 01','CROSS 02','CROSS 03'].includes(revision))throw new Error(`Unsupported crossover counter revision: ${revision}`);
+ return new CrossoverCounter({legacy:revision==='CROSS 01',sizeOutlierRecovery:revision==='CROSS 03'});
 }
 
 export function crossoverROI(person,tracker,w,h){

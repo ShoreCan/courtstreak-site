@@ -1,7 +1,7 @@
 import {ReadinessClock,BALL_LOCK_GRACE_SECONDS} from './cameraReadiness.mjs';
 import {setupCondition} from './setupGuidance.mjs';
 
-export const SETUP_TIMING_REVISION='SETUP CLOCK 01';
+export const SETUP_TIMING_REVISION='SETUP CLOCK 02';
 export const SETUP_REFRESH_BRIDGE_SECONDS=.65;
 
 // A queued body refresh is not an observed change in the player's position.

@@ -96,7 +96,7 @@ test('the crossover ball search covers both hands and stays in the image',()=>{
 test('reset and countdown rebasing retain the crossover counter and its hand context',()=>{
  const state=createSessionTrackingState(true,'stationary-crossover'),p=person();state.counter.update([],[840,350,60],p,-.2,20);shiftPreGoTimeline(state,.3);
  assert.equal(state.counter.points[0].timestamp,-.5);assert.equal(state.validator.context[0].time,-.5);assert.equal(state.counter.held.time,-.5);
- resetSessionTrackingCounter(state);assert.equal(state.counter,state.validator);assert.equal(state.counter.count,0);assert.equal(state.configuration.counterRevision,'CROSS 02');
+ resetSessionTrackingCounter(state);assert.equal(state.counter,state.validator);assert.equal(state.counter.count,0);assert.equal(state.configuration.counterRevision,'CROSS 03');
 });
 test('saved test details reproduce the count and retain both hand and full-flight replay evidence',()=>{
  const {frames}=trial({hold:0,reps:12,fps:15}),c=new CrossoverCounter(),evidence=new RoundEvidence();

@@ -48,17 +48,17 @@ test('large setup cues choose a single geometric action and hold position for pr
  Object.assign(base.xy,{0:[640,230],5:[450,600],6:[830,600],9:[350,1000],10:[900,1000],11:[490,1150],12:[790,1150],15:[460,1950],16:[820,1950]});
  const ball={box:[820,920,980,1080],score:.9};
  const variants=[
-  [p=>{p.box=[500,300,600,700];},'MOVE CLOSER'],
-  [p=>{p.box[1]=-100;},'STEP BACK'],
-  [p=>{p.xy[15][1]=2200;},'TILT PHONE DOWN'],
-  [p=>{p.xy[15][1]=600;p.xy[16][1]=600;},'TILT PHONE UP'],
-  [p=>{p.confidence[9]=0;},'SHOW BOTH WRISTS'],
+  [p=>{p.box=[500,300,600,700];},'Move a little closer'],
+  [p=>{p.box[1]=-100;},'Step back a little'],
+  [p=>{p.xy[15][1]=2200;},'Tilt down slightly'],
+  [p=>{p.xy[15][1]=600;p.xy[16][1]=600;},'Tilt up slightly'],
+  [p=>{p.confidence[9]=0;},'Both wrists in view'],
  ];
  for(const [change,text]of variants){const p=structuredClone(base);change(p);const checks=evaluateCameraSetup(p,ball,1280,2276,{handMode:'both'});
   const cue=setupInstruction(checks,true,true,setupCondition(checks,true,true,{handMode:'either'}),{handMode:'either'});assert.equal(cue.screenText,text);
  }
  const checks=evaluateCameraSetup(base,ball,1280,2276,{handMode:'both'});
- assert.equal(setupInstruction(checks,false,true,setupCondition(checks,false,true),{handMode:'either'}).screenText,'HOLD POSITION');
+ assert.equal(setupInstruction(checks,false,true,setupCondition(checks,false,true),{handMode:'either'}).screenText,'Hold comfortably');
 });
 test('a ball at the picture edge keeps the specific ball-framing instruction',()=>{
   const checks={...good,valid:false,owned:false,rightHand:false,issue:'ball-edge',message:'The basketball is near the side edge. Bring it toward the center of the preview.'};
