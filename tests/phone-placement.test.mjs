@@ -6,13 +6,12 @@ import {SetupGuidance,CALM_SETUP_START} from '../src/lib/ai/setupGuidance.mjs';
 test('opening the camera never starts judging the player before they set the phone',()=>{
  const p=new PhonePlacement(10);
  for(const now of [10,20,60,200]){const r=p.snapshot(now,true);assert.equal(r.stage,'placing');assert.equal(r.canCheck,false);}
- p.arm(200);assert.equal(p.snapshot(209.999,true).canCheck,false);assert.equal(p.snapshot(210,true).canCheck,true);
+ p.start(200);assert.equal(p.snapshot(200,true).canCheck,true);
 });
-test('placement time and model preparation are independent prerequisites',()=>{
- const p=new PhonePlacement(0);p.arm(5);
- assert.equal(p.snapshot(8,true).stage,'settling');assert.equal(p.snapshot(8,true).left,7);
- assert.equal(p.snapshot(15,false).stage,'loading');assert.equal(p.snapshot(15,false).canCheck,false);
- assert.equal(p.snapshot(20,true).stage,'ready');p.arm(25);assert.equal(p.armedAt,5);
+test('Start waits only for model preparation, without a placement timer',()=>{
+ const p=new PhonePlacement(0);p.start(5);
+ assert.equal(p.snapshot(5,false).stage,'loading');assert.equal(p.snapshot(5,false).canCheck,false);
+ assert.equal(p.snapshot(5,true).stage,'ready');p.start(25);assert.equal(p.startRequestedAt,5);
 });
 test('calm guidance begins neutrally and only changes a persistent instruction',()=>{
  const g=new SetupGuidance(1.2,{minimumHold:2,initial:CALM_SETUP_START});
