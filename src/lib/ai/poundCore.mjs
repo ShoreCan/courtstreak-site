@@ -29,6 +29,7 @@ export class BallIdentityTracker {
  typical(){return this.diameters.length?median(this.diameters):this.diameter;}
  lane(){return this.lanes.length?median(this.lanes):this.last?.[0];}
  ready(){const d=this.typical(); return this.diameters.length>=12 && this.lanes.length>=12 && d>=38 && percentile(this.diameters,.9)-percentile(this.diameters,.1)<=Math.max(28,d*.55) && percentile(this.lanes,.9)-percentile(this.lanes,.1)<=Math.max(95,d*1.8);}
+ freezeCalibration(){this.calibrationFrozen=true;}
  roi(w,h){const x=this.lane(),d=this.typical()||72; if(x==null)return [0,0,w,h]; const half=Math.floor(Math.max(210,Math.min(w*.28,d*2.7))); return [Math.max(0,Math.floor(x)-half),Math.floor(h*.14),Math.min(w,Math.floor(x)+half),h];}
  select(candidates,person,phase,w,h,now=null){
   this.decisions=this.diagnostics?candidates.map((_,i)=>({candidateIndex:i,status:'not_selected',reason:'ranking'})):[];
@@ -107,7 +108,7 @@ export class BallIdentityTracker {
    if(this.samples.length&&now<=this.samples.at(-1).at)this.samples=[];
    this.samples.push({at:now,center:[...g.center],diameter:g.diameter,...(this.regularFloorContinuity?{score:chosen.score}:{})});this.samples=this.samples.slice(-32);
   }
-  if(owned&&['setup','countdown'].includes(phase)){this.diameters.push(g.diameter);this.diameters=this.diameters.slice(-30);this.lanes.push(g.center[0]);this.lanes=this.lanes.slice(-45);}
+  if(owned&&!this.calibrationFrozen&&['setup','countdown'].includes(phase)){this.diameters.push(g.diameter);this.diameters=this.diameters.slice(-30);this.lanes.push(g.center[0]);this.lanes=this.lanes.slice(-45);}
   return chosen;
  }
 }

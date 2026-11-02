@@ -7,7 +7,8 @@ import { getDrillVideo } from '../../data/drillVideos.js';
 import './iphone-pound-test.css';
 import '../../training-moments.css';
 
-export const TRACKER_PRESENTATION_REVISION = 'STUDIO 10';
+export const TRACKER_PRESENTATION_REVISION = 'STUDIO 11';
+export const SESSION_FLOW_REVISION='SESSION 09';
 export function CourtStreakMark() {
   return <svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><circle cx="16" cy="16" r="13"/><path d="M3 16h26M16 3v26M6.5 6.5c10.5 4 15 8.5 19 19M25.5 6.5c-10.5 4-15 8.5-19 19"/></svg>;
 }
@@ -35,7 +36,7 @@ export default function PoundSessionView({ drillKey='right-hand-pound', ui, rati
         <span className="cs-studio-private" title="Camera video stays on your device"><FiShield/><span className="cs-sr-only">Private camera</span></span>
       </header>
       <div className="cs-studio-heading">
-        <div><p className="cs-studio-eyebrow">{crossover?versions.check:'AI TRAINING'} <span/> BALL HANDLING</p><h1>{ended ? phase === 'finished' ? 'Round complete' : 'Your partial round' : drillName}<span>.</span></h1></div>
+        <div><p className="cs-studio-eyebrow">CAMERA TEST 09 <span/> BALL HANDLING</p><h1>{ended ? phase === 'finished' ? 'Round complete' : 'Your partial round' : drillName}<span>.</span></h1></div>
         <span className="cs-studio-duration"><FiClock/>20 seconds</span>
       </div>
       <ol className="cs-iphone-steps" aria-label="Session progress">{['Set up', 'Train', 'Replay'].map((label, index) => <li key={label} className={index === step ? 'current' : index < step ? 'complete' : ''} aria-current={index === step ? 'step' : undefined}><b>{index < step ? <FiCheck/> : index + 1}</b><span>{label}</span>{index < 2 && <i aria-hidden="true"/>}</li>)}</ol>
@@ -49,7 +50,7 @@ export default function PoundSessionView({ drillKey='right-hand-pound', ui, rati
             {phase==='placing'&&<div className="cs-setup-placement-note" aria-hidden="true">Your preview is ready. Start on your time.</div>}
             {phase==='setup'&&<div className="cs-setup-screen-cue" aria-hidden="true"><span>Camera setup</span><strong>{ui.setupGuide?.screenText||'Finding your position'}</strong></div>}
             {phase==='loading'&&ui.cameraReady&&<span className="cs-iphone-lock"><i/>Camera on · Preparing tracker</span>}
-            {phase === 'countdown' && <div className={`cs-iphone-countdown ${ui.rechecking ? 'is-paused' : ''}`}><span>{ui.rechecking ? 'HOLD POSITION' : 'GET READY'}</span><div className="cs-studio-countdown-ring" style={{ '--count-progress': `${(5 - ui.countdown) / 5 * 100}%` }}><strong key={ui.countdown}>{ui.countdown}</strong></div><span>{ui.rechecking ? 'Countdown paused · Rechecking' : 'Wait for Go.'}</span></div>}
+            {phase === 'countdown' && <div className={`cs-iphone-countdown ${ui.rechecking ? 'is-paused' : ''}`}><span>{ui.rechecking ? 'QUICK CHECK' : 'GET READY'}</span><div className="cs-studio-countdown-ring" style={{ '--count-progress': `${(5 - ui.countdown) / 5 * 100}%` }}><strong key={ui.countdown}>{ui.countdown}</strong></div><span>{ui.rechecking ? 'Countdown paused · Rechecking' : 'Wait for Go.'}</span></div>}
             {phase === 'active' && ui.go && <div className="cs-iphone-countdown cs-iphone-go"><strong>GO.</strong></div>}
           </section>
           {training && <div className={`cs-iphone-live ${phase === 'recording-only' ? 'is-partial' : ''}`}>
@@ -98,7 +99,7 @@ export default function PoundSessionView({ drillKey='right-hand-pound', ui, rati
         </div>
         <div className="cs-studio-result-grid">
           <div className="cs-iphone-replay">
-            <div className="cs-studio-section-heading"><h3>Your replay</h3><span>Every counted rep. One tap away.</span></div>
+            <div className="cs-studio-section-heading"><h3>Your replay</h3><span>Your original camera recording.</span></div>
             {clip.status === 'ready' ? <CountedReplay src={clip.url} changes={replayChanges} events={ui.evidence.repEvents} finalCount={ui.count} completed={phase === 'finished'}/> : <div className="cs-studio-no-replay" role="status"><FiCamera/><h3>{clip.status === 'finishing' ? 'Finishing your replay…' : 'Your count is saved here.'}</h3><p>{clip.status === 'finishing' ? 'The camera recording is finishing.' : 'No video is available for this round.'}</p></div>}
           </div>
           <aside className="cs-studio-share-panel" aria-label="Save and share your round">
@@ -108,7 +109,7 @@ export default function PoundSessionView({ drillKey='right-hand-pound', ui, rati
               <div className="cs-iphone-video-actions"><button type="button" className="cs-iphone-primary" onClick={() => onShareVideo(true)} disabled={sharing || !canSave}><FiDownload/><span>{countedClip.status === 'ready' ? 'Save video' : countedClip.status === 'original' ? 'Save original' : 'Preparing video…'}</span></button><button type="button" className="cs-iphone-secondary" onClick={() => onShareVideo()} disabled={sharing || !canSave}><FiShare2/>{sharing ? 'Opening share options…' : 'Share round'}</button></div>
               {shareMessage && <p className="cs-studio-share-message" role="status">{shareMessage}</p>}
               <details className="cs-studio-original"><summary>More save options<FiChevronDown/></summary><div>{canSave && <a className="cs-iphone-file-download" href={savedClip.url} download={filename}><FiDownload/> Download {countedClip.status === 'ready' ? 'counted' : 'original'} file</a>}<a className="cs-iphone-file-download" href={clip.url} download={originalFilename}><FiDownload/> Original camera video</a>{!['ready', 'original'].includes(countedClip.status) && <button type="button" className="cs-studio-text-button" onClick={onUseOriginal}>Use original instead</button>}<p>The original has no added counter. On iPhone, choose Save Video or Save to Files.</p></div></details>
-              <p className="cs-studio-save-note">{crossover?'Save the original before leaving or starting again. You can create a counted version afterward.':'Save before leaving or starting again.'}</p>
+              <p className="cs-studio-save-note">Save the original before leaving or starting again. Adding a counter is optional.</p>
             </>}
             {ui.cameraReady&&<div className="cs-preview-retained"><p><FiCamera/> Camera ready for your next round.</p><button type="button" className="cs-studio-text-button" onClick={onCloseCamera}>Turn camera off</button></div>}
             <button type="button" className="cs-studio-again" onClick={onOpen}><FiRefreshCw/> Train again<FiArrowRight/></button>

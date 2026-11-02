@@ -11,6 +11,7 @@ import { TRACKER_CHECK_REVISION } from '../../lib/ai/trackerConfiguration.mjs';
 import { TRACKER_BUILD_INFO } from '../../lib/ai/trackerBuildInfo.mjs';
 import { BALL_PROPOSAL_POLICY_REVISION, ballProposalMinimumScore } from '../../lib/ai/ballProposalPolicy.mjs';
 import { CAMERA_REVIEW_REVISION } from '../../lib/ai/cameraReadiness.mjs';
+import {CountdownReadinessClock,COUNTDOWN_READINESS_REVISION} from '../../lib/ai/countdownReadiness.mjs';
 import { SetupReadinessClock, SETUP_TIMING_REVISION } from '../../lib/ai/setupReadiness.mjs';
 import { DrillRecording, recordingExtension } from '../../lib/ai/drillRecording.mjs';
 import { RoundEvidence } from '../../lib/ai/roundEvidence.mjs';
@@ -29,13 +30,13 @@ import StandaloneDrillTimer from './StandaloneDrillTimer.jsx';
 import {PhonePlacement,PHONE_PLACEMENT_REVISION} from '../../lib/ai/phonePlacement.mjs';
 import {CameraPreview,CAMERA_PREVIEW_REVISION} from '../../lib/ai/cameraPreview.mjs';
 import {VideoFrameClock,VIDEO_FRAME_CLOCK_REVISION} from '../../lib/ai/videoFrameClock.mjs';
-import PoundSessionView,{TRACKER_PRESENTATION_REVISION} from './PoundSessionView.jsx';
+import PoundSessionView,{TRACKER_PRESENTATION_REVISION,SESSION_FLOW_REVISION} from './PoundSessionView.jsx';
 const DURATION=20;
 const empty={body:false,hand:false,ball:false,floor:false,owned:false};
 const emptyClip={status:'idle',url:'',blob:null};
 const emptyCountedClip={...emptyClip,progress:0};
 const requestFrontCamera=()=>navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{exact:'user'},width:{ideal:1280},height:{ideal:720},frameRate:{ideal:30}}});
-function machine(freshFrames=true,drillKey='right-hand-pound'){return {...createSessionTrackingState(freshFrames,drillKey),phase:'idle',gate:new CameraPositionGate(),readiness:new SetupReadinessClock({handMode:drillKey===CROSSOVER_DRILL_KEY?'either':'right'}),guidance:new SetupGuidance(1.2,{minimumHold:2,initial:CALM_SETUP_START}),calibration:new FramedCalibration(),evidence:new RoundEvidence(),poseClock:new PoseRefreshClock(),person:null,ball:null,poseAt:-Infinity,times:[],goodSince:null,progress:0,count:0,left:DURATION,countdown:5,fps:0,checks:empty,message:'Set your phone on stable support, angled toward you. Fit your head, feet and some floor in the picture.',lastInference:0,started:null,detected:0,total:0};}
+function machine(freshFrames=true,drillKey='right-hand-pound'){return {...createSessionTrackingState(freshFrames,drillKey),countdownReadiness:new CountdownReadinessClock({handMode:drillKey===CROSSOVER_DRILL_KEY?'either':'right'}),phase:'idle',gate:new CameraPositionGate(),readiness:new SetupReadinessClock({handMode:drillKey===CROSSOVER_DRILL_KEY?'either':'right'}),guidance:new SetupGuidance(1.2,{minimumHold:2,initial:CALM_SETUP_START}),calibration:new FramedCalibration(),evidence:new RoundEvidence(),poseClock:new PoseRefreshClock(),person:null,ball:null,poseAt:-Infinity,times:[],goodSince:null,progress:0,count:0,left:DURATION,countdown:5,fps:0,checks:empty,message:'Set your phone on stable support, angled toward you. Fit your head, feet and some floor in the picture.',lastInference:0,started:null,detected:0,total:0};}
 export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-pound',standalone=false}){
  const crossover=drillKey===CROSSOVER_DRILL_KEY,drillName=crossover?'Crossovers':'Right-Hand Pound',fileKey=crossover?'crossovers':'right-hand-pound',setupOptions={handMode:crossover?'either':'right'},cameraOptions={handMode:crossover?'both':'right'};
  const observationPolicy=sessionObservationPolicy(drillKey,freshFrames);
@@ -219,9 +220,9 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
     s.message=s.setupGuide.message;
     s.setupSlow=completed-s.setupStartedAt>=SETUP_HELP_SECONDS;
     s.setupBlocker=condition.valid?null:condition.message;
-    if(s.progress>=1&&readiness.ready){s.phase='countdown';s.readiness.reset(now,{retainPosition:true});resetSessionTrackingCounter(s);s.countdownAt=now;s.countdown=5;s.message='Position locked. Stay in view until Go.';s.lastCue=5;cue();}
+    if(s.progress>=1&&readiness.ready){s.phase='countdown';s.countdownReadiness.reset(now);s.tracker.freezeCalibration();resetSessionTrackingCounter(s);s.countdownAt=now;s.countdown=5;s.message='Your view is checked. Get comfortable; wait for Go.';s.lastCue=5;cue();}
    }else if(s.phase==='countdown'){
-    const readiness=s.readiness.update(now,checks,speedReady,s.tracker.ready()),condition=readiness.condition;
+    const readiness=s.countdownReadiness.update(now,checks,speedReady,s.tracker.ready()),condition=readiness.condition;
     setupReadiness={speedReady,ballLockReady:s.tracker.ready(),conditionValid:condition.valid,refreshBridged:readiness.refreshBridged,elapsed:readiness.elapsed,reset:readiness.reset};
     s.setupBlocker=condition.valid?null:condition.message;
     s.rechecking=!readiness.ticking;
@@ -232,7 +233,7 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
      const revisedStart=now-readiness.countdownElapsed,pause=Math.max(0,revisedStart-s.countdownAt);
      shiftPreGoTimeline(s,pause);
      s.countdownAt=revisedStart;s.countdown=Math.max(0,Math.ceil(5-readiness.countdownElapsed));
-     s.message=readiness.ticking?(crossover?'Hold the ball in either hand. Wait for Go.':'Keep the ball in your right hand. Wait for Go.'):`Hold your position. ${condition.message}`;
+     s.message=readiness.ticking?(crossover?'Hold the ball in either hand. Wait for Go.':'Keep the ball in your right hand. Wait for Go.'):`Quick check. Your countdown keeps its place. ${condition.message}`;
      if(s.countdown!==s.lastCue){s.lastCue=s.countdown;cue(s.countdown?650:1000);}
      if(s.countdown===0&&readiness.ready){s.phase='active';s.started=completed;const shift=completed-(s.countdownAt+5);shiftPreGoTimeline(s,shift);s.count=0;s.message=crossover?'Go. Bounce from one hand into the other, under control.':'Go. Complete clean right-hand pounds.';startRecording(completed);}
     }
@@ -345,14 +346,14 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
  }
  useEffect(()=>{
   if(ended&&clip.status==='ready'&&countedClip.status==='idle'){
-   if(crossover)useOriginalVideo();else void prepareCountedVideo();
+   useOriginalVideo();
   }
  },[ended,clip.status,countedClip.status,crossover]);
  function useOriginalVideo(){videoExport.current?.abort();videoExport.current=null;setCountedClip({...emptyCountedClip,status:'original'});}
  function saveEvidence(){
   const s=m.current;
   const data=s.evidence.export({startedAt:s.started,baseSourceCommit:TRACKER_BUILD_INFO.sourceCommit,buildInfo:TRACKER_BUILD_INFO,trackerCheckRevision:crossover?CROSSOVER_TEST_REVISION:TRACKER_CHECK_REVISION,trackerConfiguration:s.configuration,trackerRevision:s.configuration.counterRevision,...(s.configuration.identityRevision?{ballIdentityRevision:s.configuration.identityRevision}:{}),cameraRevision:CAMERA_SETUP_REVISION,readinessRevision:CAMERA_REVIEW_REVISION,detectorInputMode:detector.current?.liveInputMode??'legacy',controlRevision:CONTROL_REVISION,poseScheduleRevision:POSE_SCHEDULE_REVISION,poseExecutionRevision:detector.current?.poseWorker?POSE_EXECUTION_REVISION:'sequential',poseMode:detector.current?.poseMode??'sequential',liveFrameRevision:freshFrames?LIVE_FRAME_REVISION:'FRAME 00',poseSideConvention:'Original physical person; detector image is mirrored',
-   drillKey,...(crossover?{repDefinition:CROSSOVER_RULE,videoFrameClockRevision:VIDEO_FRAME_CLOCK_REVISION,videoFrameClockMode:s.videoFrameClockMode}:{}),observationPolicy,poseProvider:detector.current?.poseWorker?'wasm':detector.current?.provider,timerSeconds:DURATION,phase:s.phase,message:s.message,displayedCount:s.count,presentationRevision:TRACKER_PRESENTATION_REVISION,setupGuidanceRevision:SETUP_GUIDANCE_REVISION,setupTimingRevision:SETUP_TIMING_REVISION,priorSetupAttempts:setupHistory.current,cameraPreviewRevision:CAMERA_PREVIEW_REVISION,phonePlacementRevision:PHONE_PLACEMENT_REVISION,phonePlacement:s.placementState??null,setupAttemptRevision:SETUP_ATTEMPT_REVISION,setupAttempt:s.setupAttemptState??null,setupFailure:s.setupFailure??null,setupStartedAt:s.setupStartedAt??null,setupBlocker:s.setupBlocker??null,latestPositionChecks:s.checks,
+   drillKey,...(crossover?{repDefinition:CROSSOVER_RULE,videoFrameClockRevision:VIDEO_FRAME_CLOCK_REVISION,videoFrameClockMode:s.videoFrameClockMode}:{}),observationPolicy,poseProvider:detector.current?.poseWorker?'wasm':detector.current?.provider,timerSeconds:DURATION,phase:s.phase,message:s.message,displayedCount:s.count,presentationRevision:TRACKER_PRESENTATION_REVISION,sessionFlowRevision:SESSION_FLOW_REVISION,setupGuidanceRevision:SETUP_GUIDANCE_REVISION,setupTimingRevision:SETUP_TIMING_REVISION,countdownReadinessRevision:COUNTDOWN_READINESS_REVISION,priorSetupAttempts:setupHistory.current,cameraPreviewRevision:CAMERA_PREVIEW_REVISION,phonePlacementRevision:PHONE_PLACEMENT_REVISION,phonePlacement:s.placementState??null,setupAttemptRevision:SETUP_ATTEMPT_REVISION,setupAttempt:s.setupAttemptState??null,setupFailure:s.setupFailure??null,setupStartedAt:s.setupStartedAt??null,setupBlocker:s.setupBlocker??null,latestPositionChecks:s.checks,
    framesWithSelectedBall:s.detected,trainingFrames:s.total,ballCoverage:s.total?s.detected/s.total:null,
    provider:detector.current?.provider,detectorInputRevision:detector.current?.inputRevision,ballProposalPolicyRevision:BALL_PROPOSAL_POLICY_REVISION,detectorResources:detector.current?.resourceSummary,modelManifest:detector.current?.modelManifest,runtime:{userAgent:navigator.userAgent,hardwareConcurrency:navigator.hardwareConcurrency??null},cameraSettingsAtStart:s.cameraSettingsAtStart,frameSize:s.frameSize??[frame.current?.width,frame.current?.height],captureFrameSize:s.captureFrameSize??null,
    recordingAvailable:!!clip.blob,videoRevision:VIDEO_OVERLAY_REVISION,recordingRevision:RECORDING_TAIL_REVISION,countingStoppedAt:s.countingStoppedAt??null,recordedUntil:s.recordedUntil??null,interruptionReason:s.interruptionReason??null,videoExport:countedClip.exportInfo??null,countDisplayStartedAt:countTimeline.current.startedAt,
