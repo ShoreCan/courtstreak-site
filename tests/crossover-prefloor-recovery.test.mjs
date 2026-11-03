@@ -68,3 +68,13 @@ test('an unobserved bounce cannot carry the wrong source hand into the next vali
  assert.equal(c.confirmed[0].from_hand,'left');assert.equal(c.confirmed[0].to_hand,'right');
  assert.ok(c.rejected.some(e=>e.control_status==='rejected_no_floor_bounce'));
 });
+
+test('an oversized release box cannot replace the held ball scale',()=>{
+ const rows=[[0,840,350,60],[.1,null],[.2,780,445,110],[.3,650,630,60],
+  [.4,580,550,60],[.5,500,450,60],[.6,440,350,60],[.7,440,350,60]];
+ assert.equal(run(rows,'CROSS 04').count,0);
+ const current=run(rows,'CROSS 05');
+ assert.equal(current.count,1);
+ assert.equal(current.confirmed[0].floor_contact_time_seconds,.3);
+ assert.equal(run(rows.filter(row=>row[0]!==.3),'CROSS 05').count,0);
+});

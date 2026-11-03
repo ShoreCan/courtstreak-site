@@ -18,7 +18,7 @@ function observation(frame,measurement,person,time){
 // This pilot follows possession, a floor turn and the receiving hand. It does
 // not count midline crossings, use knee height, or infer a bounce from a pass.
 export class CrossoverCounter {
- constructor({legacy=false,sizeOutlierRecovery=false,preFloorSizeRecovery=false}={}){this.legacy=legacy;this.sizeOutlierRecovery=sizeOutlierRecovery;this.preFloorSizeRecovery=preFloorSizeRecovery;this.frame=0;this.count=0;this.points=[];this.context=[];this.confirmed=[];this.rejected=[];this.pending=[];this.held=null;this.flight=null;this.proposalsThisFrame=[];this.lastDecision='waiting_for_hand';}
+ constructor({legacy=false,sizeOutlierRecovery=false,preFloorSizeRecovery=false,releaseSizeRecovery=false}={}){this.legacy=legacy;this.sizeOutlierRecovery=sizeOutlierRecovery;this.preFloorSizeRecovery=preFloorSizeRecovery;this.releaseSizeRecovery=releaseSizeRecovery;this.frame=0;this.count=0;this.points=[];this.context=[];this.confirmed=[];this.rejected=[];this.pending=[];this.held=null;this.flight=null;this.proposalsThisFrame=[];this.lastDecision='waiting_for_hand';}
  reject(reason,row){
   if(this.flight)this.rejected.push({from_hand:this.flight.source.owner.hand,event_frame:row.frame,event_time_seconds:row.time,control_status:reason,floor_contact_time_seconds:this.flight.floor?.time??null});
   this.flight=null;this.held=null;this.pending=[];this.lastDecision=reason;
@@ -42,6 +42,17 @@ export class CrossoverCounter {
    return [];
   }
   if(!this.flight){
+   // An oversized release box can overlap the releasing wrist. Preserve the
+   // previous ball scale and use the new center only as a release cue.
+   const held=this.held;
+   if(this.releaseSizeRecovery&&held&&row.owner?.hand===held.owner.hand&&
+    now-held.time<=.25&&row.measurement[2]>held.measurement[2]*1.5&&
+    row.measurement[1]-held.measurement[1]>=held.measurement[2]){
+    this.begin(held,row);
+    this.flight.lastSeen=now;
+    this.flight.preFloorSizeGap=true;
+    return [];
+   }
    // The free hand can be nearer during the downward crossing. Retain the
    // releasing hand until a bounce and controlled return verify a transfer.
    const descendingChange=!this.legacy&&this.held&&row.owner&&row.owner.hand!==this.held.owner.hand&&
@@ -157,8 +168,8 @@ export class CrossoverCounter {
 }
 
 export function createCrossoverCounter(revision=CROSSOVER_COUNTER_REVISION){
- if(!['CROSS 01','CROSS 02','CROSS 03','CROSS 04'].includes(revision))throw new Error(`Unsupported crossover counter revision: ${revision}`);
- return new CrossoverCounter({legacy:revision==='CROSS 01',sizeOutlierRecovery:['CROSS 03','CROSS 04'].includes(revision),preFloorSizeRecovery:revision==='CROSS 04'});
+ if(!['CROSS 01','CROSS 02','CROSS 03','CROSS 04','CROSS 05'].includes(revision))throw new Error(`Unsupported crossover counter revision: ${revision}`);
+ return new CrossoverCounter({legacy:revision==='CROSS 01',sizeOutlierRecovery:['CROSS 03','CROSS 04','CROSS 05'].includes(revision),preFloorSizeRecovery:['CROSS 04','CROSS 05'].includes(revision),releaseSizeRecovery:revision==='CROSS 05'});
 }
 
 export function crossoverROI(person,tracker,w,h){
