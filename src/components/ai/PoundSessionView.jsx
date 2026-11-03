@@ -15,7 +15,7 @@ export function CourtStreakMark() {
 const checks = [['body', 'Body', FiMaximize], ['hand', 'Wrist', FiTarget], ['ball', 'Ball', CourtStreakMark], ['floor', 'Floor', FiSmartphone]];
 const titles = { idle: 'Ready when you are.', loading: 'Preparing your session.', placing:'Start when you’re ready.',setup: 'Checking your view.', countdown: 'Hold for Go.', active: 'Stay in your rhythm.', review: 'Checking the last rep.', 'recording-only': 'Count paused. Video rolling.', error: 'Let’s try again.' };
 
-export default function PoundSessionView({ drillKey='right-hand-pound', ui, ratio, live, ended, ballLocked, videoRef, overlayRef, resultPanelRef, clip, countedClip, replayChanges, preparing, canSave, savedClip, sharing, shareMessage, filename, originalFilename, versions, onBack, onOpen, onStart, onCloseCamera, onRetrySetup, onManual, onStop, onSaveEvidence, onPrepareVideo, onUseOriginal, onShareVideo }) {
+export default function PoundSessionView({ drillKey='right-hand-pound', pairedFallbackNotice, ui, ratio, live, ended, ballLocked, videoRef, overlayRef, resultPanelRef, clip, countedClip, replayChanges, preparing, canSave, savedClip, sharing, shareMessage, filename, originalFilename, versions, onBack, onOpen, onStart, onCloseCamera, onRetrySetup, onManual, onStop, onSaveEvidence, onPrepareVideo, onUseOriginal, onShareVideo }) {
   const crossover=drillKey==='stationary-crossover',drillName=crossover?'Crossovers':'Right-hand pound';
   const [guide, setGuide] = useState('landscape');
   const appearance = useAppearance();
@@ -39,6 +39,7 @@ export default function PoundSessionView({ drillKey='right-hand-pound', ui, rati
         <div><p className="cs-studio-eyebrow">{crossover ? versions.check.replace('CROSSOVER','CAMERA') : 'CAMERA TEST 09'} <span/> BALL HANDLING</p><h1>{ended ? phase === 'finished' ? 'Round complete' : 'Your partial round' : drillName}<span>.</span></h1></div>
         <span className="cs-studio-duration"><FiClock/>20 seconds</span>
       </div>
+      {pairedFallbackNotice && !training && !ended && <p role="status">Switched to Camera Test 12. Independent body tracking was too slow for live scoring.</p>}
       <ol className="cs-iphone-steps" aria-label="Session progress">{['Set up', 'Train', 'Replay'].map((label, index) => <li key={label} className={index === step ? 'current' : index < step ? 'complete' : ''} aria-current={index === step ? 'step' : undefined}><b>{index < step ? <FiCheck/> : index + 1}</b><span>{label}</span>{index < 2 && <i aria-hidden="true"/>}</li>)}</ol>
 
       <div className="cs-studio-workspace" hidden={ended}>

@@ -18,7 +18,7 @@ function observation(frame,measurement,person,time){
 // This pilot follows possession, a floor turn and the receiving hand. It does
 // not count midline crossings, use knee height, or infer a bounce from a pass.
 export class CrossoverCounter {
- constructor({legacy=false,sizeOutlierRecovery=false,preFloorSizeRecovery=false,releaseSizeRecovery=false}={}){this.legacy=legacy;this.sizeOutlierRecovery=sizeOutlierRecovery;this.preFloorSizeRecovery=preFloorSizeRecovery;this.releaseSizeRecovery=releaseSizeRecovery;this.frame=0;this.count=0;this.points=[];this.context=[];this.confirmed=[];this.rejected=[];this.pending=[];this.held=null;this.flight=null;this.proposalsThisFrame=[];this.lastDecision='waiting_for_hand';}
+ constructor({legacy=false,sizeOutlierRecovery=false,preFloorSizeRecovery=false,releaseSizeRecovery=false,nearFloorRelease=false}={}){this.legacy=legacy;this.sizeOutlierRecovery=sizeOutlierRecovery;this.preFloorSizeRecovery=preFloorSizeRecovery;this.releaseSizeRecovery=releaseSizeRecovery;this.nearFloorRelease=nearFloorRelease;this.frame=0;this.count=0;this.points=[];this.context=[];this.confirmed=[];this.rejected=[];this.pending=[];this.held=null;this.flight=null;this.proposalsThisFrame=[];this.lastDecision='waiting_for_hand';}
  reject(reason,row){
   if(this.flight)this.rejected.push({from_hand:this.flight.source.owner.hand,event_frame:row.frame,event_time_seconds:row.time,control_status:reason,floor_contact_time_seconds:this.flight.floor?.time??null});
   this.flight=null;this.held=null;this.pending=[];this.lastDecision=reason;
@@ -57,7 +57,13 @@ export class CrossoverCounter {
    // releasing hand until a bounce and controlled return verify a transfer.
    const descendingChange=!this.legacy&&this.held&&row.owner&&row.owner.hand!==this.held.owner.hand&&
     now-this.held.time<=.65&&row.measurement[1]>=this.held.measurement[1]-this.held.measurement[2]*.1;
-   if(row.owner&&!descendingChange){this.held=row;this.lastDecision='hand_controlled';return [];}
+   // A wrist can follow the ball down without still controlling it. Start
+   // the flight from the last held sample when the tracked ball nears the floor.
+   const descendingNearFloor=this.nearFloorRelease&&held&&row.feetY!==null&&
+    row.measurement[2]>=held.measurement[2]*.85&&
+    row.measurement[1]-held.measurement[1]>=held.measurement[2]*.2&&
+    row.measurement[1]+row.measurement[2]*.5>=row.feetY-row.measurement[2]*.65;
+   if(row.owner&&!descendingChange&&!descendingNearFloor){this.held=row;this.lastDecision='hand_controlled';return [];}
    if(!this.held||now-this.held.time>.65){this.held=null;return [];}
    const d=this.held.measurement[2];
    if(row.measurement[1]-this.held.measurement[1]<d*.2)return [];
@@ -168,8 +174,8 @@ export class CrossoverCounter {
 }
 
 export function createCrossoverCounter(revision=CROSSOVER_COUNTER_REVISION){
- if(!['CROSS 01','CROSS 02','CROSS 03','CROSS 04','CROSS 05'].includes(revision))throw new Error(`Unsupported crossover counter revision: ${revision}`);
- return new CrossoverCounter({legacy:revision==='CROSS 01',sizeOutlierRecovery:['CROSS 03','CROSS 04','CROSS 05'].includes(revision),preFloorSizeRecovery:['CROSS 04','CROSS 05'].includes(revision),releaseSizeRecovery:revision==='CROSS 05'});
+ if(!['CROSS 01','CROSS 02','CROSS 03','CROSS 04','CROSS 05','CROSS 06'].includes(revision))throw new Error(`Unsupported crossover counter revision: ${revision}`);
+ return new CrossoverCounter({legacy:revision==='CROSS 01',sizeOutlierRecovery:['CROSS 03','CROSS 04','CROSS 05','CROSS 06'].includes(revision),preFloorSizeRecovery:['CROSS 04','CROSS 05','CROSS 06'].includes(revision),releaseSizeRecovery:['CROSS 05','CROSS 06'].includes(revision),nearFloorRelease:revision==='CROSS 06'});
 }
 
 export function crossoverROI(person,tracker,w,h){

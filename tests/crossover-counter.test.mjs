@@ -114,3 +114,23 @@ test('historical CROSS 01 replay remains available and unsupported revisions fai
  for(const r of frames)old.update([],r.measurement,r.person,r.time,20);
  assert.equal(old.count,1);assert.throws(()=>createCrossoverCounter('CROSS 99'),/Unsupported/);
 });
+
+test('near-floor releasing wrist proximity preserves an observed bounce and still requires the other hand',()=>{
+ const replay=(revision,receivingHand)=>{
+  const state=createSessionTrackingState(true,'stationary-crossover',revision);
+  const samples=[[0,840,350],[.1,780,500],[.2,700,602],[.3,640,630],
+   [.4,560,550],[.5,480,440],[.6,440,350],[.7,440,350]];
+  for(const [time,x,y] of samples){
+   const p=person();
+   if(time>0&&time<=.3)p.xy[10]=[x+20,y-20];
+   if(receivingHand==='right'&&time>=.4){p.confidence[9]=0;p.xy[10]=[x,y];}
+   updateSessionCounter(state,time,[x,y,60],p,720,20);
+  }
+  return state.counter.confirmed;
+ };
+ assert.equal(replay('CROSS 05','left').length,0);
+ assert.equal(replay('CROSS 06','right').length,0);
+ const [event]=replay('CROSS 06','left');
+ assert.equal(event.floor_contact_time_seconds,.3);
+ assert.equal(event.to_hand,'left');
+});

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { loadDetector } from '../../lib/ai/iphoneDetector.mjs';
 import { BALL_TRACKER_REVISION, EXPERIMENTAL_COUNTER_REVISION, BALL_IDENTITY_REVISION, geometry } from '../../lib/ai/poundCore.mjs';
 import { resetPoundTrackingIdentity } from '../../lib/ai/poundTrackingState.mjs';
@@ -39,8 +39,10 @@ const requestFrontCamera=()=>navigator.mediaDevices.getUserMedia({audio:false,vi
 function machine(freshFrames=true,drillKey='right-hand-pound',counterRevision,independentCrossoverPose){return {...createSessionTrackingState(freshFrames,drillKey,counterRevision,independentCrossoverPose),countdownReadiness:new CountdownReadinessClock({handMode:drillKey===CROSSOVER_DRILL_KEY?'either':'right'}),phase:'idle',gate:new CameraPositionGate(),readiness:new SetupReadinessClock({handMode:drillKey===CROSSOVER_DRILL_KEY?'either':'right'}),guidance:new SetupGuidance(1.2,{minimumHold:2,initial:CALM_SETUP_START}),calibration:new FramedCalibration(),evidence:new RoundEvidence(),poseClock:new PoseRefreshClock(),person:null,ball:null,poseAt:-Infinity,times:[],goodSince:null,progress:0,count:0,left:DURATION,countdown:5,fps:0,checks:empty,message:'Set your phone on stable support, angled toward you. Fit your head, feet and some floor in the picture.',lastInference:0,started:null,detected:0,total:0};}
 export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-pound',standalone=false,counterRevision,independentCrossoverPose=false}){
  const crossover=drillKey===CROSSOVER_DRILL_KEY,drillName=crossover?'Crossovers':'Right-Hand Pound',fileKey=crossover?'crossovers':'right-hand-pound',setupOptions={handMode:crossover?'either':'right'},cameraOptions={handMode:crossover?'both':'right'};
- const testRevision=crossover?(independentCrossoverPose?'CROSSOVER TEST 13':counterRevision==='CROSS 05'?'CROSSOVER TEST 12':CROSSOVER_TEST_REVISION):TRACKER_CHECK_REVISION;
+ const testRevision=crossover?(independentCrossoverPose?'CROSSOVER TEST 13':counterRevision==='CROSS 06'?'CROSSOVER TEST 14':counterRevision==='CROSS 05'?'CROSSOVER TEST 12':CROSSOVER_TEST_REVISION):TRACKER_CHECK_REVISION;
  const observationPolicy=sessionObservationPolicy(drillKey,freshFrames,independentCrossoverPose);
+ const {state:locationState}=useLocation();
+ const pairedFallbackNotice=counterRevision==='CROSS 05'&&!independentCrossoverPose&&locationState?.slowCrossoverWorker;
  const navigate=useNavigate(),video=useRef(null),overlay=useRef(null),frame=useRef(null),m=useRef(null),detector=useRef(null),stream=useRef(null),scheduler=useRef(null),mounted=useRef(true),token=useRef(0),wake=useRef(null),audio=useRef(null);
  const cameraPreview=useRef(null),resumePreview=useRef(false);
  if(!cameraPreview.current)cameraPreview.current=new CameraPreview(requestFrontCamera);
@@ -200,6 +202,16 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
    s.fps=s.times.length>1?(s.times.length-1)/(completed-s.times[0]):0;
    if(withPose){s.person=physicalPoseSides(result.person,true);s.poseAt=passStartedAt;s.poseVideoTime=poseInputVideoTime;const pt=result.timings?.pose;s.poseMs=pt?pt.preprocessMs+pt.inferenceMs+pt.decodeMs:null;s.poseClock.completed(completed);poseUpdated=true;}
    acceptBody();
+   if(independentCrossoverPose&&['setup','countdown'].includes(inputPhase)&&poseUpdated){
+    const body=bodyWorker.latest;
+    const tooLate=body.completedAt-body.capturedAt>observationPolicy.maxActivePoseSkew;
+    s.latePoseResults=tooLate?(s.latePoseResults??0)+1:0;
+    if(s.latePoseResults>=3){
+     stopCamera();
+     navigate('/tracker-tests/crossovers-test12',{replace:true,state:{slowCrossoverWorker:true}});
+     return;
+    }
+   }
    const framePerson=poseForFrame(s.person,s.poseAt,now,completed,undefined,activeCrossoverWorker?observationPolicy.maxActivePoseSkew:undefined);
    const phase=['active','review'].includes(s.phase)?'drill':s.phase;
    if(s.phase==='setup'){
@@ -384,7 +396,7 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
   finally{if(mounted.current)setSharing(false);}
  }
  if(manual)return <StandaloneDrillTimer drillName={drillName} onBack={()=>setManual(false)}/>;
- return <PoundSessionView drillKey={drillKey} ui={ui} ratio={ratio} live={live} ended={ended} ballLocked={!!ui.ball&&m.current.tracker.ready()}
+ return <PoundSessionView pairedFallbackNotice={pairedFallbackNotice} drillKey={drillKey} ui={ui} ratio={ratio} live={live} ended={ended} ballLocked={!!ui.ball&&m.current.tracker.ready()}
   videoRef={video} overlayRef={overlay} resultPanelRef={resultPanel}
   clip={clip} countedClip={countedClip} replayChanges={replayChanges} preparing={preparing}
   canSave={canSave} savedClip={savedClip} sharing={sharing} shareMessage={shareMessage}

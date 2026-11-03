@@ -7,7 +7,7 @@ export function createSessionTrackingState(freshFrames,drillKey,counterRevision=
  if(drillKey!==CROSSOVER_DRILL_KEY)return state;
  state.crossover=true;
  const observationPolicy=sessionObservationPolicy(drillKey,freshFrames,independentCrossoverPose);
- state.configuration=Object.freeze({...state.configuration,id:`${counterRevision.replaceAll(' ','')}/${state.configuration.id}/TWOHAND01/${observationPolicy.revision.replaceAll(' ','')}`,counterRevision,identityRevision:state.configuration.identityRevision+' + TWOHAND 01',identityOptions:Object.freeze({...state.configuration.identityOptions,twoHandedMotion:true}),counterOptions:Object.freeze({oppositeHand:true,floorEvidence:true,kneeHeightRule:false,sizeOutlierRecovery:true,preFloorSizeRecovery:true,releaseSizeRecovery:counterRevision==='CROSS 05'}),observationPolicy});
+ state.configuration=Object.freeze({...state.configuration,id:`${counterRevision.replaceAll(' ','')}/${state.configuration.id}/TWOHAND01/${observationPolicy.revision.replaceAll(' ','')}`,counterRevision,identityRevision:state.configuration.identityRevision+' + TWOHAND 01',identityOptions:Object.freeze({...state.configuration.identityOptions,twoHandedMotion:true}),counterOptions:Object.freeze({oppositeHand:true,floorEvidence:true,kneeHeightRule:false,sizeOutlierRecovery:true,preFloorSizeRecovery:true,releaseSizeRecovery:['CROSS 05','CROSS 06'].includes(counterRevision),...(counterRevision==='CROSS 06'?{nearFloorRelease:true}:{})}),observationPolicy});
  resetPoundTrackingIdentity(state);resetSessionTrackingCounter(state);return state;
 }
 export function resetSessionTrackingCounter(state){
