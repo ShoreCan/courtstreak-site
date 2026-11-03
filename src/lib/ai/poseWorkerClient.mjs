@@ -1,7 +1,7 @@
 export const POSE_EXECUTION_REVISION = 'POSE WORKER 01';
-export function poseForFrame(person,capturedAt,frameCapturedAt,completedAt,maxAge=.75){
+export function poseForFrame(person,capturedAt,frameCapturedAt,completedAt,maxAge=.75,maxSkew=Infinity){
   return person&&Number.isFinite(capturedAt)&&capturedAt<=frameCapturedAt&&
-    completedAt>=capturedAt&&completedAt-capturedAt<maxAge?person:null;
+    frameCapturedAt-capturedAt<=maxSkew&&completedAt>=capturedAt&&completedAt-capturedAt<maxAge?person:null;
 }
 
 // One independent body job at a time. The ball loop never awaits this job.
@@ -32,14 +32,14 @@ export async function createPoseWorker({ base, manifest,
   return {
     revision:POSE_EXECUTION_REVISION,
     get busy(){return busy;},get latest(){return latest;},get error(){return error;},
-    request(frame,{capturedAt,sourceVideoTime}){
+    request(frame,{capturedAt,sourceVideoTime,coordinateSize}){
       if(busy||closed||error)return false;
       busy=true;const currentGeneration=generation,currentId=++id;
       job={id:currentId};job.promise=new Promise(resolve=>{job.resolve=resolve;});
       jobTimer=setTimeout(()=>fail('Body tracking took too long to return a fresh result.'),3000);
       Promise.resolve(bitmap(frame)).then(image=>{
         if(closed||error||currentGeneration!==generation){image.close?.();settle();return;}
-        worker.postMessage({type:'pose',id:currentId,generation:currentGeneration,capturedAt,sourceVideoTime,image},[image]);
+        worker.postMessage({type:'pose',id:currentId,generation:currentGeneration,capturedAt,sourceVideoTime,coordinateSize,image},[image]);
       }).catch(e=>fail(e.message));
       return true;
     },

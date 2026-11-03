@@ -43,3 +43,12 @@ test('evidence retains zero frame skew and independent video timestamps',()=>{
  const row=e.export({startedAt:1}).frames[0];assert.equal(row.poseFrameSkewSeconds,0);assert.equal(row.poseSourceVideoTime,2);assert.equal(row.sourceVideoFrameNumber,12);
  assert.ok(Math.abs(poseFrameSkew(1.4,1)-.4)<1e-9);assert.equal(poseFrameSkew(1,-Infinity),null);
 });
+
+test('the separate crossover test runs ball passes independently with a bounded pose skew',()=>{
+ const policy=sessionObservationPolicy('stationary-crossover',true,true);
+ assert.equal(policy.asyncPose,true);
+ assert.equal(policy.poseEveryPass,false);
+ assert.equal(policy.nativeCapture,true);
+ assert.equal(policy.maxActivePoseSkew,.12);
+ assert.equal(createSessionTrackingState(true,'stationary-crossover','CROSS 05',true).configuration.observationPolicy,policy);
+});

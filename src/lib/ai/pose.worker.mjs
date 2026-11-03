@@ -21,7 +21,8 @@ self.onmessage=async({data})=>{
     if(data.type!=='pose')return;
     const start=performance.now();let outputs;
     try{
-      const prepared=input.prepare(data.image,[0,0,data.image.width,data.image.height]);
+      const {width,height}=data.coordinateSize??data.image;
+      const prepared=input.prepare({image:data.image,width,height},[0,0,width,height]);
       const preparedAt=performance.now();
       outputs=await session.run({[session.inputNames[0]]:tensor});
       const inferredAt=performance.now();

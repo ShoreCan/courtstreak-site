@@ -39,3 +39,19 @@ test('stale, missing and future body information cannot validate a ball frame',a
  assert.equal(poseForFrame(null,10,10.1,10.2),null);
  assert.equal(poseForFrame(p,10,10.1,9.9),null);
 });
+
+test('the native portrait snapshot carries canonical coordinates and stale wrists are excluded',async()=>{
+ const {poseForFrame}=await import('../src/lib/ai/poseWorkerClient.mjs');
+ const {c,w}=await client();
+ const coordinateSize={width:1280,height:2276};
+ c.request({},{capturedAt:10,sourceVideoTime:2,coordinateSize});
+ await Promise.resolve();
+ const job=w.sent.at(-1);
+ assert.deepEqual(job.coordinateSize,coordinateSize);
+ const person={score:.9};
+ w.reply({...job,type:'pose',person});
+ await c.idle();
+ assert.equal(poseForFrame(c.latest.person,10,10.11,10.2,.75,.12),person);
+ assert.equal(poseForFrame(c.latest.person,10,10.13,10.2,.75,.12),null);
+ c.close();
+});

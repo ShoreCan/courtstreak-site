@@ -36,7 +36,7 @@ export default function PoundSessionView({ drillKey='right-hand-pound', ui, rati
         <span className="cs-studio-private" title="Camera video stays on your device"><FiShield/><span className="cs-sr-only">Private camera</span></span>
       </header>
       <div className="cs-studio-heading">
-        <div><p className="cs-studio-eyebrow">{crossover ? (versions.counter==='CROSS 05'?'CAMERA TEST 12':'CAMERA TEST 10') : 'CAMERA TEST 09'} <span/> BALL HANDLING</p><h1>{ended ? phase === 'finished' ? 'Round complete' : 'Your partial round' : drillName}<span>.</span></h1></div>
+        <div><p className="cs-studio-eyebrow">{crossover ? versions.check.replace('CROSSOVER','CAMERA') : 'CAMERA TEST 09'} <span/> BALL HANDLING</p><h1>{ended ? phase === 'finished' ? 'Round complete' : 'Your partial round' : drillName}<span>.</span></h1></div>
         <span className="cs-studio-duration"><FiClock/>20 seconds</span>
       </div>
       <ol className="cs-iphone-steps" aria-label="Session progress">{['Set up', 'Train', 'Replay'].map((label, index) => <li key={label} className={index === step ? 'current' : index < step ? 'complete' : ''} aria-current={index === step ? 'step' : undefined}><b>{index < step ? <FiCheck/> : index + 1}</b><span>{label}</span>{index < 2 && <i aria-hidden="true"/>}</li>)}</ol>

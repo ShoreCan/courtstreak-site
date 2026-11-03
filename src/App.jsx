@@ -88,6 +88,7 @@ export default function App() {
       <Route path="/preview/phone" element={<div className="cs-phone-app-sample"><Dashboard previewOnly /></div>} />
       <Route path="/tracker-tests/crossovers" element={<CrossoverCameraTest key="crossover-baseline" drillKey="stationary-crossover" standalone />} />
       <Route path="/tracker-tests/crossovers-test12" element={<CrossoverCameraTest key="crossover-test12" drillKey="stationary-crossover" standalone counterRevision="CROSS 05" />} />
+      <Route path="/tracker-tests/crossovers-test13" element={<CrossoverCameraTest key="crossover-test13" drillKey="stationary-crossover" standalone counterRevision="CROSS 05" independentCrossoverPose />} />
       <Route path="/preview/hub/*" element={<Hub preview />} />
       <Route path="/account/restore-player" element={<RequireAccount><RestorePlayer /></RequireAccount>} />
       <Route path="/hub" element={<RequireAccount><HubEntry /></RequireAccount>} />
