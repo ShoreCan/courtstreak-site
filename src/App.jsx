@@ -20,6 +20,7 @@ const ForgotPassword = lazy(() => import('./pages/ForgotPassword.jsx'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword.jsx'));
 const Dashboard = lazy(() => import('./pages/Dashboard.jsx'));
 const CrossoverCameraTest = lazy(() => import('./components/ai/IPhonePoundTest.jsx'));
+const CameraTest20 = lazy(() => import('./components/ai/CameraTest20.jsx'));
 const Welcome = lazy(() => import('./pages/Welcome.jsx'));
 const Workout = lazy(() => import('./pages/Workout.jsx'));
 const Lab = lazy(() => import('./pages/Lab.jsx'));
@@ -90,6 +91,9 @@ export default function App() {
       <Route path="/tracker-tests/crossovers-test12" element={<CrossoverCameraTest key="crossover-test12" drillKey="stationary-crossover" standalone counterRevision="CROSS 05" />} />
       <Route path="/tracker-tests/crossovers-test13" element={<CrossoverCameraTest key="crossover-test13" drillKey="stationary-crossover" standalone counterRevision="CROSS 05" independentCrossoverPose />} />
       <Route path="/tracker-tests/crossovers-test14" element={<CrossoverCameraTest key="crossover-test14" drillKey="stationary-crossover" standalone counterRevision="CROSS 06" />} />
+      <Route path="/tracker-tests/test20" element={<CameraTest20 />} />
+      <Route path="/tracker-tests/right-hand-pound-test20" element={<CrossoverCameraTest key="pound-test20" drillKey="right-hand-pound" standalone enhancedTracking />} />
+      <Route path="/tracker-tests/crossovers-test20" element={<CrossoverCameraTest key="crossover-test20" drillKey="stationary-crossover" standalone counterRevision="CROSS 11" enhancedTracking />} />
       <Route path="/preview/hub/*" element={<Hub preview />} />
       <Route path="/account/restore-player" element={<RequireAccount><RestorePlayer /></RequireAccount>} />
       <Route path="/hub" element={<RequireAccount><HubEntry /></RequireAccount>} />

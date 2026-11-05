@@ -18,9 +18,13 @@ export class RoundEvidence {
     this.limit = limit; this.nextFrame = 1; this.droppedFrames = 0;
   }
   record({ capturedAt, sourceVideoTime, inputPhase, phase, roi, balls, person, selected, ms, timings, fps, poseUpdated, poseAge, poseCapturedAt, poseInferenceMs, positionChecks,
-    passStartedAt, ballFrameRefreshed, setupReadiness, counterFrame, proposedCount, count, selectionDecisions, ballProposalMinimumScore, handoffState, poseSourceVideoTime, poseFrameSkewSeconds, sourceVideoFrameNumber, proposals = [], confirmed = [] }) {
+    passStartedAt, ballFrameRefreshed, setupReadiness, counterFrame, proposedCount, count, selectionDecisions, ballProposalMinimumScore, handoffState, poseSourceVideoTime, poseFrameSkewSeconds, sourceVideoFrameNumber, decisionCompletedAt, floorView,liveBudget,recoveryMeasurement,proposals = [], confirmed = [] }) {
     const frameId = this.nextFrame++;
     this.frames.push({ frameId, capturedAt, sourceVideoTime, inputPhase, phase, roi: [...roi],
+      ...(Number.isFinite(decisionCompletedAt)?{decisionCompletedAt}:{}),
+      ...(floorView?{floorView:{...floorView,roi:floorView.roi?[...floorView.roi]:null,balls:floorView.balls.map(copyDetection),...(floorView.timings?{timings:{...floorView.timings}}:{})}}:{}),
+      ...(liveBudget?{liveBudget:{...liveBudget,secondarySkips:{...liveBudget.secondarySkips},cadence:{...liveBudget.cadence}}}:{}),
+      ...(recoveryMeasurement?{recoveryMeasurement:[...recoveryMeasurement]}:{}),
       ...(handoffState?{handoffState:{...handoffState}}:{}),
       ...(Number.isFinite(poseSourceVideoTime)?{poseSourceVideoTime}:{}),
       ...(Number.isFinite(poseFrameSkewSeconds)?{poseFrameSkewSeconds}:{}),
@@ -33,8 +37,8 @@ export class RoundEvidence {
     for (const proposal of proposals) this.proposals.push({ ...proposal, proposedOnFrame: frameId });
     for (const event of confirmed) this.repEvents.push({ rep: event.count,
       time: event.event_timestamp_exact ?? event.event_time_seconds,
-      confirmedOnFrame: frameId, confirmedAt: capturedAt, counterFrame: event.event_frame,
-      path: event.validation_path,...(event.from_hand?{fromHand:event.from_hand,toHand:event.to_hand,floorTime:event.floor_contact_time_seconds,reviewFrom:Math.max(0,event.release_time_seconds),controlEvidence:event.control_evidence}:{}) });
+      confirmedOnFrame: frameId, confirmedAt: Number.isFinite(decisionCompletedAt)?decisionCompletedAt:capturedAt, counterFrame: event.event_frame,
+      path: event.validation_path,...(event.evidence_sources?{evidenceSources:[...event.evidence_sources]}:{}),...(event.finished_after_time?{finishedAfterTime:true}:{}),...(event.from_hand?{fromHand:event.from_hand,toHand:event.to_hand,floorTime:event.floor_contact_time_seconds,reviewFrom:Math.max(0,event.release_time_seconds),controlEvidence:event.control_evidence}:{}) });
   }
   export({ startedAt = null, ...metadata }) {
     return { schema: 'courtstreak-round-evidence-v1', reviewRevision: REP_REVIEW_REVISION, ...metadata,

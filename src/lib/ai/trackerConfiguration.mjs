@@ -1,5 +1,7 @@
 import { BALL_TRACKER_REVISION, EXPERIMENTAL_COUNTER_REVISION, BALL_IDENTITY_REVISION, poundCounterOptions } from './poundCore.mjs';
 import { LIVE_FRAME_REVISION } from './detectionPass.mjs';
+import {POUND_RECOVERY_REVISION} from './poundRecoverySession.mjs';
+import {sessionObservationPolicy} from './sessionObservationPolicy.mjs';
 
 export const TRACKER_CHECK_REVISION = 'CHECK 11';
 export const CURRENT_POUND_MODE = 'iphone-fresh-frame-test';
@@ -27,7 +29,11 @@ export function configurationForEvidence(data) {
   const identityRevision=data.ballIdentityRevision;
   const match=/^LOCK (0[2-9]|10)$/.exec(identityRevision??'');
   if(!match)throw new Error('The saved identity revision is missing or unsupported; exact identity configuration is unavailable.');
-  const result=configuration(counterRevision,identityRevision,Number(match[1]),data.liveFrameRevision??'unrecorded');
+  let result=configuration(counterRevision,identityRevision,Number(match[1]),data.liveFrameRevision??'unrecorded');
+  if(data.trackerConfiguration?.recoveryRevision){
+    if(data.trackerConfiguration.recoveryRevision!==POUND_RECOVERY_REVISION)throw new Error('The saved recovery revision is unsupported.');
+    result=Object.freeze({...result,id:result.id+'/OBSERVEDFLOOR01',recoveryRevision:POUND_RECOVERY_REVISION,observationPolicy:sessionObservationPolicy('right-hand-pound',true,false,true)});
+  }
   if(data.trackerConfiguration){
     const saved=data.trackerConfiguration;
     const sameOptions=(a,b)=>a&&Object.keys(a).length===Object.keys(b).length&&Object.keys(b).every(key=>a[key]===b[key]);
@@ -36,6 +42,7 @@ export function configurationForEvidence(data) {
       ||!sameOptions(saved.identityOptions,result.identityOptions)||!sameOptions(saved.counterOptions,result.counterOptions)){
       throw new Error('Saved tracker configuration conflicts with its revision labels.');
     }
+    if(result.recoveryRevision&&!sameOptions(saved.observationPolicy,result.observationPolicy))throw new Error('Saved observation policy conflicts with the recovery revision.');
   }
   return result;
 }

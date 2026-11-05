@@ -264,3 +264,9 @@
  .cs-iphone-tracker[data-phase=placing] .cs-iphone-stage{max-height:32svh;min-height:180px}
  .cs-iphone-tracker[data-phase=placing] .cs-studio-workspace{gap:16px}
 }
+
+.cs-test-drills{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 18px}
+.cs-test-drills a{padding:8px 12px;border:1px solid var(--cs-line,rgba(125,145,160,.3));border-radius:10px;color:inherit;text-decoration:none;font-size:.85rem}
+.cs-test-drills a[aria-current="page"]{color:#5ee1aa;border-color:#5ee1aa}
+.cs-test20-launchers{display:grid;gap:12px;margin:24px 0}
+.cs-test20-launchers a{text-decoration:none}

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { FiArrowLeft, FiArrowRight, FiCamera, FiCheck, FiCheckCircle, FiChevronDown, FiClock, FiDownload, FiInfo, FiLock, FiMaximize, FiPlay, FiRefreshCw, FiShare2, FiShield, FiSmartphone, FiTarget, FiX } from 'react-icons/fi';
 import { useAppearance } from '../AppearanceControl.jsx';
 import CountedReplay from './CountedReplay.jsx';
@@ -23,7 +24,7 @@ export default function PoundSessionView({ drillKey='right-hand-pound', pairedFa
   const phase = ui.phase;
   const training = ['active', 'review', 'recording-only'].includes(phase);
   const positioning = ['setup', 'countdown'].includes(phase);
-  const cameraVisible=live||(phase==='loading'&&ui.cameraReady);
+  const cameraVisible=live||((phase==='loading'||ui.enhancedTracking&&phase==='error')&&ui.cameraReady);
   const setupStage=phase==='countdown'?'ready':ui.setupGuide?.stage||'frame';
   const stageIndex=['frame','ball','ready'].indexOf(setupStage);
   const step = ended ? 2 : training ? 1 : 0;
@@ -36,9 +37,10 @@ export default function PoundSessionView({ drillKey='right-hand-pound', pairedFa
         <span className="cs-studio-private" title="Camera video stays on your device"><FiShield/><span className="cs-sr-only">Private camera</span></span>
       </header>
       <div className="cs-studio-heading">
-        <div><p className="cs-studio-eyebrow">{crossover ? versions.check.replace('CROSSOVER','CAMERA') : 'CAMERA TEST 09'} <span/> BALL HANDLING</p><h1>{ended ? phase === 'finished' ? 'Round complete' : 'Your partial round' : drillName}<span>.</span></h1></div>
+        <div><p className="cs-studio-eyebrow">{ui.enhancedTracking?versions.check:crossover ? versions.check.replace('CROSSOVER','CAMERA') : 'CAMERA TEST 09'} <span/> BALL HANDLING</p><h1>{ended ? phase === 'finished' ? 'Round complete' : 'Your partial round' : drillName}<span>.</span></h1></div>
         <span className="cs-studio-duration"><FiClock/>20 seconds</span>
       </div>
+      {ui.enhancedTracking&&!training&&!ended&&<nav className="cs-test-drills" aria-label="Camera Test 20 drills"><Link to="/tracker-tests/right-hand-pound-test20" aria-current={!crossover?'page':undefined}>Right-hand pound</Link><Link to="/tracker-tests/crossovers-test20" aria-current={crossover?'page':undefined}>Crossovers</Link></nav>}
       {pairedFallbackNotice && !training && !ended && <p role="status">Switched to Camera Test 12. Independent body tracking was too slow for live scoring.</p>}
       <ol className="cs-iphone-steps" aria-label="Session progress">{['Set up', 'Train', 'Replay'].map((label, index) => <li key={label} className={index === step ? 'current' : index < step ? 'complete' : ''} aria-current={index === step ? 'step' : undefined}><b>{index < step ? <FiCheck/> : index + 1}</b><span>{label}</span>{index < 2 && <i aria-hidden="true"/>}</li>)}</ol>
 
@@ -46,7 +48,7 @@ export default function PoundSessionView({ drillKey='right-hand-pound', pairedFa
         <div className="cs-studio-camera-column" hidden={!cameraVisible}>
           <section className="cs-iphone-stage" style={{ aspectRatio: ratio }} aria-label="Live camera and detected basketball">
             <video ref={videoRef} muted autoPlay playsInline aria-label="Mirrored front camera"/><canvas ref={overlayRef} aria-hidden="true"/>
-            {training && <span className={`cs-iphone-lock ${ui.ball ? 'found' : ''}`}><i/>{ui.ball ? ballLocked ? 'Ball locked' : 'Ball detected' : 'Finding ball'}</span>}
+            {training && <span className={`cs-iphone-lock ${ui.ball ? 'found' : ''}`}><i/>{ui.ball ? ui.enhancedTracking?'Tracking ball':ballLocked ? 'Ball locked' : 'Ball detected' : ui.recoveryMeasurement?'Checking ball return':'Finding ball'}</span>}
             {phase==='setup'&&<div className="cs-setup-frame" aria-hidden="true"><i/><i/><i/><i/></div>}
             {phase==='placing'&&<div className="cs-setup-placement-note" aria-hidden="true">Your preview is ready. Start on your time.</div>}
             {phase==='setup'&&<div className="cs-setup-screen-cue" aria-hidden="true"><span>Camera setup</span><strong>{ui.setupGuide?.screenText||'Finding your position'}</strong></div>}
@@ -80,7 +82,7 @@ export default function PoundSessionView({ drillKey='right-hand-pound', pairedFa
             {phase==='setup'&&ui.setupSlow&&<div className="cs-setup-recovery" role="status"><strong>{ui.setupAttemptState?.title||'Camera check in progress.'}</strong><p>{ui.setupAttemptState?.message||'Keep the phone still while we check tracking.'}</p><button type="button" className="cs-iphone-secondary" onClick={onRetrySetup}><FiRefreshCw/>Retry camera check</button><button type="button" className="cs-studio-text-button" onClick={onManual}>Use the timer instead<FiArrowRight/></button></div>}
             <details className="cs-setup-details"><summary>Camera check details<FiChevronDown/></summary><div className="cs-iphone-checks" aria-label="Live position checks">{checks.map(([key, label, Icon]) => <div key={key} className={ui.checks[key] ? 'pass' : ''}><Icon/><span>{crossover&&key==='hand'?'Both wrists':label}</span><b>{ui.checks[key] ? <FiCheck/> : '…'}</b><span className="cs-sr-only">{ui.checks[key] ? 'ready' : 'checking'}</span></div>)}</div><p>{ui.setupBlocker||'Checks are ready.'}</p><button type="button" className="cs-studio-text-button" onClick={onSaveEvidence}><FiDownload/>Save setup details</button></details>
           </>}
-          {phase==='error'&&<><button type="button" className="cs-studio-text-button" onClick={onSaveEvidence}><FiDownload/>Save setup details</button>{ui.setupFailure&&<button type="button" className="cs-studio-text-button" onClick={onManual}>Use the timer instead<FiArrowRight/></button>}</>}
+          {phase==='error'&&<><button type="button" className="cs-studio-text-button" onClick={onSaveEvidence}><FiDownload/>Save setup details</button>{ui.setupFailure&&<button type="button" className="cs-studio-text-button" onClick={onManual}>Use the timer instead<FiArrowRight/></button>}{ui.enhancedTracking&&ui.cameraReady&&<button type="button" className="cs-studio-text-button" onClick={onCloseCamera}>Turn camera off</button>}</>}
           {phase === 'recording-only' && <p className="cs-studio-partial-note"><FiInfo/>Your partial count is frozen. Recording continues until Time.</p>}
           {live && <button type="button" className="cs-studio-stop" onClick={onStop}><FiX/> End session</button>}
           {!training && <details className="cs-iphone-help"><summary>Camera tips<FiChevronDown/></summary><div>
@@ -118,7 +120,7 @@ export default function PoundSessionView({ drillKey='right-hand-pound', pairedFa
         </div>
         <div className="cs-studio-review-bottom"><p><FiInfo/>{crossover?"Crossover test · Review every transfer. No XP or Circle score is posted.":"AI preview · Review your count. No XP or Circle score is posted."}</p>{(ui.total > 0||ui.evidence.frames?.length>0) && <details className="cs-iphone-evidence"><summary>Session details<FiChevronDown/></summary><div><p>{ui.total>0?`Ball visible in ${Math.round(ui.detected / ui.total * 100)}% of processed frames. Visibility is not an accuracy score.`:'Setup stopped before Go. You can still save the camera-check details.'}</p><p>Save details with the matching video to report a problem. Nothing uploads automatically.</p><button type="button" className="cs-iphone-secondary" onClick={onSaveEvidence}><FiDownload/> Save test details</button></div></details>}</div>
       </section>}
-      <footer className="cs-studio-footer"><span><FiShield/> Private until you share.</span><details><summary>Build details<FiChevronDown/></summary><p>{versions.check} · {TRACKER_PRESENTATION_REVISION}<br/>{versions.counter} · {versions.camera} · {versions.frame} · {versions.identity}<br/>{ui.fps > 0 ? `${ui.fps.toFixed(1)} tracking frames/sec` : ui.cameraReady?'Camera preview ready':'Camera is off'}<br/>Records from Go until Time while the camera stays healthy.</p></details></footer>
+      <footer className="cs-studio-footer"><span><FiShield/> Private until you share.</span><details><summary>Build details<FiChevronDown/></summary><p>{versions.check} · {TRACKER_PRESENTATION_REVISION}<br/>{versions.counter}{versions.recovery?' · '+versions.recovery:''} · {versions.camera} · {versions.frame} · {versions.identity}<br/>{ui.fps > 0 ? `${ui.fps.toFixed(1)} tracking frames/sec` : ui.cameraReady?'Camera preview ready':'Camera is off'}<br/>{ui.enhancedTracking?'Records from Go through the final-return review.':'Records from Go until Time while the camera stays healthy.'}</p></details></footer>
     </div>
   </main>;
 }

@@ -1,6 +1,8 @@
 import { createPoundCounter, createPoundValidator, geometry, percentile } from './poundCore.mjs';
 import { shareVideoLayout, RESULT_CARD_SECONDS } from './videoCountOverlay.mjs';
 import { TRACKER_BUILD_INFO } from './trackerBuildInfo.mjs';
+import {createPoundRecoverySession,updatePoundRecoverySession,POUND_RECOVERY_REVISION} from './poundRecoverySession.mjs';
+import {mergeFloorProposals} from './floorViewPolicy.mjs';
 
 export const RECORDED_PROFILE_REVISION='PROFILE 02';
 export const PROFILE_PAIR_COUNT=24;
@@ -27,7 +29,8 @@ export function profileVideoGeometry(evidence,{width,height,duration,counted}) {
   if(Math.abs(width/height-expectedRatio)>.015)throw new Error('The video format does not match these test details. Check original versus counted video.');
   const contentDuration=duration-(counted?RESULT_CARD_SECONDS:0);
   const lastDisplay=evidence.displayedCountTimeline?.at(-1)?.time??0;
-  const expectedDuration=evidence.phase==='finished'?20:Math.max(active.at(-1).elapsed,lastDisplay);
+  const reviewTail=Number.isFinite(evidence.recordingReviewSeconds)?Math.max(0,Math.min(2,evidence.recordingReviewSeconds)):0;
+  const expectedDuration=evidence.phase==='finished'?20+reviewTail:Math.max(active.at(-1).elapsed,lastDisplay);
   if(contentDuration<=.2||Math.abs(contentDuration-expectedDuration)>2)throw new Error('Choose the video and test details from the same attempt. Their durations differ.');
   const p=layout.picture;
   return {frameWidth:w,frameHeight:h,contentDuration,sourceRect:counted?
@@ -79,15 +82,22 @@ export function replayProfileCounter(data) {
   try{
     const revision=data.trackerRevision;
     let counter=createPoundCounter(revision),validator=createPoundValidator(revision),previous=0,updates=0;
+    if(data.recoveryRevision&&data.recoveryRevision!==POUND_RECOVERY_REVISION)throw new Error('The saved recovery revision is unsupported.');
+    const enhanced=!!data.recoveryRevision;
+    if(enhanced&&!(data.calibratedBallDiameter>0))throw new Error('The saved recovery calibration is missing.');
+    let recovery=enhanced?createPoundRecoverySession():null;
     const confirmationDelays=[];
-    for(const f of data.frames){const cf=f.counterFrame;if(cf==null||cf===previous)continue;if(cf<previous){counter=createPoundCounter(revision);validator=createPoundValidator(revision);previous=0;}
+    for(const f of data.frames){const cf=f.counterFrame;if(cf==null||cf===previous)continue;if(cf<previous){counter=createPoundCounter(revision);validator=createPoundValidator(revision);recovery=enhanced?createPoundRecoverySession():null;previous=0;}
       if(cf!==previous+1)throw new Error('The saved counter inputs are incomplete.');
       const g=f.selected?geometry(f.selected):null,m=g?[...g.center,g.diameter]:null;
       const events=counter.update(f.elapsed,m?[m[1],m[2]]:null,data.frameSize[1]);
-      validator.update(events,m,f.person,f.elapsed,data.timerSeconds??20).forEach(e=>{counter.rememberControlledFloor(e);confirmationDelays.push((f.elapsed-(e.event_timestamp_exact??e.event_time_seconds))*1000);});previous=cf;updates++;
+      const primary=validator.update(events,m,f.person,f.elapsed,data.timerSeconds??20);primary.forEach(e=>counter.rememberControlledFloor(e));
+      const accepted=recovery?updatePoundRecoverySession(recovery,{primaryEvents:primary,candidates:mergeFloorProposals(f.balls??[],f.floorView?.balls??[]),person:f.person,time:f.elapsed,diameter:data.calibratedBallDiameter,deadline:data.timerSeconds??20}).confirmed:primary;
+      accepted.forEach(e=>confirmationDelays.push((f.elapsed-(e.event_timestamp_exact??e.event_time_seconds))*1000));previous=cf;updates++;
     }
-    const hasLog=Array.isArray(data.countedReps),logged=data.countedReps??[],times=validator.confirmed.map(e=>e.event_timestamp_exact);
-    return {available:true,replayRevision:revision,sourceTrackerRevision:data.trackerRevision,updates,accepted:validator.count,proposals:counter.count,rejected:validator.rejected.length,confirmationDelayMs:distribution(confirmationDelays),matchesRecordedAcceptedEvents:hasLog?times.length===logged.length&&times.every((t,i)=>Math.abs(t-logged[i].time)<1e-8):null,savedDisplayCount:data.displayedCount,recordedAcceptedEvents:hasLog?logged.length:null,unrecordedDisplayedEvents:hasLog?Math.max(0,data.displayedCount-logged.length):null,limit:'Cached-input counter check only. This does not count the newly decoded video or establish real-dribble accuracy.'};
+    const output=recovery?recovery.ledger:validator;
+    const hasLog=Array.isArray(data.countedReps),logged=data.countedReps??[],times=output.confirmed.map(e=>e.event_timestamp_exact);
+    return {available:true,replayRevision:revision,sourceTrackerRevision:data.trackerRevision,updates,accepted:output.count,proposals:counter.count,rejected:validator.rejected.length+(recovery?.counter.rejected.length??0),confirmationDelayMs:distribution(confirmationDelays),matchesRecordedAcceptedEvents:hasLog?times.length===logged.length&&times.every((t,i)=>Math.abs(t-logged[i].time)<1e-8):null,savedDisplayCount:data.displayedCount,recordedAcceptedEvents:hasLog?logged.length:null,unrecordedDisplayedEvents:hasLog?Math.max(0,data.displayedCount-logged.length):null,limit:'Cached-input counter check only. This does not count the newly decoded video or establish real-dribble accuracy.'};
   }catch(error){return {available:false,reason:error.message};}
 }
 
