@@ -68,7 +68,7 @@ try:
             width,height=info['width'],info['height'];rotation=next((s['rotation']for s in info.get('side_data_list',[])if 'rotation'in s),0)
             if abs(rotation)%180==90:width,height=height,width
             if abs(width/height-16/9)>.001:raise RuntimeError('This diagnostic currently expects a landscape 16:9 original.')
-            proc=subprocess.Popen(['ffmpeg','-v','error','-threads','2','-i',source,'-map','0:v:0','-vf','hflip','-fps_mode','passthrough','-f','rawvideo','-pix_fmt','rgb24','-'],stdout=subprocess.PIPE)
+            proc=subprocess.Popen(['ffmpeg','-nostdin','-v','error','-threads','2','-i',source,'-map','0:v:0','-vf','hflip','-fps_mode','passthrough','-threads','1','-f','rawvideo','-pix_fmt','rgb24','-'],stdout=subprocess.PIPE)
         target=request['frameIndex']
         if target<index:raise RuntimeError('Frame requests must be monotonic within each source.')
         while index<target:
@@ -76,7 +76,10 @@ try:
             if len(raw)!=width*height*3:raise RuntimeError(f'Unexpected EOF at {source} frame {index+1}')
             index+=1
         if target==index:image=Image.frombytes('RGB',(width,height),raw)
-        person,pose_timing=infer(image,'pose',[0,0,1280,720],request['minimumBallScore'])
+        if 'cachedPerson' in request:
+            person,pose_timing=request['cachedPerson'],{'reusedSameFrame':True}
+        else:
+            person,pose_timing=infer(image,'pose',[0,0,1280,720],request['minimumBallScore'])
         balls,ball_timing=infer(image,'ball',request['roi'],request['minimumBallScore'])
         print(json.dumps({'person':person,'balls':balls,'timings':{'pose':pose_timing,'ball':ball_timing},'nativeFrameSize':[width,height],'ort':ort.__version__}),flush=True)
 finally:

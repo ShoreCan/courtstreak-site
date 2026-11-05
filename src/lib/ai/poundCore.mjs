@@ -1,6 +1,6 @@
 // Right-hand pound browser port of the saved CourtStreak 0.7.8 count-repair baseline.
 // All coordinates use the SAME mirrored, 1280px-wide frame as the Python engine.
-import {timedBallContinuation,strongBallContinuation,corroboratedBallContinuation,floorBallContinuation} from './ballTiming.mjs';
+import {timedBallContinuation,strongBallContinuation,corroboratedBallContinuation,floorBallContinuation,crossoverFloorReconnect,observedMotionContinuation} from './ballTiming.mjs';
 import {ORDINARY_BALL_SCORE} from './ballProposalPolicy.mjs';
 export const BALL_TRACKER_REVISION = 'COUNT 03';
 export const EXPERIMENTAL_COUNTER_REVISION = 'COUNT 08';
@@ -24,7 +24,7 @@ const center=b=>[(b[0]+b[2])/2,(b[1]+b[3])/2];
 export const geometry = c => ({center:center(c.box), diameter:Math.sqrt(Math.max((c.box[2]-c.box[0])*(c.box[3]-c.box[1]),1))});
 const wrists = p => p ? [9,10].filter(i=>p.confidence[i]>=.15 && p.xy[i][0]>0 && p.xy[i][1]>0).map(i=>p.xy[i]) : [];
 export class BallIdentityTracker {
- constructor({handContinuity=false,objectBackgroundRadius=false,timedContinuity=false,strongContinuity=false,corroboratedContinuity=false,floorContinuity=false,turnContinuity=false,weakContinuity=false,regularFloorContinuity=false,twoHandedMotion=false,diagnostics=false}={}){this.twoHandedMotion=twoHandedMotion;this.regularFloorContinuity=regularFloorContinuity;this.weakContinuity=weakContinuity;this.diagnostics=diagnostics;this.decisions=[];this.turnContinuity=turnContinuity;this.floorContinuity=floorContinuity;this.corroboratedContinuity=corroboratedContinuity;this.provisionalBall=null;this.strongContinuity=strongContinuity;this.handContinuity=handContinuity;this.objectBackgroundRadius=objectBackgroundRadius;this.timedContinuity=timedContinuity;this.samples=[];this.last=null;this.velocity=[0,0];this.diameter=null;this.missed=0;this.diameters=[];this.lanes=[];this.background=[];this.frame=0;}
+ constructor({handContinuity=false,objectBackgroundRadius=false,timedContinuity=false,strongContinuity=false,corroboratedContinuity=false,floorContinuity=false,turnContinuity=false,weakContinuity=false,regularFloorContinuity=false,twoHandedMotion=false,crossoverReconnect=false,motionLock=false,diagnostics=false}={}){this.crossoverReconnect=crossoverReconnect;this.motionLock=motionLock;this.twoHandedMotion=twoHandedMotion;this.regularFloorContinuity=regularFloorContinuity;this.weakContinuity=weakContinuity;this.diagnostics=diagnostics;this.decisions=[];this.turnContinuity=turnContinuity;this.floorContinuity=floorContinuity;this.corroboratedContinuity=corroboratedContinuity;this.provisionalBall=null;this.strongContinuity=strongContinuity;this.handContinuity=handContinuity;this.objectBackgroundRadius=objectBackgroundRadius;this.timedContinuity=timedContinuity;this.samples=[];this.last=null;this.velocity=[0,0];this.diameter=null;this.missed=0;this.diameters=[];this.lanes=[];this.background=[];this.frame=0;}
  decision(index,status,reason){if(this.diagnostics)this.decisions[index]={candidateIndex:index,status,reason};}
  typical(){return this.diameters.length?median(this.diameters):this.diameter;}
  lane(){return this.lanes.length?median(this.lanes):this.last?.[0];}
@@ -33,7 +33,7 @@ export class BallIdentityTracker {
  roi(w,h){const x=this.lane(),d=this.typical()||72; if(x==null)return [0,0,w,h]; const half=Math.floor(Math.max(210,Math.min(w*.28,d*2.7))); return [Math.max(0,Math.floor(x)-half),Math.floor(h*.14),Math.min(w,Math.floor(x)+half),h];}
  select(candidates,person,phase,w,h,now=null){
   this.decisions=this.diagnostics?candidates.map((_,i)=>({candidateIndex:i,status:'not_selected',reason:'ranking'})):[];
-  this.frame++; const hands=wrists(person); let selected=null, owned=false,corroboratedRecovery=null;
+  this.frame++; const hands=wrists(person); let selected=null, owned=false,corroboratedRecovery=null,selectionReason=null;
   if(phase==='setup'||!this.last){
    let best=Infinity;
    candidates.forEach((c,i)=>{const g=geometry(c);let score=hands.length?Math.min(...hands.map(p=>distance(g.center,p)))/Math.max(g.diameter,24)-c.score*.35:distance(g.center,[w*.5,h*.48])/Math.max(w,h)-c.score*.15;
@@ -43,6 +43,8 @@ export class BallIdentityTracker {
    if(selected!==null&&hands.length){const g=geometry(candidates[selected]);owned=Math.min(...hands.map(p=>distance(g.center,p)))<=Math.max(110,g.diameter*2.3);}
   }else{
    const predicted=this.last.map((v,i)=>v+this.velocity[i]*Math.min(this.missed+1,3));const typical=this.typical(),lane=this.lane(); const scored=[],reacquired=[];
+   const reconnect=this.crossoverReconnect&&phase==='drill'&&this.ready()&&this.missed>=2?crossoverFloorReconnect(candidates,this.samples,person,now,typical):null;
+   let rejectedReconnect=null;
    const timed=this.timedContinuity&&phase==='drill'?timedBallContinuation(candidates,this.samples,now,typical):null;
    const floor=this.floorContinuity&&phase==='drill'&&this.ready()?floorBallContinuation(candidates,this.samples,now,typical,person,{allowApexReturn:this.turnContinuity,allowRegularCadence:this.regularFloorContinuity&&this.missed===0}):null;
    const strong=this.strongContinuity&&phase==='drill'?strongBallContinuation(candidates,this.samples,now,typical,this.velocity,this.missed):null;
@@ -69,7 +71,10 @@ export class BallIdentityTracker {
     if(typical!=null&&(d/typical<.58||d/typical>1.68))return void this.decision(i,'rejected','size_ratio');
     const reference=Math.max(typical||this.diameter||d,28),handDistance=hands.length?Math.min(...hands.map(v=>distance(p,v))):Infinity;
     if(phase==='drill'&&this.missed&&handDistance<=Math.max(120,d*1.65))reacquired.push([handDistance/Math.max(d,24),i]);
-    if(distance(p,this.last)>Math.max(w*.18,reference*2.8)&&handDistance>Math.max(120,d*1.65)&&!timedCandidate&&!corroboratedCandidate)return void this.decision(i,'rejected','jump_from_last');
+    if(distance(p,this.last)>Math.max(w*.18,reference*2.8)&&handDistance>Math.max(120,d*1.65)&&!timedCandidate&&!corroboratedCandidate){
+     if(reconnect===i&&(lane==null||Math.abs(p[0]-lane)<=Math.max(w*.46,reference*5)))rejectedReconnect=i;
+     return void this.decision(i,'rejected','jump_from_last');
+    }
     if(lane!=null&&Math.abs(p[0]-lane)>(phase==='drill'?Math.max(w*.46,reference*5):Math.max(145,reference*2.15)))return void this.decision(i,'rejected','horizontal_lane');
     // A crossover changes velocity at the receiving wrist. Follow the actual
     // next downward observation from that hand, within the existing jump gate.
@@ -92,6 +97,14 @@ export class BallIdentityTracker {
    }
    const best=pool.sort((a,b)=>a[0]-b[0])[0];
    if(best&&(viaHand||best[0]<=2.35)){selected=best[1];owned=true;}else if(best)this.decision(best[1],'rejected','ranking_score_limit');
+   if(selected===null&&rejectedReconnect!==null){selected=rejectedReconnect;owned=true;selectionReason='crossover_floor_reconnect';}
+   if(selected===null&&this.motionLock&&phase==='drill'&&this.ready()){
+    const index=observedMotionContinuation(candidates,this.samples,person,now,typical);
+    if(index!==null&&candidates[index].score<ORDINARY_BALL_SCORE){
+     const p=geometry(candidates[index]).center;
+     if(!this.background.some(b=>b.observations>=5&&distance(p,b.center)<=Math.max(28,b.diameter*.65))&&(lane==null||Math.abs(p[0]-lane)<=Math.max(w*.46,typical*5))){selected=index;selectionReason='observed_ball_motion';}
+    }
+   }
   }
   candidates.forEach((c,i)=>{if(i===selected||(this.weakContinuity&&c.score<ORDINARY_BALL_SCORE))return;const g=geometry(c);if(this.last&&distance(g.center,this.last)<=Math.max(115,g.diameter*1.75))return;
    let b=this.background.find(b=>distance(g.center,b.center)<=Math.max(24,g.diameter*.35));
@@ -99,8 +112,9 @@ export class BallIdentityTracker {
    else{b.center=b.center.map((v,j)=>v*.8+g.center[j]*.2);b.diameter=b.diameter*.8+g.diameter*.2;b.observations++;}
   });
   if(selected===null){this.missed++;this.velocity=this.velocity.map(v=>v*.72);return null;}
-  this.decision(selected,'selected',owned?'owned_continuation':'acquisition');
+  this.decision(selected,'selected',selectionReason??(owned?'owned_continuation':'acquisition'));
   const chosen=candidates[selected],g=geometry(chosen);
+  if(selectionReason==='observed_ball_motion'){this.missed++;this.velocity=this.velocity.map(v=>v*.72);return chosen;}
   if(corroboratedRecovery?.index===selected)this.velocity=[...corroboratedRecovery.velocity];
   else if(this.last)this.velocity=this.velocity.map((v,i)=>v*.55+(g.center[i]-this.last[i])*.45);
   this.last=g.center;this.diameter=g.diameter;this.missed=0;

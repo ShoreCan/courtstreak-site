@@ -3,6 +3,56 @@
 const distance=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
 const percentile=(values,q)=>{const a=[...values].sort((x,y)=>x-y),p=(a.length-1)*q,i=Math.floor(p);return a[i]+(a[Math.ceil(p)]-a[i])*(p-i);};
 
+const visibleFeet=person=>[15,16].every(i=>person?.confidence?.[i]>=.5&&Array.isArray(person.xy?.[i])&&person.xy[i].length===2&&person.xy[i].every(v=>Number.isFinite(v)&&v>0));
+const validBox=c=>c&&Array.isArray(c.box)&&c.box.length===4&&[...c.box,c.score].every(Number.isFinite)&&c.box[2]>c.box[0]&&c.box[3]>c.box[1];
+const recentMotion=(samples,now,d,window,low,high)=>samples.filter(s=>Number.isFinite(s.at)&&now-s.at>=0&&now-s.at<=window&&s.center?.length===2&&s.center.every(Number.isFinite)&&s.diameter/d>=low&&s.diameter/d<=high);
+
+// Recover one measured floor proposal across a brief descent gap. Feet, size,
+// direction and projection must agree; an ambiguous proposal set stays missing.
+export function crossoverFloorReconnect(candidates,samples,person,now,d){
+ if(!(d>0)||!Number.isFinite(now)||!visibleFeet(person))return null;
+ const recent=recentMotion(samples,now,d,.22,.82,1.38),[before,last]=recent.slice(-2);
+ if(!before||!last)return null;
+ const step=last.at-before.at,gap=now-last.at,dx=last.center[0]-before.center[0],dy=last.center[1]-before.center[1];
+ const floor=Math.max(person.xy[15][1],person.xy[16][1]);
+ if(step<.02||step>.09||gap<.065||gap>.18||Math.abs(dx)<d*.10||dy<d*.16||last.center[1]+d*.5>=floor-d*.55)return null;
+ const projected=last.center.map((v,i)=>v+(last.center[i]-before.center[i])*gap/step),matches=[];
+ candidates.forEach((c,index)=>{
+  if(!validBox(c)||c.score<.05)return;
+  const [x1,y1,x2,y2]=c.box,size=Math.sqrt((x2-x1)*(y2-y1)),aspect=(x2-x1)/(y2-y1),p=[(x1+x2)/2,(y1+y2)/2];
+  if(size/d<.82||size/d>1.38||aspect<.65||aspect>1.55)return;
+  if(p[0]<Math.min(person.xy[15][0],person.xy[16][0])-d*.35||p[0]>Math.max(person.xy[15][0],person.xy[16][0])+d*.35)return;
+  if(y2-floor<-.42*d||y2-floor>.72*d||p[1]-last.center[1]<d*.65||(p[0]-last.center[0])*dx<=0)return;
+  if(distance(p,projected)>d*1.9||distance(p,last.center)>d*4)return;
+  matches.push(index);
+ });
+ return matches.length===1?matches[0]:null;
+}
+
+// Supplemental measured evidence only. The caller must keep its ordinary crop
+// and identity anchor unchanged when this weak proposal fills a missing frame.
+export function observedMotionContinuation(candidates,samples,person,now,d){
+ if(!(d>0)||!Number.isFinite(now)||!visibleFeet(person))return null;
+ const recent=recentMotion(samples,now,d,.17,.8,1.4),[before,last]=recent.slice(-2);
+ if(!before||!last||!recent.some(s=>s.score>=.03))return null;
+ const step=last.at-before.at,gap=now-last.at,dx=last.center[0]-before.center[0],dy=last.center[1]-before.center[1];
+ if(step<.02||step>.095||gap<=0||gap>.12||Math.abs(dy)<d*.16||Math.abs(dy)/step<d*3.2)return null;
+ const floor=Math.max(person.xy[15][1],person.xy[16][1]),projected=[last.center[0]+dx*gap/step,last.center[1]+dy*gap/step];
+ if(dy>0)projected[1]=Math.min(projected[1],floor-d*.25);
+ const matches=[];
+ candidates.forEach((c,index)=>{
+  if(!validBox(c)||c.score<.0015)return;
+  const [x1,y1,x2,y2]=c.box,size=Math.sqrt((x2-x1)*(y2-y1)),aspect=(x2-x1)/(y2-y1),p=[(x1+x2)/2,(y1+y2)/2];
+  if(size/d<.83||size/d>1.36||size/last.diameter<.76||size/last.diameter>1.32||aspect<.70||aspect>1.42)return;
+  const error=distance(p,projected);
+  if(p[1]>floor+d*.25||(p[1]-last.center[1])*Math.sign(dy)<d*.10||error>d*.88||distance(p,last.center)>d*3.2)return;
+  matches.push({index,center:p,error});
+ });
+ matches.sort((a,b)=>a.error-b.error);
+ if(!matches.length||matches.some(p=>distance(p.center,matches[0].center)>d*.32))return null;
+ return matches[0].index;
+}
+
 export function timedBallContinuation(candidates,samples,now,reference){
  if(!Number.isFinite(now)||!(reference>0)||samples.length<8)return null;
  const last=samples.at(-1),previous=samples.at(-2),gap=now-last.at;
