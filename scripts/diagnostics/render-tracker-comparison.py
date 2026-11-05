@@ -8,7 +8,7 @@ import sys,json,math,bisect,subprocess
 from pathlib import Path
 from PIL import Image,ImageDraw,ImageFont
 
-entries=json.loads(Path(sys.argv[1]).read_text())['clips'];output=Path(sys.argv[2])
+manifest=json.loads(Path(sys.argv[1]).read_text());entries=manifest['clips'];output=Path(sys.argv[2])
 output.parent.mkdir(parents=True,exist_ok=True)
 W,H,FPS=1280,944,30
 font_path='/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
@@ -53,7 +53,7 @@ try:
                 if round(contact*FPS)==index:entry['contact_frames'][no]=clean.copy()
         draw.text((15,875),'Original speed · Recorded video, not a live Safari test · Audio omitted',font=fonts[18],fill='#e4edf5')
         draw.text((15,900),'Green: selected ball   Cyan: measured body/wrists   Amber: recovery proposal',font=fonts[16],fill='#b6c9d7')
-        draw.text((15,923),'Final audit: 101/105 matched, 0 extra. Newest fast clip still misses 4.',font=fonts[16],fill='#ffc857')
+        draw.text((15,923),manifest.get('auditSummary','See audited event matches in the accompanying report.'),font=fonts[16],fill='#ffc857')
         encoder.stdin.write(canvas.tobytes())
         if index==150:canvas.save(output.with_suffix('.png'))
     encoder.stdin.close()

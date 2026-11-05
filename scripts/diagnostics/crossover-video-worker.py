@@ -62,7 +62,7 @@ try:
     for line in sys.stdin:
         request=json.loads(line)
         if request['path']!=source:
-            if proc:proc.stdout.close();proc.terminate();proc.wait()
+            if proc:proc.kill();proc.wait();proc.stdout.close()
             source=request['path'];index=-1;image=None
             info=json.loads(subprocess.check_output(['ffprobe','-v','error','-select_streams','v:0','-show_entries','stream=width,height:stream_side_data=rotation','-of','json',source]))['streams'][0]
             width,height=info['width'],info['height'];rotation=next((s['rotation']for s in info.get('side_data_list',[])if 'rotation'in s),0)
@@ -83,4 +83,4 @@ try:
         balls,ball_timing=infer(image,'ball',request['roi'],request['minimumBallScore'])
         print(json.dumps({'person':person,'balls':balls,'timings':{'pose':pose_timing,'ball':ball_timing},'nativeFrameSize':[width,height],'ort':ort.__version__}),flush=True)
 finally:
-    if proc:proc.stdout.close();proc.terminate();proc.wait()
+    if proc:proc.kill();proc.wait();proc.stdout.close()

@@ -73,4 +73,4 @@ try{
   limitations:['Recorded video diagnostics; physical iPhone/Safari performance remains unverified.','Native ONNX CPU and Pillow preprocessing differ from browser Canvas/WebGPU.','Replay of cached proposals does not validate changing detector crop feedback.','Reference-assisted calibration, when declared, is not proof of unassisted live setup.']};
  fs.mkdirSync(path.dirname(config.output),{recursive:true});fs.writeFileSync(config.output,JSON.stringify(report));
  console.log(JSON.stringify({done:source.name,revision:state.configuration.counterRevision,count:report.count,calibrationReady:calibration?.ready,frames:rows.length,seconds:+report.wallSeconds.toFixed(1),output:config.output}));
-}finally{worker?.stdin.end();worker?.kill();}
+}finally{if(worker){worker.stdin.end();if(worker.exitCode===null)await new Promise(resolve=>worker.once('exit',resolve));}}
