@@ -1,7 +1,7 @@
 import { cameraReadiness } from './cameraReadiness.mjs';
 
 // Presentation only. Raw, fresh checks still decide readiness and counting.
-export const SETUP_GUIDANCE_REVISION = 'SETUP 04';
+export const SETUP_GUIDANCE_REVISION = 'SETUP 06';
 export const SETUP_HELP_SECONDS = 12;
 
 export function setupCondition(checks, speedReady, lockReady, {handMode='right'}={}) {
@@ -29,6 +29,8 @@ function setupInstructionDetails(checks, speedReady, lockReady, condition, {hand
 const screenWords=Object.freeze({'find-body':'Finding your position','center-body':'Center yourself','step-back':'Step back a little','look-at-phone':'A glance toward the phone','move-closer':'Move a little closer','both-wrists':'Both wrists in view','right-wrist':'Right wrist in view','show-feet':'Both feet in view','tilt-down':'Tilt down slightly','tilt-up':'Tilt up slightly','show-ball':'Finding your ball','center-ball':'Bring the ball inward','hold-ball':'Ball by your side','hold-position':'Hold comfortably'});
 export function setupInstruction(checks,speedReady,lockReady,condition,options){
  const next=setupInstructionDetails(checks,speedReady,lockReady,condition,options);
+ const states={refresh:'Checking body tracking',speed:'Checking tracking speed',lock:'Locking onto the ball',ready:'Starting countdown'};
+ if(states[next.key])return {...next,screenText:states[next.key]};
  const cue=['refresh','speed','ready','lock'].includes(next.key)?'hold-position':next.key==='hand'?'hold-ball':next.key==='ball'?'show-ball':checks.cue;
  return {...next,screenText:screenWords[cue]||'Hold comfortably'};
 }
@@ -46,7 +48,7 @@ export class SetupGuidance {
     // Resetting its debounce on every queued refresh otherwise prevents a
     // 400ms pose worker from ever displaying a stable framing instruction.
     if(next.key==='refresh')return this.current;
-    if (this.current.key === next.key) { this.pending=null; this.since=null; return this.current; }
+    if (this.current.key === next.key) { this.current=next; this.pending=null; this.since=null; return this.current; }
     if (this.pending?.key !== next.key) { this.pending=next; this.since=now; }
     const positive=['ready','lock','speed'].includes(next.key),delay=positive?Math.min(this.delay,.45):this.delay;
     if (now-this.since >= delay && (positive||now-this.changedAt>=this.minimumHold)) { this.current=this.pending;this.changedAt=now;this.pending=null;this.since=null; }

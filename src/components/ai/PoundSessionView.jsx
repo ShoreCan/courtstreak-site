@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FiArrowLeft, FiArrowRight, FiCamera, FiCheck, FiCheckCircle, FiChevronDown, FiClock, FiDownload, FiInfo, FiLock, FiMaximize, FiPlay, FiRefreshCw, FiShare2, FiShield, FiSmartphone, FiTarget, FiX } from 'react-icons/fi';
 import { useAppearance } from '../AppearanceControl.jsx';
+import {setupCadenceMessage} from '../../lib/ai/liveTrackingBudget.mjs';
 import CountedReplay from './CountedReplay.jsx';
 import PoundDemo from './PoundDemo.jsx';
 import { getDrillVideo } from '../../data/drillVideos.js';
@@ -51,7 +52,7 @@ export default function PoundSessionView({ drillKey='right-hand-pound', pairedFa
             {training && <span className={`cs-iphone-lock ${ui.ball ? 'found' : ''}`}><i/>{ui.ball ? ui.enhancedTracking?'Tracking ball':ballLocked ? 'Ball locked' : 'Ball detected' : ui.recoveryMeasurement?'Checking ball return':'Finding ball'}</span>}
             {phase==='setup'&&<div className="cs-setup-frame" aria-hidden="true"><i/><i/><i/><i/></div>}
             {phase==='placing'&&<div className="cs-setup-placement-note" aria-hidden="true">Your preview is ready. Start on your time.</div>}
-            {phase==='setup'&&<div className="cs-setup-screen-cue" aria-hidden="true"><span>Camera setup</span><strong>{ui.setupGuide?.screenText||'Finding your position'}</strong></div>}
+            {phase==='setup'&&<div className="cs-setup-screen-cue" aria-hidden="true"><span>Camera setup</span><strong>{ui.setupGuide?.screenText||'Finding your position'}</strong>{ui.enhancedTracking&&ui.setupGuide?.key==='speed'&&<small>{setupCadenceMessage(ui.liveBudget?.cadence)}</small>}</div>}
             {phase==='loading'&&ui.cameraReady&&<span className="cs-iphone-lock"><i/>Camera on · Preparing tracker</span>}
             {phase === 'countdown' && <div className={`cs-iphone-countdown ${ui.rechecking ? 'is-paused' : ''}`}><span>{ui.rechecking ? 'QUICK CHECK' : 'GET READY'}</span><div className="cs-studio-countdown-ring" style={{ '--count-progress': `${(5 - ui.countdown) / 5 * 100}%` }}><strong key={ui.countdown}>{ui.countdown}</strong></div><span>{ui.rechecking ? 'Countdown paused · Rechecking' : 'Wait for Go.'}</span></div>}
             {phase === 'active' && ui.go && <div className="cs-iphone-countdown cs-iphone-go"><strong>GO.</strong></div>}
@@ -76,6 +77,8 @@ export default function PoundSessionView({ drillKey='right-hand-pound', pairedFa
           {phase === 'loading' && <><div className="cs-studio-loading-track" role="progressbar" aria-label="Loading camera and tracking"><span/></div><p className="cs-setup-before">Keep this page open. You can position the phone while tracking prepares.</p><button type="button" className="cs-studio-stop" onClick={onStop}>Cancel setup</button></>}
           {phase==='placing'&&<><button type="button" className="cs-iphone-primary" onClick={onStart}><FiPlay/><span>Start</span><FiArrowRight/></button><p className="cs-setup-before">We’ll check your position, then count you in from five.</p></>}
           {positioning && <>
+            {ui.enhancedTracking&&<button type="button" className="cs-studio-text-button" onClick={onSaveEvidence}><FiDownload/>Save setup details</button>}
+            {ui.enhancedTracking&&ui.setupGuide?.key==='speed'&&<p role="status">{setupCadenceMessage(ui.liveBudget?.cadence)}</p>}
             {phase==='setup'&&<><ol className="cs-setup-stages" aria-label="Camera setup progress">{['Your frame','Your ball','Ready'].map((label,index)=><li key={label} className={index<stageIndex?'complete':index===stageIndex?'current':''} aria-current={index===stageIndex?'step':undefined}><b>{index<stageIndex?<FiCheck/>:index+1}</b>{label}</li>)}</ol><div className="cs-iphone-progress" role="progressbar" aria-label="Position confirmation" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(ui.progress * 100)}><span style={{ width: `${ui.progress * 100}%` }}/></div></>}
             <small>{ui.rechecking ? 'A quick recheck. Your countdown keeps its place.' : phase==='countdown'?'Begin dribbling only after Go.':'Countdown starts automatically when your frame and ball are ready.'}</small>
             {ui.setupAttemptState&&<p className="cs-setup-budget">Camera check · {Math.floor(ui.setupAttemptState.elapsed)}s of {ui.setupAttemptState.limitSeconds}s{phase==='setup'?' · Then retry or use the timer.':''}</p>}

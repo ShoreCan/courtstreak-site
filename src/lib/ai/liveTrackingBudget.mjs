@@ -21,3 +21,12 @@ export class LiveTrackingBudget {
  cadence(){return trackingCadence(this.captures);}
  snapshot(){return {revision:LIVE_BUDGET_REVISION,secondaryCalls:this.secondaryCalls,secondarySkips:{...this.skips},cadence:this.cadence()};}
 }
+
+// Describe measured setup throughput without changing readiness or counting.
+export function setupCadenceMessage(cadence){
+ if(!cadence||cadence.span<1.5||cadence.samples<2)return 'Measuring tracking speed. Keep the phone still.';
+ const rate=`${cadence.hz.toFixed(1)} processed frames/sec`;
+ if(cadence.hz<20)return `${rate}. This test requires 20 before starting. Moving the phone will not fix processing speed.`;
+ if(!cadence.ready)return `${rate}, with gaps between observations. Checking for steady tracking before starting.`;
+ return `${rate}. Tracking speed is ready.`;
+}

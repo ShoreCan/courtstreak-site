@@ -58,7 +58,7 @@ test('large setup cues choose a single geometric action and hold position for pr
   const cue=setupInstruction(checks,true,true,setupCondition(checks,true,true,{handMode:'either'}),{handMode:'either'});assert.equal(cue.screenText,text);
  }
  const checks=evaluateCameraSetup(base,ball,1280,2276,{handMode:'both'});
- assert.equal(setupInstruction(checks,false,true,setupCondition(checks,false,true),{handMode:'either'}).screenText,'Hold comfortably');
+ assert.equal(setupInstruction(checks,false,true,setupCondition(checks,false,true),{handMode:'either'}).screenText,'Checking tracking speed');
 });
 test('a ball at the picture edge keeps the specific ball-framing instruction',()=>{
   const checks={...good,valid:false,owned:false,rightHand:false,issue:'ball-edge',message:'The basketball is near the side edge. Bring it toward the center of the preview.'};
