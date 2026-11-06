@@ -22,11 +22,20 @@ export class LiveTrackingBudget {
  snapshot(){return {revision:LIVE_BUDGET_REVISION,secondaryCalls:this.secondaryCalls,secondarySkips:{...this.skips},cadence:this.cadence()};}
 }
 
-// Describe measured setup throughput without changing readiness or counting.
-export function setupCadenceMessage(cadence){
- if(!cadence||cadence.span<1.5||cadence.samples<2)return 'Measuring tracking speed. Keep the phone still.';
- const rate=`${cadence.hz.toFixed(1)} processed frames/sec`;
- if(cadence.hz<20)return `${rate}. This test requires 20 before starting. Moving the phone will not fix processing speed.`;
- if(!cadence.ready)return `${rate}, with gaps between observations. Checking for steady tracking before starting.`;
- return `${rate}. Tracking speed is ready.`;
+// Preserve the previous live setup processing criteria. Higher cadence remains
+// a quality target, rather than preventing every session below that target.
+export const SETUP_PROCESSING_REVISION='LIVE SETUP 02';
+export function setupProcessingReadiness(times,completedAt,passStartedAt){
+ const span=times.length>1?completedAt-times[0]:0,hz=span>0?(times.length-1)/span:0,passSeconds=completedAt-passStartedAt;
+ const chronological=times.every((t,i)=>Number.isFinite(t)&&(i===0||t>times[i-1]))&&times.at(-1)===completedAt;
+ const reason=!chronological||!Number.isFinite(passSeconds)||passSeconds<0?'freshness':times.length<16||span<1.5?'warming':hz<10?'speed':passSeconds>=.35?'latency':'ready';
+ return {revision:SETUP_PROCESSING_REVISION,ready:reason==='ready',reason,hz,samples:times.length,span,passSeconds,minimumHz:10};
+}
+export function setupProcessingMessage(check){
+ if(!check||check.reason==='warming')return 'Measuring tracking speed. Keep the phone still.';
+ const rate=`${check.hz.toFixed(1)} processed frames/sec`;
+ if(check.reason==='speed')return `${rate}. Setup needs 10. Keep the phone where it is; processing speed is the blocker.`;
+ if(check.reason==='latency')return `${rate}. A tracking pass is taking too long. Keep the phone where it is.`;
+ if(check.reason==='freshness')return 'Waiting for fresh tracking observations. Keep the phone where it is.';
+ return `${rate}. Setup speed is ready.`;
 }
