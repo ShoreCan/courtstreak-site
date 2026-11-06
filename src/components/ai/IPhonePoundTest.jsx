@@ -22,7 +22,7 @@ import { VIDEO_OVERLAY_REVISION, DisplayedCountTimeline } from '../../lib/ai/vid
 import { createQualityCountedVideo } from '../../lib/ai/createQualityCountedVideo.mjs';
 import { RECORDING_TAIL_REVISION, recordingTailSeconds } from '../../lib/ai/recordingTail.mjs';
 import { POSE_EXECUTION_REVISION, poseForFrame } from '../../lib/ai/poseWorkerClient.mjs';
-import { POSE_SCHEDULE_REVISION, PoseRefreshClock } from '../../lib/ai/poseRefreshClock.mjs';
+import { POSE_SCHEDULE_REVISION, PoseRefreshClock, poseNeededForPass, SETUP_POSE_SCHEDULE_REVISION } from '../../lib/ai/poseRefreshClock.mjs';
 import {evaluateVisibleSetup,VISIBLE_SETUP_REVISION} from '../../lib/ai/visibleSetup.mjs';
 import { CAMERA_SETUP_REVISION, CameraPositionGate, evaluateCameraSetup } from '../../lib/ai/cameraSetup.mjs';
 import { LIVE_FRAME_REVISION } from '../../lib/ai/detectionPass.mjs';
@@ -187,7 +187,7 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
    };
    acceptBody();
    if(bodyWorker?.error){interrupt(bodyWorker.error.message,{preserveVideo:true});if(s.phase==='setup')fail(bodyWorker.error.message);return;}
-   const withPose=!bodyWorker&&(observationPolicy.poseEveryPass||s.poseClock.shouldRun(now,Number.isFinite(s.poseAt))),roi=['active','review'].includes(s.phase)?sessionROI(s,s.person,w,h):[0,0,w,h];
+   const withPose=!bodyWorker&&poseNeededForPass({policy:observationPolicy,phase:s.phase,enhancedTracking,clock:s.poseClock,capturedAt:now,hasPerson:Number.isFinite(s.poseAt),countdown:s.countdown}),roi=['active','review'].includes(s.phase)?sessionROI(s,s.person,w,h):[0,0,w,h];
    // Even a "no person" result gets the normal resting interval; looking for
    // someone outside the camera must not turn into continuous body inference.
    const activeCrossoverWorker=independentCrossoverPose&&['active','review'].includes(s.phase);
@@ -249,7 +249,7 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
    if(!framePerson&&s.person){checks.refreshingBody=true;checks.message='Refreshing body and wrist tracking. Keep your position while we wait for a fresh check.';}
    s.checks=checks;
    const cadence=s.budget?.cadence();
-   s.setupProcessing=setupProcessingReadiness(s.times,completed,passStartedAt);
+   s.setupProcessing=setupProcessingReadiness(s.times,completed,passStartedAt,{visibilityFirst:enhancedTracking});
    const speedReady=s.setupProcessing.ready;
    if(['setup','countdown'].includes(s.phase))s.setupAttemptState=s.setupAttempt.update(completed,checks,speedReady,s.tracker.ready());
    let frameProposals=[],frameConfirmed=[],setupReadiness;
@@ -293,14 +293,14 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
     frameProposals=proposals;frameConfirmed=confirmed;
     if(enhancedTracking&&elapsed>.9){
      const activeCadence=trackingCadence(s.budget.captures,{windowSeconds:1.2,minimumSpan:.9,minimumSamples:12,minimumHz:16,p90Limit:.12,maxLimit:.25});
-     s.trackingQuality={...activeCadence,limited:!activeCadence.ready};
+     s.trackingQuality={...activeCadence,limited:!activeCadence.ready};s.trackingLimited||=!activeCadence.ready;
     }
     if(framePerson)s.poseLostAt=null;else s.poseLostAt??=completed;
     if(s.ball)s.lostAt=null;else s.lostAt??=completed;
     s.message=s.phase==='review'?'Time. Confirming the last controlled return…':s.lostAt&&completed-s.lostAt>.35?'Ball lost — counting waits for the same ball.': 'Tracking your basketball';
     if(s.lostAt&&completed-s.lostAt>2){recordEvidence();interrupt('The ball was lost for more than two seconds.',{preserveVideo:true});return;}
     if(s.poseLostAt&&completed-s.poseLostAt>2){recordEvidence();interrupt('Body and wrist tracking could not stay fresh enough to verify reps.',{preserveVideo:true});return;}
-    if(s.times.length>12&&s.fps<8){recordEvidence();interrupt('Tracking became too slow to count reliably.',{preserveVideo:true});return;}
+    if(!enhancedTracking&&s.times.length>12&&s.fps<8){recordEvidence();interrupt('Tracking became too slow to count reliably.',{preserveVideo:true});return;}
     if(elapsed>=DURATION+2){s.phase='finished';s.message='Test complete. Compare this count with the dribbles you performed.';finishRound();}
    }
    recordEvidence();
@@ -401,7 +401,7 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
  function saveEvidence(){
   const s=m.current;
   const data=s.evidence.export({startedAt:s.started,baseSourceCommit:TRACKER_BUILD_INFO.sourceCommit,buildInfo:TRACKER_BUILD_INFO,trackerCheckRevision:testRevision,trackerConfiguration:s.configuration,trackerRevision:s.configuration.counterRevision,...(s.configuration.identityRevision?{ballIdentityRevision:s.configuration.identityRevision}:{}),cameraRevision:CAMERA_SETUP_REVISION,readinessRevision:CAMERA_REVIEW_REVISION,detectorInputMode:detector.current?.liveInputMode??'legacy',controlRevision:CONTROL_REVISION,poseScheduleRevision:POSE_SCHEDULE_REVISION,poseExecutionRevision:detector.current?.poseWorker?POSE_EXECUTION_REVISION:'sequential',poseMode:detector.current?.poseMode??'sequential',liveFrameRevision:freshFrames?LIVE_FRAME_REVISION:'FRAME 00',poseSideConvention:'Original physical person; detector image is mirrored',
-   drillKey,...(enhancedTracking?{setupFramingRevision:VISIBLE_SETUP_REVISION,setupProcessing:s.setupProcessing??null,trackingQuality:s.trackingQuality??null,liveBudget:s.budget.snapshot(),floorViewRevision:FLOOR_VIEW_REVISION,recoveryRevision:s.configuration.recoveryRevision??null,calibratedBallDiameter:s.tracker.typical(),recordingReviewSeconds:2}:{}),...(crossover?{repDefinition:CROSSOVER_RULE,videoFrameClockRevision:VIDEO_FRAME_CLOCK_REVISION,videoFrameClockMode:s.videoFrameClockMode}:{}),observationPolicy,poseProvider:detector.current?.poseWorker?'wasm':detector.current?.provider,timerSeconds:DURATION,phase:s.phase,message:s.message,displayedCount:s.count,presentationRevision:TRACKER_PRESENTATION_REVISION,sessionFlowRevision:SESSION_FLOW_REVISION,setupGuidanceRevision:SETUP_GUIDANCE_REVISION,setupTimingRevision:SETUP_TIMING_REVISION,countdownReadinessRevision:COUNTDOWN_READINESS_REVISION,priorSetupAttempts:setupHistory.current,cameraPreviewRevision:CAMERA_PREVIEW_REVISION,phonePlacementRevision:PHONE_PLACEMENT_REVISION,phonePlacement:s.placementState??null,setupAttemptRevision:SETUP_ATTEMPT_REVISION,setupAttempt:s.setupAttemptState??null,setupFailure:s.setupFailure??null,setupStartedAt:s.setupStartedAt??null,setupBlocker:s.setupBlocker??null,latestPositionChecks:s.checks,
+   drillKey,...(enhancedTracking?{setupFramingRevision:VISIBLE_SETUP_REVISION,setupPoseScheduleRevision:SETUP_POSE_SCHEDULE_REVISION,trackingLimited:!!s.trackingLimited,setupProcessing:s.setupProcessing??null,trackingQuality:s.trackingQuality??null,liveBudget:s.budget.snapshot(),floorViewRevision:FLOOR_VIEW_REVISION,recoveryRevision:s.configuration.recoveryRevision??null,calibratedBallDiameter:s.tracker.typical(),recordingReviewSeconds:2}:{}),...(crossover?{repDefinition:CROSSOVER_RULE,videoFrameClockRevision:VIDEO_FRAME_CLOCK_REVISION,videoFrameClockMode:s.videoFrameClockMode}:{}),observationPolicy,poseProvider:detector.current?.poseWorker?'wasm':detector.current?.provider,timerSeconds:DURATION,phase:s.phase,message:s.message,displayedCount:s.count,presentationRevision:TRACKER_PRESENTATION_REVISION,sessionFlowRevision:SESSION_FLOW_REVISION,setupGuidanceRevision:SETUP_GUIDANCE_REVISION,setupTimingRevision:SETUP_TIMING_REVISION,countdownReadinessRevision:COUNTDOWN_READINESS_REVISION,priorSetupAttempts:setupHistory.current,cameraPreviewRevision:CAMERA_PREVIEW_REVISION,phonePlacementRevision:PHONE_PLACEMENT_REVISION,phonePlacement:s.placementState??null,setupAttemptRevision:SETUP_ATTEMPT_REVISION,setupAttempt:s.setupAttemptState??null,setupFailure:s.setupFailure??null,setupStartedAt:s.setupStartedAt??null,setupBlocker:s.setupBlocker??null,latestPositionChecks:s.checks,
    framesWithSelectedBall:s.detected,trainingFrames:s.total,ballCoverage:s.total?s.detected/s.total:null,
    provider:detector.current?.provider,detectorInputRevision:detector.current?.inputRevision,ballProposalPolicyRevision:BALL_PROPOSAL_POLICY_REVISION,detectorResources:detector.current?.resourceSummary,modelManifest:detector.current?.modelManifest,runtime:{userAgent:navigator.userAgent,hardwareConcurrency:navigator.hardwareConcurrency??null},cameraSettingsAtStart:s.cameraSettingsAtStart,frameSize:s.frameSize??[frame.current?.width,frame.current?.height],captureFrameSize:s.captureFrameSize??null,
    recordingAvailable:!!clip.blob,videoRevision:VIDEO_OVERLAY_REVISION,recordingRevision:RECORDING_TAIL_REVISION,countingStoppedAt:s.countingStoppedAt??null,recordedUntil:s.recordedUntil??null,interruptionReason:s.interruptionReason??null,videoExport:countedClip.exportInfo??null,countDisplayStartedAt:countTimeline.current.startedAt,
@@ -435,8 +435,8 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
   filename={filename} originalFilename={originalFilename}
   versions={{counter:m.current.configuration.counterRevision,camera:enhancedTracking?VISIBLE_SETUP_REVISION:CAMERA_SETUP_REVISION,setup:SETUP_GUIDANCE_REVISION,frame:LIVE_FRAME_REVISION,identity:m.current.configuration.identityRevision??BALL_IDENTITY_REVISION,check:testRevision,recovery:m.current.configuration.recoveryRevision}}
   onBack={()=>navigate(standalone?'/':`/lab/drill/${drillKey}`)} onOpen={open}
-  onStart={startSession} onCloseCamera={()=>{stopCamera();publish(true);}} onRetrySetup={()=>open({restart:true})} onManual={()=>{if(!standalone){navigate(`/lab/drill/${drillKey}/session`);return;}token.current++;scheduler.current.cancel();stopCamera();m.current.phase='error';m.current.message='Camera check paused. Retry when ready.';publish(true);setManual(true);}}
-  onStop={()=>{token.current++;scheduler.current.cancel();m.current.phase='interrupted';m.current.message='Attempt stopped. Recheck your position when ready.';stopCamera();publish();}}
+  onStart={startSession} onCloseCamera={()=>{token.current++;scheduler.current.cancel();stopCamera();if(['placing','setup','countdown','loading','error'].includes(m.current.phase)){m.current.phase='idle';m.current.message='Open the camera when you’re ready.';}publish(true);}} onRetrySetup={()=>open({restart:true})} onManual={()=>{if(!standalone){navigate(`/lab/drill/${drillKey}/session`);return;}token.current++;scheduler.current.cancel();stopCamera();m.current.phase='error';m.current.message='Camera check paused. Retry when ready.';publish(true);setManual(true);}}
+  onStop={()=>{const s=m.current,preGo=['idle','loading','placing','setup','countdown','error'].includes(s.phase);token.current++;scheduler.current.cancel();s.phase=preGo?'idle':'interrupted';s.message=preGo?'Open the camera when you’re ready.':'Attempt stopped. Your count is partial.';stopCamera();publish(true);}}
   onSaveEvidence={saveEvidence} onPrepareVideo={prepareCountedVideo}
   onUseOriginal={useOriginalVideo} onShareVideo={shareVideo}/>;
 }

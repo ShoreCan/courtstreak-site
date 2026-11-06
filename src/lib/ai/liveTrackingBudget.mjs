@@ -22,20 +22,19 @@ export class LiveTrackingBudget {
  snapshot(){return {revision:LIVE_BUDGET_REVISION,secondaryCalls:this.secondaryCalls,secondarySkips:{...this.skips},cadence:this.cadence()};}
 }
 
-// Preserve the previous live setup processing criteria. Higher cadence remains
-// a quality target, rather than preventing every session below that target.
-export const SETUP_PROCESSING_REVISION='LIVE SETUP 02';
-export function setupProcessingReadiness(times,completedAt,passStartedAt){
+// Setup needs fresh observations, not a frame-rate benchmark. Visibility and
+// calibrated ball identity are checked independently before Go. Cadence is
+// retained as a quality measurement; it never certifies a rep.
+export const SETUP_PROCESSING_REVISION='LIVE SETUP 03';
+export function setupProcessingReadiness(times,completedAt,passStartedAt,{visibilityFirst=false}={}){
  const span=times.length>1?completedAt-times[0]:0,hz=span>0?(times.length-1)/span:0,passSeconds=completedAt-passStartedAt;
  const chronological=times.every((t,i)=>Number.isFinite(t)&&(i===0||t>times[i-1]))&&times.at(-1)===completedAt;
- const reason=!chronological||!Number.isFinite(passSeconds)||passSeconds<0?'freshness':times.length<16||span<1.5?'warming':hz<10?'speed':passSeconds>=.35?'latency':'ready';
- return {revision:SETUP_PROCESSING_REVISION,ready:reason==='ready',reason,hz,samples:times.length,span,passSeconds,minimumHz:10};
+ const reason=!chronological||!Number.isFinite(passSeconds)||passSeconds<0?'freshness':visibilityFirst?(times.length<2?'warming':passSeconds>=.5?'latency':'ready'):(times.length<16||span<1.5?'warming':hz<10?'speed':passSeconds>=.35?'latency':'ready');
+ return {revision:SETUP_PROCESSING_REVISION,ready:reason==='ready',reason,hz,samples:times.length,span,passSeconds,minimumHz:visibilityFirst?null:10,visibilityFirst};
 }
 export function setupProcessingMessage(check){
- if(!check||check.reason==='warming')return 'Measuring tracking speed. Keep the phone still.';
- const rate=`${check.hz.toFixed(1)} processed frames/sec`;
- if(check.reason==='speed')return `${rate}. Setup needs 10. Keep the phone where it is; processing speed is the blocker.`;
- if(check.reason==='latency')return `${rate}. A tracking pass is taking too long. Keep the phone where it is.`;
- if(check.reason==='freshness')return 'Waiting for fresh tracking observations. Keep the phone where it is.';
- return `${rate}. Setup speed is ready.`;
+ if(!check||check.reason==='warming')return 'Preparing tracking.';
+ if(check.reason==='speed')return 'Tracking is running slowly on this device.';
+ if(check.reason==='latency'||check.reason==='freshness')return 'Waiting for a fresh camera check. Keep your position.';
+ return 'Fresh camera checks are ready.';
 }

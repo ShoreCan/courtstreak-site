@@ -2,15 +2,15 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FiArrowLeft, FiArrowRight, FiCamera, FiCheck, FiCheckCircle, FiChevronDown, FiClock, FiDownload, FiInfo, FiLock, FiMaximize, FiPlay, FiRefreshCw, FiShare2, FiShield, FiSmartphone, FiTarget, FiX } from 'react-icons/fi';
 import { useAppearance } from '../AppearanceControl.jsx';
-import {setupProcessingMessage} from '../../lib/ai/liveTrackingBudget.mjs';
+import CameraSetupPanel from './CameraSetupPanel.jsx';
 import CountedReplay from './CountedReplay.jsx';
 import PoundDemo from './PoundDemo.jsx';
 import { getDrillVideo } from '../../data/drillVideos.js';
 import './iphone-pound-test.css';
 import '../../training-moments.css';
 
-export const TRACKER_PRESENTATION_REVISION = 'STUDIO 11';
-export const SESSION_FLOW_REVISION='SESSION 10';
+export const TRACKER_PRESENTATION_REVISION = 'STUDIO 12';
+export const SESSION_FLOW_REVISION='SESSION 11';
 export function CourtStreakMark() {
   return <svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><circle cx="16" cy="16" r="13"/><path d="M3 16h26M16 3v26M6.5 6.5c10.5 4 15 8.5 19 19M25.5 6.5c-10.5 4-15 8.5-19 19"/></svg>;
 }
@@ -25,12 +25,13 @@ export default function PoundSessionView({ drillKey='right-hand-pound', pairedFa
   const phase = ui.phase;
   const training = ['active', 'review', 'recording-only'].includes(phase);
   const positioning = ['setup', 'countdown'].includes(phase);
-  const cameraVisible=live||((phase==='loading'||ui.enhancedTracking&&phase==='error')&&ui.cameraReady);
+  const cameraVisible=(live&&(!ui.enhancedTracking||ui.cameraReady))||((phase==='loading'||ui.enhancedTracking&&phase==='error')&&ui.cameraReady);
+  const simpleSetup=ui.enhancedTracking&&['idle','placing','loading','setup','countdown','error'].includes(phase);
   const setupStage=phase==='countdown'?'ready':ui.setupGuide?.stage||'frame';
   const stageIndex=['frame','ball','ready'].indexOf(setupStage);
   const step = ended ? 2 : training ? 1 : 0;
   const status = phase === 'idle' ? 'Phone down. Full body and floor in view.' : phase === 'loading' ? ui.message || 'First-time setup can take a moment.' : ui.message;
-  return <main data-phase={phase} data-appearance={appearance} className={`cs-iphone-tracker ${training ? 'is-training' : ''} ${ended ? 'is-results' : ''}`}>
+  return <main data-phase={phase} data-appearance={appearance} className={`cs-iphone-tracker ${ui.enhancedTracking?'cs-camera-clean':''} ${cameraVisible?'has-camera':''} ${training ? 'is-training' : ''} ${ended ? 'is-results' : ''}`}>
     <div className="cs-studio-shell">
       <header className="cs-studio-topbar">
         <button type="button" className="cs-studio-back" onClick={onBack} aria-label="Back to drill"><FiArrowLeft/><span>The Lab</span></button>
@@ -47,13 +48,13 @@ export default function PoundSessionView({ drillKey='right-hand-pound', pairedFa
 
       <div className="cs-studio-workspace" hidden={ended}>
         <div className="cs-studio-camera-column" hidden={!cameraVisible}>
-          <section className="cs-iphone-stage" style={{ aspectRatio: ratio }} aria-label="Live camera and detected basketball">
+          <section className="cs-iphone-stage" style={{ aspectRatio: ratio, '--camera-ratio': ratio }} aria-label="Live camera and detected basketball">
             <video ref={videoRef} muted autoPlay playsInline aria-label="Mirrored front camera"/><canvas ref={overlayRef} aria-hidden="true"/>
             {training && <span className={`cs-iphone-lock ${ui.ball ? 'found' : ''}`}><i/>{ui.ball ? ui.enhancedTracking?ui.trackingQuality?.limited?'Tracking speed limited':'Tracking ball':ballLocked ? 'Ball locked' : 'Ball detected' : ui.recoveryMeasurement?'Checking ball return':'Finding ball'}</span>}
-            {phase==='setup'&&<div className="cs-setup-frame" aria-hidden="true"><i/><i/><i/><i/></div>}
-            {phase==='placing'&&<div className="cs-setup-placement-note" aria-hidden="true">Your preview is ready. Start on your time.</div>}
-            {phase==='setup'&&<div className="cs-setup-screen-cue" aria-hidden="true"><span>Camera setup</span><strong>{ui.setupGuide?.screenText||'Finding your position'}</strong>{ui.enhancedTracking&&ui.setupGuide?.key==='speed'&&<small>{setupProcessingMessage(ui.setupProcessing)}</small>}</div>}
-            {phase==='loading'&&ui.cameraReady&&<span className="cs-iphone-lock"><i/>Camera on · Preparing tracker</span>}
+            {phase==='setup'&&!ui.enhancedTracking&&<div className="cs-setup-frame" aria-hidden="true"><i/><i/><i/><i/></div>}
+            {phase==='placing'&&!ui.enhancedTracking&&<div className="cs-setup-placement-note" aria-hidden="true">Your preview is ready. Start on your time.</div>}
+            {phase==='setup'&&!ui.enhancedTracking&&<div className="cs-setup-screen-cue" aria-hidden="true"><span>Camera setup</span><strong>{ui.setupGuide?.screenText||'Finding your position'}</strong></div>}
+            {phase==='loading'&&ui.cameraReady&&!ui.enhancedTracking&&<span className="cs-iphone-lock"><i/>Camera on · Preparing tracker</span>}
             {phase === 'countdown' && <div className={`cs-iphone-countdown ${ui.rechecking ? 'is-paused' : ''}`}><span>{ui.rechecking ? 'QUICK CHECK' : 'GET READY'}</span><div className="cs-studio-countdown-ring" style={{ '--count-progress': `${(5 - ui.countdown) / 5 * 100}%` }}><strong key={ui.countdown}>{ui.countdown}</strong></div><span>{ui.rechecking ? 'Countdown paused · Rechecking' : 'Wait for Go.'}</span></div>}
             {phase === 'active' && ui.go && <div className="cs-iphone-countdown cs-iphone-go"><strong>GO.</strong></div>}
           </section>
@@ -63,7 +64,7 @@ export default function PoundSessionView({ drillKey='right-hand-pound', pairedFa
             <div className="cs-studio-time-track" role="progressbar" aria-label="Round time remaining" aria-valuemin={0} aria-valuemax={20} aria-valuenow={ui.left}><span style={{ width: `${ui.left / 20 * 100}%` }}/></div>
           </div>}
         </div>
-        <section className={`cs-iphone-controls ${training ? 'is-active' : ''}`} aria-label="Session guidance">
+        {simpleSetup?<CameraSetupPanel ui={ui} drillKey={drillKey} onOpen={onOpen} onStart={onStart} onRetry={onRetrySetup} onCancel={onStop} onSaveDetails={onSaveEvidence} onManual={onManual} versions={versions}/>:<section className={`cs-iphone-controls ${training ? 'is-active' : ''}`} aria-label="Session guidance">
           {!live && <div className="cs-studio-ready-icon" aria-hidden="true"><FiCamera/></div>}
           <p className="cs-studio-eyebrow">{training ? 'IN SESSION' : phase==='placing'?'YOUR CAMERA IS READY':positioning ? 'CAMERA CHECK' : 'YOUR NEXT 20 SECONDS'}</p>
           <h2>{ui.setupFailure?'Camera check paused.':phase==='setup'?ui.setupGuide?.title||'Step into the frame.':titles[phase] || 'Get ready.'}</h2>
@@ -78,8 +79,6 @@ export default function PoundSessionView({ drillKey='right-hand-pound', pairedFa
           {phase === 'loading' && <><div className="cs-studio-loading-track" role="progressbar" aria-label="Loading camera and tracking"><span/></div><p className="cs-setup-before">Keep this page open. You can position the phone while tracking prepares.</p><button type="button" className="cs-studio-stop" onClick={onStop}>Cancel setup</button></>}
           {phase==='placing'&&<><button type="button" className="cs-iphone-primary" onClick={onStart}><FiPlay/><span>Start</span><FiArrowRight/></button><p className="cs-setup-before">We’ll check your position, then count you in from five.</p></>}
           {positioning && <>
-            {ui.enhancedTracking&&<button type="button" className="cs-studio-text-button" onClick={onSaveEvidence}><FiDownload/>Save setup details</button>}
-            {ui.enhancedTracking&&ui.setupGuide?.key==='speed'&&<p role="status">{setupProcessingMessage(ui.setupProcessing)}</p>}
             {phase==='setup'&&<><ol className="cs-setup-stages" aria-label="Camera setup progress">{['Your frame','Your ball','Ready'].map((label,index)=><li key={label} className={index<stageIndex?'complete':index===stageIndex?'current':''} aria-current={index===stageIndex?'step':undefined}><b>{index<stageIndex?<FiCheck/>:index+1}</b>{label}</li>)}</ol><div className="cs-iphone-progress" role="progressbar" aria-label="Position confirmation" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(ui.progress * 100)}><span style={{ width: `${ui.progress * 100}%` }}/></div></>}
             <small>{ui.rechecking ? 'A quick recheck. Your countdown keeps its place.' : phase==='countdown'?'Begin dribbling only after Go.':'Countdown starts automatically when your frame and ball are ready.'}</small>
             {ui.setupAttemptState&&<p className="cs-setup-budget">Camera check · {Math.floor(ui.setupAttemptState.elapsed)}s of {ui.setupAttemptState.limitSeconds}s{phase==='setup'?' · Then retry or use the timer.':''}</p>}
@@ -94,7 +93,7 @@ export default function PoundSessionView({ drillKey='right-hand-pound', pairedFa
             <p>{guide === 'landscape' ? 'Sideways gives your arms and basketball more room.' : 'Stand far enough back to fit your whole body.'} Use stable support, angled toward you. A supported phone near the floor is fine if your head, feet, ball and some floor fit in the preview. Hold the ball until Go, then keep the phone still.</p>
           </div></details>}
           {!training && <p className="cs-studio-privacy-note"><FiLock/> Video stays on your device.</p>}
-        </section>
+        </section>}
       </div>
 
       {ended && <section className="cs-iphone-review" ref={resultPanelRef} tabIndex={-1} aria-label="Round score and video replay">
@@ -104,6 +103,7 @@ export default function PoundSessionView({ drillKey='right-hand-pound', pairedFa
           <div className="cs-iphone-score-number"><strong>{ui.count}</strong><span>{phase === 'finished' ? 'detected reps' : 'partial reps'}</span></div>
           {phase === 'interrupted' && <div className="cs-studio-interruption"><FiInfo/><p>{ui.message}</p></div>}
         </div>
+        {ui.enhancedTracking&&ui.trackingLimited&&<p className="cs-camera-quality-note">Tracking was limited during this round. Review the video to check for missed reps.</p>}
         <div className="cs-studio-result-grid">
           <div className="cs-iphone-replay">
             <div className="cs-studio-section-heading"><h3>Your replay</h3><span>Your original camera recording.</span></div>

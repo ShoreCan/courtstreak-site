@@ -270,3 +270,65 @@
 .cs-test-drills a[aria-current="page"]{color:#5ee1aa;border-color:#5ee1aa}
 .cs-test20-launchers{display:grid;gap:12px;margin:24px 0}
 .cs-test20-launchers a{text-decoration:none}
+
+/* Test 20 camera setup: retain the source aspect ratio through every phase.
+   Capping the height of a full-width portrait stage squashes its container
+   into a landscape box and leaves the player tiny between large side bars. */
+.cs-camera-clean{box-sizing:border-box}
+.cs-camera-clean.has-camera .cs-studio-shell{max-width:1080px}
+.cs-camera-clean.has-camera .cs-studio-topbar{height:56px}
+.cs-camera-clean.has-camera .cs-studio-heading{padding:18px 0 12px}
+.cs-camera-clean.has-camera .cs-studio-heading h1{font-size:30px}
+.cs-camera-clean.has-camera .cs-studio-heading .cs-studio-eyebrow,
+.cs-camera-clean.has-camera .cs-iphone-steps{display:none}
+.cs-camera-clean.has-camera .cs-test-drills{gap:8px;margin-bottom:16px}
+.cs-camera-clean.has-camera .cs-test-drills a{font-size:12px;min-height:36px;padding:7px 12px}
+.cs-camera-clean.has-camera .cs-studio-workspace{grid-template-columns:minmax(0,1.35fr) minmax(280px,1fr);align-items:start;gap:28px}
+.cs-camera-clean.has-camera .cs-iphone-stage{--preview-height:min(65svh,580px);width:min(100%,calc(var(--preview-height) * var(--camera-ratio)));height:auto;min-height:0;max-height:none;aspect-ratio:var(--camera-ratio);margin-inline:auto;border-radius:16px}
+.cs-camera-clean.has-camera .cs-studio-footer{display:none}
+.cs-camera-setup-panel{min-width:0;width:100%;display:grid;gap:14px;align-content:start}
+.cs-camera-instruction h2{font-size:24px;line-height:1.2;letter-spacing:-.035em;margin:0;font-weight:650}
+.cs-camera-instruction p{color:var(--muted);font-size:14px;line-height:1.5;margin:7px 0 0;overflow-wrap:anywhere}
+.cs-camera-checks{list-style:none;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:0;margin:0;color:var(--muted);font-size:12px}
+.cs-camera-checks li{display:flex;align-items:center;gap:6px}
+.cs-camera-checks li>span:first-child{display:grid;place-items:center;width:20px;height:20px;border:1px solid var(--line);border-radius:50%}
+.cs-camera-checks i{width:4px;height:4px;border-radius:50%;background:currentColor}
+.cs-camera-checks .ready{color:var(--green)}
+.cs-camera-checks .ready>span:first-child{border-color:color-mix(in srgb,var(--green) 40%,transparent)}
+.cs-camera-checks svg{width:12px;height:12px}
+.cs-camera-secondary-actions{display:flex;align-items:flex-start;gap:18px}
+.cs-camera-help{flex:1;min-width:0;color:var(--muted)}
+.cs-camera-help>summary{display:flex;align-items:center;gap:8px;min-height:44px;list-style:none;cursor:pointer;font-size:12px}
+.cs-camera-help>div{border-top:1px solid var(--line);padding-top:8px}
+.cs-camera-help p{font-size:12px;line-height:1.6;margin:8px 0}
+.cs-camera-help button{min-height:44px}
+.cs-camera-help small{display:block;font-size:11px;line-height:1.6;margin:8px 0;overflow-wrap:anywhere}
+.cs-camera-cancel{border:0;background:none;color:var(--muted);min-height:44px;font-size:12px!important;padding:0 4px}
+.cs-camera-quality-note{color:var(--muted);font-size:13px;line-height:1.6}
+@media(max-width:720px){
+ .cs-camera-clean.has-camera{padding-inline:16px;padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+ .cs-camera-clean.has-camera .cs-studio-topbar{height:48px}
+ .cs-camera-clean.has-camera .cs-studio-heading{padding:12px 0 10px}
+ .cs-camera-clean.has-camera .cs-studio-heading h1{font-size:23px}
+ .cs-camera-clean.has-camera .cs-studio-duration{font-size:11px}
+ .cs-camera-clean.has-camera .cs-test-drills{margin-bottom:12px}
+ .cs-camera-clean.has-camera .cs-studio-workspace{grid-template-columns:minmax(0,1fr);gap:16px}
+ .cs-camera-clean.has-camera .cs-iphone-stage{--preview-height:min(53svh,max(200px,calc(100svh - 350px)))}
+ .cs-camera-setup-panel{gap:12px}
+ .cs-camera-instruction h2{font-size:21px}
+ .cs-camera-instruction p{font-size:13px}
+ .cs-camera-clean.has-camera .cs-iphone-countdown{gap:12px}
+}
+@media(orientation:landscape) and (max-height:600px){
+ .cs-camera-clean.has-camera .cs-studio-heading{padding:10px 0}
+ .cs-camera-clean.has-camera .cs-studio-heading h1{font-size:23px}
+ .cs-camera-clean.has-camera .cs-test-drills{margin-bottom:10px}
+ .cs-camera-clean.has-camera .cs-studio-workspace{grid-template-columns:minmax(0,1.4fr) minmax(240px,1fr);gap:22px}
+ .cs-camera-clean.has-camera .cs-iphone-stage{--preview-height:calc(100svh - 175px)}
+}
+
+@media(max-width:370px){.cs-camera-clean.has-camera .cs-studio-duration{display:none}}
+@media(orientation:landscape) and (max-height:600px){
+ .cs-camera-clean.has-camera{padding-bottom:12px}
+ .cs-camera-clean.has-camera .cs-studio-topbar{height:48px}
+}

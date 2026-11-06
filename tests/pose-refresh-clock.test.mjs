@@ -70,3 +70,17 @@ test('scheduling does not make genuinely inadequate throughput satisfy the exist
   const severe = simulate({ ballMs: 150, poseMs: 450 });
   assert.ok(severe.fps < 8);
 });
+
+test('paired Test 20 uses ball-only slots while held in setup, and pairs every active/final countdown pass',async()=>{
+ const {poseNeededForPass}=await import('../src/lib/ai/poseRefreshClock.mjs');
+ const clock=new PoseRefreshClock(),policy={poseEveryPass:true};clock.completed(1);
+ const args={policy,clock,enhancedTracking:true,capturedAt:1.05,hasPerson:true};
+ assert.equal(poseNeededForPass({...args,phase:'setup'}),false);
+ assert.equal(poseNeededForPass({...args,phase:'countdown',countdown:4}),false);
+ assert.equal(poseNeededForPass({...args,phase:'countdown',countdown:1}),true);
+ assert.equal(poseNeededForPass({...args,phase:'active'}),true);
+ assert.equal(poseNeededForPass({...args,phase:'review'}),true);
+ assert.equal(poseNeededForPass({...args,phase:'setup',hasPerson:false}),true);
+ assert.equal(poseNeededForPass({...args,phase:'setup',enhancedTracking:false}),true,'prior paired tests retain their schedule');
+ assert.equal(poseNeededForPass({...args,phase:'setup',capturedAt:1.2}),true);
+});

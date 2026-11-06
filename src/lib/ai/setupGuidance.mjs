@@ -1,7 +1,7 @@
 import { cameraReadiness } from './cameraReadiness.mjs';
 
 // Presentation only. Raw, fresh checks still decide readiness and counting.
-export const SETUP_GUIDANCE_REVISION = 'SETUP 07';
+export const SETUP_GUIDANCE_REVISION = 'SETUP 08';
 export const SETUP_HELP_SECONDS = 12;
 
 export function setupCondition(checks, speedReady, lockReady, {handMode='right'}={}) {

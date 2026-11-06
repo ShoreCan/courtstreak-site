@@ -11,3 +11,11 @@ export class PoseRefreshClock {
   }
   completed(completedAt) { this.lastCompletedAt = completedAt; }
 }
+
+// Held-ball setup can reuse a recent body check while observing every new ball
+// frame. Active paired counting keeps its original per-frame wrist evidence.
+export const SETUP_POSE_SCHEDULE_REVISION='SETUP PACE 01';
+export function poseNeededForPass({policy,phase,enhancedTracking=false,clock,capturedAt,hasPerson,countdown=Infinity}){
+ const preparing=enhancedTracking&&['setup','countdown'].includes(phase);
+ return ((!preparing||phase==='countdown'&&countdown<=1)&&policy.poseEveryPass)||clock.shouldRun(capturedAt,hasPerson);
+}
