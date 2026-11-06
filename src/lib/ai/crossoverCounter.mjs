@@ -19,7 +19,7 @@ function observation(frame,measurement,person,time){
 // This pilot follows possession, a floor turn and the receiving hand. It does
 // not count midline crossings, use knee height, or infer a bounce from a pass.
 export class CrossoverCounter {
- constructor({legacy=false,sizeOutlierRecovery=false,preFloorSizeRecovery=false,releaseSizeRecovery=false,nearFloorRelease=false,reanchorAfterGap=false,stableReleaseSize=false,ignoreOneOversizedSample=false,finishWindowSeconds=0}={}){Object.assign(this,{legacy,sizeOutlierRecovery,preFloorSizeRecovery,releaseSizeRecovery,nearFloorRelease,reanchorAfterGap,stableReleaseSize,ignoreOneOversizedSample,finishWindowSeconds});this.frame=0;this.count=0;this.points=[];this.context=[];this.confirmed=[];this.rejected=[];this.pending=[];this.held=null;this.flight=null;this.proposalsThisFrame=[];this.lastDecision='waiting_for_hand';}
+ constructor({legacy=false,sizeOutlierRecovery=false,preFloorSizeRecovery=false,releaseSizeRecovery=false,nearFloorRelease=false,reanchorAfterGap=false,stableReleaseSize=false,ignoreOneOversizedSample=false,finishWindowSeconds=0,gapReceiptRecovery=false}={}){Object.assign(this,{gapReceiptRecovery,legacy,sizeOutlierRecovery,preFloorSizeRecovery,releaseSizeRecovery,nearFloorRelease,reanchorAfterGap,stableReleaseSize,ignoreOneOversizedSample,finishWindowSeconds});this.frame=0;this.count=0;this.points=[];this.context=[];this.confirmed=[];this.rejected=[];this.pending=[];this.held=null;this.flight=null;this.proposalsThisFrame=[];this.lastDecision='waiting_for_hand';}
  reject(reason,row){
   if(this.flight)this.rejected.push({from_hand:this.flight.source.owner.hand,event_frame:row.frame,event_time_seconds:row.time,control_status:reason,floor_contact_time_seconds:this.flight.floor?.time??null});
   this.flight=null;this.held=null;this.pending=[];this.lastDecision=reason;
@@ -38,6 +38,15 @@ export class CrossoverCounter {
   this.pending=[{from_hand:source.owner.hand,started_at:source.time}];
   this.lastDecision='following_release';
  }
+ canAwaitGapReceipt(now){
+  const f=this.flight;
+  return this.gapReceiptRecovery&&f?.floor&&now-f.lastSeen<=.35&&now-f.floor.time<=.55&&now-f.source.time<=1.2;
+ }
+ canReconnectReceipt(row){
+  const f=this.flight,d=f?.diameter,m=row.measurement;
+  return this.canAwaitGapReceipt(row.time)&&m&&row.owner?.hand===opposite(f.source.owner.hand)&&row.owner.distance<=1.15&&
+   m[2]/d>=.65&&m[2]/d<=1.5&&m[1]<=f.floor.measurement[1]-d*.25&&Math.abs(m[0]-f.floor.measurement[0])<=d*3;
+ }
  snapshot(){return {phase:this.flight?.floor?'awaiting_opposite_hand':this.flight?'following_flight':this.held?'hand_controlled':'waiting_for_hand',sourceHand:this.flight?.source.owner.hand??this.held?.owner.hand??null,floorTime:this.flight?.floor?.time??null,decision:this.lastDecision};}
  update(_proposals,measurement,person,now,deadline=Infinity){
   this.proposalsThisFrame=[];
@@ -50,7 +59,7 @@ export class CrossoverCounter {
   if(!canStartFlight&&!this.flight)return [];
   if(!row.measurement){
    if(this.reanchorAfterGap&&this.flight&&!this.flight.floor)this.flight.preFloorObservationGap=true;
-   if(this.flight&&now-this.flight.lastSeen>.25)this.reject('rejected_tracking_gap',row);
+   if(this.flight&&now-this.flight.lastSeen>.25){if(this.canAwaitGapReceipt(now))this.lastDecision='awaiting_gap_receipt';else this.reject('rejected_tracking_gap',row);}
    if(this.held&&now-this.held.time>.65)this.held=null;
    return [];
   }
@@ -83,7 +92,13 @@ export class CrossoverCounter {
    this.begin(this.held,row);
   }
   const flight=this.flight,d=flight.diameter;
-  if(now-flight.lastSeen>.25){this.reject('rejected_tracking_gap',row);this.held=row.owner?row:null;return [];}
+  if(now-flight.lastSeen>.25){
+   if(!this.canReconnectReceipt(row)){
+    if(this.canAwaitGapReceipt(now)&&!row.owner){this.lastDecision='awaiting_gap_receipt';return [];}
+    this.reject('rejected_tracking_gap',row);this.held=row.owner?row:null;return [];
+   }
+   flight.reconnectedAfterGap=true;
+  }
   if(now-flight.source.time>1.8){this.reject('rejected_uncontrolled_flight',row);this.held=row.owner?row:null;return [];}
   if(row.measurement[2]/d<.65||row.measurement[2]/d>1.5){
    if(!this.sizeOutlierRecovery||(!flight.floor&&!this.preFloorSizeRecovery)){this.reject('rejected_ball_size_change',row);this.held=null;return [];}
@@ -190,9 +205,50 @@ export class CrossoverCounter {
  }
 }
 
+// A supplemental receipt check never changes the primary release/floor state.
+// It may only complete the SAME previously observed floor contact after a short
+// gap, with the original opposite-hand control checks. It cannot invent a floor.
+export class SupplementalCrossoverCounter {
+ constructor(){this.primary=createCrossoverCounter('CROSS 11');this.shadows=[];this.confirmed=[];this.count=0;this.lastSupplemental=false;}
+ get frame(){return this.primary.frame;}get points(){return this.primary.points;}get context(){return this.primary.context;}
+ get held(){return this.primary.held;}get flight(){return this.primary.flight;}
+ get pending(){return this.primary.pending;}get proposalsThisFrame(){return this.primary.proposalsThisFrame;}
+ get rejected(){return this.primary.rejected;}
+ snapshot(){return {...this.primary.snapshot(),...(this.lastSupplemental?{decision:'supplemental_receipt_confirmed'}:{})};}
+ accept(event,source){
+  const prior=this.confirmed.find(e=>e.from_hand===event.from_hand&&Math.abs(e.floor_contact_time_seconds-event.floor_contact_time_seconds)<=.16);
+  if(prior){if(!prior.evidence_sources.includes(source))prior.evidence_sources.push(source);return null;}
+  const accepted={...event,count:++this.count,evidence_sources:[source]};this.confirmed.push(accepted);return accepted;
+ }
+ update(proposals,measurement,person,now,deadline=Infinity){
+  const p=this.primary,f=p.flight;
+  if(f?.floor&&now-f.lastSeen>.25&&now-f.lastSeen<=.35&&now-f.floor.time<=.55&&now-f.source.time<=1.2&&
+   !this.shadows.some(s=>s.floorTime===f.floor.time&&s.sourceHand===f.source.owner.hand)){
+   const counter=new CrossoverCounter({sizeOutlierRecovery:true,preFloorSizeRecovery:true,releaseSizeRecovery:true,
+    nearFloorRelease:true,reanchorAfterGap:true,stableReleaseSize:true,ignoreOneOversizedSample:true,finishWindowSeconds:.15,gapReceiptRecovery:true});
+   counter.frame=p.frame;counter.flight=structuredClone(f);counter.held=structuredClone(p.held);
+   counter.context=structuredClone(p.context.slice(-12));counter.pending=structuredClone(p.pending);
+   this.shadows.push({counter,floorTime:f.floor.time,sourceHand:f.source.owner.hand});this.shadows=this.shadows.slice(-2);
+  }
+  const events=[],primary=p.update(proposals,measurement,person,now,deadline);this.lastSupplemental=false;
+  for(const e of primary){const accepted=this.accept(e,'primary');if(accepted)events.push(accepted);}
+  this.shadows=this.shadows.filter(shadow=>{
+   if(now-shadow.floorTime>.55)return false;
+   const found=shadow.counter.update([],measurement,person,now,deadline);
+   for(const e of found){
+    if(e.from_hand!==shadow.sourceHand||Math.abs(e.floor_contact_time_seconds-shadow.floorTime)>1e-9)continue;
+    const accepted=this.accept(e,'observed_floor_gap_receipt');if(accepted){events.push(accepted);this.lastSupplemental=true;}
+   }
+   return !found.length&&shadow.counter.flight?.floor?.time===shadow.floorTime;
+  });
+  return events;
+ }
+}
+
 export function createCrossoverCounter(revision=CROSSOVER_COUNTER_REVISION){
  const rank=Number(/^CROSS (\d{2})$/.exec(revision)?.[1]);
- if(!(rank>=1&&rank<=11))throw new Error(`Unsupported crossover counter revision: ${revision}`);
+ if(!(rank>=1&&rank<=12))throw new Error(`Unsupported crossover counter revision: ${revision}`);
+ if(rank===12)return new SupplementalCrossoverCounter();
  return new CrossoverCounter({legacy:rank===1,sizeOutlierRecovery:rank>=3,preFloorSizeRecovery:rank>=4,releaseSizeRecovery:rank>=5,nearFloorRelease:rank>=6,reanchorAfterGap:rank>=7,stableReleaseSize:rank>=8,ignoreOneOversizedSample:rank>=9,finishWindowSeconds:rank>=10?CROSSOVER_FINISH_WINDOW_SECONDS:0});
 }
 

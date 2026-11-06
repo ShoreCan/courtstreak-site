@@ -40,7 +40,7 @@ export function unpackPoseCompact(bytes) {
 // submission is serialized (ORT's shared dispatch state); GPU readback can overlap.
 export function createGpuDetectorExecution({ort, manifest, sessions, device = ort.env.webgpu.device,
   usage = globalThis.GPUBufferUsage, mapMode = globalThis.GPUMapMode,
-  createInput = options => new GpuDetectorInput(options), clock = () => performance.now()}) {
+  createInput = options => new GpuDetectorInput(options), clock = () => performance.now(), freshAtAdmission = false}) {
   if (!device || !usage || !mapMode) throw new Error('GPU acceleration is unavailable on this device.');
   const resources = {}, buffers = [], pending = new Set();
   let dispatch = Promise.resolve(), ballPending = false, closing = false, closePromise;
@@ -77,46 +77,65 @@ export function createGpuDetectorExecution({ort, manifest, sessions, device = or
     await buffer.mapAsync(mapMode.READ);
     try { return buffer.getMappedRange(0, size).slice(0); } finally { buffer.unmap(); }
   }
-  function run(kind, source, roi, minimumBallScore = ORDINARY_BALL_SCORE) {
+  function run(kind, source, roi, minimumBallScore = ORDINARY_BALL_SCORE, captureAtAdmission) {
     if (closing) throw new Error('The GPU detector has been closed.');
     const r = resources[kind], session = sessions[kind], began = clock();
     if (!r || r.busy) throw new Error('A GPU model pass is already in progress.');
     r.busy = true;
-    let prepared;
-    try { prepared = r.input.prepare(source, roi); } catch (e) { r.busy = false; throw e; }
-    const preparedAt = clock();
-    const submitted = dispatch.then(() => session.run({[session.inputNames[0]]: r.inputTensor},
-      {[session.outputNames[0]]: r.outputTensor}));
-    dispatch = submitted.then(() => {}, () => {});
-    const job = (async () => {
+    let prepared,preparedAt,admittedAt,runtimeAt,capture=null,cancelled=false;
+    const queuedAt=clock();
+    if(!captureAtAdmission){
+      try { prepared=r.input.prepare(source,roi);preparedAt=clock(); } catch(e){r.busy=false;throw e;}
+    }
+    const submitted = dispatch.then(async()=>{
+      admittedAt=clock();
+      if(captureAtAdmission){
+        const next=captureAtAdmission();
+        if(next===null){cancelled=true;return;}
+        if(next!==undefined){
+          if(!next.frame||!Number.isFinite(next.capturedAt)||!Number.isFinite(next.sourceVideoTime)||
+            next.frame.width!==source.width||next.frame.height!==source.height)throw new Error('The admitted camera frame is invalid or changed orientation.');
+          source=next.frame;roi=next.roi??roi;
+          capture={capturedAt:next.capturedAt,sourceVideoTime:next.sourceVideoTime,roi:[...roi]};
+        }
+        prepared=r.input.prepare(source,roi);preparedAt=clock();
+      }
+      runtimeAt=clock();
+      return session.run({[session.inputNames[0]]:r.inputTensor},{[session.outputNames[0]]:r.outputTensor});
+    });
+    dispatch=submitted.then(()=>{},()=>{});
+    const job=(async()=>{
       await submitted;
-      const inferredAt = clock(), encoder = device.createCommandEncoder();
-      if (kind === 'pose') {
-        device.queue.writeBuffer(r.compact, 0, new Uint32Array([0]));
-        const pass = encoder.beginComputePass(); pass.setPipeline(r.pipeline); pass.setBindGroup(0, r.bind);
-        pass.dispatchWorkgroups(Math.ceil(8400 / 64)); pass.end();
-        encoder.copyBufferToBuffer(r.compact, 0, r.staging, 0, POSE_COMPACT_BYTES);
-      } else encoder.copyBufferToBuffer(r.outputBuffer, 0, r.staging, 0, r.bytes);
+      if(cancelled)return {cancelled:true};
+      const inferredAt=clock(),encoder=device.createCommandEncoder();
+      if(kind==='pose'){
+        device.queue.writeBuffer(r.compact,0,new Uint32Array([0]));
+        const pass=encoder.beginComputePass();pass.setPipeline(r.pipeline);pass.setBindGroup(0,r.bind);
+        pass.dispatchWorkgroups(Math.ceil(8400/64));pass.end();
+        encoder.copyBufferToBuffer(r.compact,0,r.staging,0,POSE_COMPACT_BYTES);
+      }else encoder.copyBufferToBuffer(r.outputBuffer,0,r.staging,0,r.bytes);
       device.queue.submit([encoder.finish()]);
       let output;
-      if (kind === 'pose') {
-        output = unpackPoseCompact(await read(r.staging, POSE_COMPACT_BYTES));
-        if (!output) {
-          const full = device.createCommandEncoder(); full.copyBufferToBuffer(r.outputBuffer, 0, r.fullStaging, 0, r.bytes);
+      if(kind==='pose'){
+        output=unpackPoseCompact(await read(r.staging,POSE_COMPACT_BYTES));
+        if(!output){
+          const full=device.createCommandEncoder();full.copyBufferToBuffer(r.outputBuffer,0,r.fullStaging,0,r.bytes);
           device.queue.submit([full.finish()]);
-          output = {data: new Float32Array(await read(r.fullStaging, r.bytes)), dims: manifest.pose.output_shape};
+          output={data:new Float32Array(await read(r.fullStaging,r.bytes)),dims:manifest.pose.output_shape};
         }
-      } else output = {data: new Float32Array(await read(r.staging, r.bytes)), dims: manifest.ball.output_shape};
-      const value = decodeOutput(output, kind, prepared.transform, {minimumBallScore});
-      return {value, timings: {preprocessMs: preparedAt - began, inferenceMs: inferredAt - preparedAt,
-        decodeMs: clock() - inferredAt}};
+      }else output={data:new Float32Array(await read(r.staging,r.bytes)),dims:manifest.ball.output_shape};
+      const value=decodeOutput(output,kind,prepared.transform,{minimumBallScore}),done=clock();
+      const preprocessMs=captureAtAdmission?preparedAt-admittedAt:preparedAt-began;
+      const queueWaitMs=admittedAt-(captureAtAdmission?queuedAt:preparedAt),runtimeCallMs=inferredAt-runtimeAt;
+      return {value,timings:{preprocessMs,inferenceMs:queueWaitMs+runtimeCallMs,decodeMs:done-inferredAt,
+        queueWaitMs,runtimeCallMs,readbackDecodeMs:done-inferredAt},...(capture?{capture}:{} )};
     })();
     pending.add(job);
-    job.then(() => {r.busy = false; pending.delete(job);}, () => {r.busy = false; pending.delete(job);});
+    job.then(()=>{r.busy=false;pending.delete(job);},()=>{r.busy=false;pending.delete(job);});
     return job;
   }
   const execution = {
-    liveInputMode: 'gpu-stream', inputRevision: GPU_EXECUTION_REVISION,
+    liveInputMode: 'gpu-stream', inputRevision: freshAtAdmission?'SAFARI GPU 02':GPU_EXECUTION_REVISION,
     // This call copies the source into GPU input synchronously before returning.
     runPose(source) { return run('pose', source, [0, 0, source.width, source.height]); },
     async detect(frame, roi, withPose, {minimumBallScore = ORDINARY_BALL_SCORE, refreshBallFrame} = {}) {
@@ -124,8 +143,8 @@ export function createGpuDetectorExecution({ort, manifest, sessions, device = or
       if (!Number.isFinite(minimumBallScore) || minimumBallScore < 0 || minimumBallScore > 1) throw new Error('Invalid ball proposal threshold.');
       ballPending = true;
       try {
-        const result = await runDetectionPass({frame, roi, withPose, refreshBallFrame, clock,
-          runPose: source => execution.runPose(source), runBall: (source, crop) => run('ball', source, crop, minimumBallScore)});
+        const result = await runDetectionPass({frame, roi, withPose, refreshBallFrame:freshAtAdmission?undefined:refreshBallFrame, clock,
+          runPose: source => execution.runPose(source), runBall: (source, crop) => run('ball', source, crop, minimumBallScore, freshAtAdmission?refreshBallFrame:undefined)});
         return {...result, ballProposalMinimumScore: minimumBallScore};
       } finally { ballPending = false; }
     },

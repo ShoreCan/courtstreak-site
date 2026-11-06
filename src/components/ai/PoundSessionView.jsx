@@ -43,7 +43,7 @@ export default function PoundSessionView({ drillKey='right-hand-pound', pairedFa
         <span className="cs-studio-duration"><FiClock/>20 seconds</span>
       </div>
       {ui.enhancedTracking&&!training&&!ended&&<nav className="cs-test-drills" aria-label={`${versions.check} drills`}><Link to={versions.poundPath||"/tracker-tests/right-hand-pound-test20"} aria-current={!crossover?'page':undefined}>Right-hand pound</Link><Link to={versions.crossPath||"/tracker-tests/crossovers-test20"} aria-current={crossover?'page':undefined}>Crossovers</Link></nav>}
-      {phase==='error'&&versions.check==='CAMERA TEST 22'&&<p><Link to={crossover?'/tracker-tests/crossovers-test20':'/tracker-tests/right-hand-pound-test20'}>Open the standard camera</Link></p>}
+      {phase==='error'&&['CAMERA TEST 22','CAMERA TEST 23'].includes(versions.check)&&<p><Link to={crossover?'/tracker-tests/crossovers-test20':'/tracker-tests/right-hand-pound-test20'}>Open the standard camera</Link></p>}
       {pairedFallbackNotice && !training && !ended && <p role="status">Switched to Camera Test 12. Independent body tracking was too slow for live scoring.</p>}
       <ol className="cs-iphone-steps" aria-label="Session progress">{['Set up', 'Train', 'Replay'].map((label, index) => <li key={label} className={index === step ? 'current' : index < step ? 'complete' : ''} aria-current={index === step ? 'step' : undefined}><b>{index < step ? <FiCheck/> : index + 1}</b><span>{label}</span>{index < 2 && <i aria-hidden="true"/>}</li>)}</ol>
 

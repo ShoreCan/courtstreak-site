@@ -4,3 +4,4 @@ dist
 *.save
 
 .env.local
+tests/browser/local-data/

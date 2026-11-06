@@ -1,3 +1,4 @@
+import {repairConfiguration} from './repairPolicy.mjs';
 import {safariConfiguration} from './safariPolicy.mjs';
 import { BALL_TRACKER_REVISION, EXPERIMENTAL_COUNTER_REVISION, BALL_IDENTITY_REVISION, poundCounterOptions } from './poundCore.mjs';
 import { LIVE_FRAME_REVISION } from './detectionPass.mjs';
@@ -39,6 +40,12 @@ export function configurationForEvidence(data) {
   if(data.trackerConfiguration?.safariRevision){
     if(data.trackerConfiguration.safariRevision!=='SAFARI GPU 01'||data.trackerConfiguration.shapePolicyRevision!=='SHAPE 01')throw new Error('Unsupported saved Safari revision.');
     result=safariConfiguration(result,'right-hand-pound');
+  }
+  if(data.trackerConfiguration?.repairRevision){
+    if(data.trackerConfiguration.repairRevision!=='TRACKING REPAIR 01')throw new Error('Unsupported saved repair revision.');
+    // Base is already COUNT09 when reconstructed from trackerRevision.
+    const original={...result,counterRevision:'COUNT 08',id:result.id.replace(/^COUNT09/,'COUNT08')};
+    result=repairConfiguration(original,'right-hand-pound');
   }
   if(data.trackerConfiguration){
     const saved=data.trackerConfiguration;

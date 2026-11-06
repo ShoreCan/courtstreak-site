@@ -19,8 +19,8 @@ test('GPU input preserves native-coordinate crop and letterbox while avoiding CP
   assert.equal(copies,1);assert.equal(submits,1);gpu.release();
 });
 
-function fixture({overflow=false,block=false,fail=false}={}){
-  const buffers=[],tensors=[],copies=[],releases=[],prepares=[];
+function fixture({overflow=false,block=false,fail=false,freshAtAdmission=false,clock}={}){
+  const buffers=[],tensors=[],copies=[],releases=[],prepares=[],preparedSources=[];
   let release,active=0,maxActive=0;
   const held=block?new Promise(r=>{release=r;}):Promise.resolve();
   const device={
@@ -39,9 +39,9 @@ function fixture({overflow=false,block=false,fail=false}={}){
     }finally{active--;}
   },async release(){releases.push(kind);}}]));
   const usage={STORAGE:1,COPY_DST:2,COPY_SRC:4,MAP_READ:8},mapMode={READ:1};
-  const execution=createGpuDetectorExecution({ort,manifest,sessions,device,usage,mapMode,
-    createInput:({size})=>({prepare(source,roi){prepares.push(size);return {transform:{x:0,y:0,scale:1,px:0,py:0}};},release(){}})});
-  return {execution,buffers,tensors,copies,releases,prepares,release,get maxActive(){return maxActive;}};
+  const execution=createGpuDetectorExecution({ort,manifest,sessions,device,usage,mapMode,freshAtAdmission,...(clock?{clock}:{}),
+    createInput:({size})=>({prepare(source,roi){prepares.push(size);preparedSources.push(source);return {transform:{x:0,y:0,scale:1,px:0,py:0}};},release(){}})});
+  return {execution,buffers,tensors,copies,releases,prepares,preparedSources,release,get maxActive(){return maxActive;}};
 }
 test('GPU execution reuses fixed tensors, retains detections and releases all resources',async()=>{
   const f=fixture(),frame={width:640,height:640};
@@ -67,4 +67,28 @@ test('failed predictions clear admission and resources still close',async()=>{
   const f=fixture({fail:true});await assert.rejects(f.execution.detect({width:640,height:640},[0,0,640,640],false),/prediction failed/);
   await assert.rejects(f.execution.detect({width:640,height:640},[0,0,640,640],false),/prediction failed/);
   await f.execution.close();assert.ok(f.buffers.every(b=>b.destroyed));
+});
+
+test('fresh admission snapshots ball pixels after the body queue wait and reports the actual capture',async()=>{
+ let time=0,captured=false;const f=fixture({block:true,freshAtAdmission:true,clock:()=>time});
+ const old={width:640,height:640,id:'old'},fresh={width:640,height:640,id:'fresh'};
+ const pose=f.execution.runPose(old),ball=f.execution.detect(old,[0,0,640,640],false,{refreshBallFrame:()=>{
+  captured=true;return {frame:fresh,capturedAt:.05,sourceVideoTime:1.05,roi:[10,20,600,620]};
+ }});
+ assert.equal(captured,false);assert.deepEqual(f.prepares,[640]);
+ await Promise.resolve();time=50;f.release();const result=await ball;await pose;
+ assert.equal(f.preparedSources.at(-1),fresh);assert.equal(result.capturedAt,.05);assert.deepEqual(result.actualROI,[10,20,600,620]);
+ assert.equal(result.timings.ball.queueWaitMs,50);assert.equal(result.timings.ball.runtimeCallMs,0);
+ assert.equal(result.timings.ball.inferenceMs,result.timings.ball.queueWaitMs+result.timings.ball.runtimeCallMs);
+ await f.execution.close();
+});
+test('cancelled admission does not run a stale ball frame',async()=>{
+ const f=fixture({freshAtAdmission:true});
+ const result=await f.execution.detect({width:640,height:640},[0,0,640,640],false,{refreshBallFrame:()=>null});
+ assert.equal(result.cancelled,true);assert.deepEqual(f.prepares,[]);await f.execution.close();
+});
+test('orientation changes at GPU admission fail instead of attaching new timestamps to the old image',async()=>{
+ const f=fixture({freshAtAdmission:true});
+ await assert.rejects(f.execution.detect({width:640,height:640},[0,0,640,640],false,{refreshBallFrame:()=>({frame:{width:640,height:360},capturedAt:1,sourceVideoTime:1})}),/changed orientation/);
+ await f.execution.close();assert.ok(f.buffers.every(b=>b.destroyed));
 });

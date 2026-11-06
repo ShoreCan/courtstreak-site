@@ -3,9 +3,10 @@ import react from '@vitejs/plugin-react'
 import { fileURLToPath } from 'node:url'
 import { trackerBuildInfo } from './scripts/tracker-build-info.mjs'
 import { courtStreakAppearanceCss } from './scripts/appearance-css.mjs'
+import { diagnosticOutput } from './scripts/diagnostic-output.mjs'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), diagnosticOutput()],
   css: { postcss: { plugins: [courtStreakAppearanceCss()] } },
   base: '/courtstreak-site/',
   build: {rollupOptions: {input: {

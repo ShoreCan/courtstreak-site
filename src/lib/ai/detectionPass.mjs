@@ -22,8 +22,10 @@ export async function runDetectionPass({frame, roi, withPose, runPose, runBall,
     }
   }
   const balls = await runBall(ballFrame, roi);
+  if(balls.cancelled)return {cancelled:true};
+  const capture=balls.capture??refreshed;
   return {person: person?.value, balls: balls.value, ms: clock() - started,
     timings: {pose: person?.timings ?? null, ball: balls.timings},
-    ...(refreshed ? {ballFrameRefreshed: true, capturedAt: refreshed.capturedAt,
-      sourceVideoTime: refreshed.sourceVideoTime} : {})};
+    ...(capture ? {ballFrameRefreshed: true, capturedAt: capture.capturedAt,
+      sourceVideoTime: capture.sourceVideoTime,...(capture.roi?{actualROI:capture.roi}:{})} : {})};
 }

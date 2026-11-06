@@ -4,7 +4,7 @@ import { createDetectorExecution } from './detectorExecution.mjs';
 export {iou,decodeOutput} from './detectorOutput.mjs';
 import {decodeOutput} from './detectorOutput.mjs';
 import {createPoseWorker} from './poseWorkerClient.mjs';
-export async function loadDetector(base,onProgress,{inputMode='reuse',asyncPose=false,executionMode='standard'}={}){
+export async function loadDetector(base,onProgress,{inputMode='reuse',asyncPose=false,executionMode='standard',providerOverride}={}){
  const ort=await import('onnxruntime-web/webgpu');
  ort.env.wasm.numThreads=1; // GitHub Pages does not provide cross-origin isolation.
  ort.env.wasm.wasmPaths=new URL(`${base}ai/runtime/`,location.href).href;
@@ -12,9 +12,10 @@ export async function loadDetector(base,onProgress,{inputMode='reuse',asyncPose=
  if(!manifestResponse.ok)throw new Error('The ball and body models have not been published. Run the model export step and publish public/ai.');
  const manifest=await manifestResponse.json();
  if(manifest.version!==1||!manifest.ball||!manifest.pose)throw new Error('Detector files do not match this tracker version.');
- if(executionMode==='gpu-stream')return loadGpuCandidate({ort,base,manifest,onProgress,asyncPose});
+ if(['gpu-stream','gpu-repair'].includes(executionMode))return loadGpuCandidate({ort,base,manifest,onProgress,asyncPose,freshAtAdmission:executionMode==='gpu-repair'});
  if(executionMode!=='standard')throw new Error('Unknown detector execution mode.');
- let provider=navigator.gpu?'webgpu':'wasm',ball,pose,poseWorker=null;
+ if(providerOverride!==undefined&&!['wasm','webgpu'].includes(providerOverride))throw new Error('Unknown diagnostic execution provider.');
+ let provider=providerOverride??(navigator.gpu?'webgpu':'wasm'),ball,pose,poseWorker=null;
  const create=async()=>{
   onProgress('Loading ball detector…');ball=await ort.InferenceSession.create(`${base}ai/models/${manifest.ball.file}`,{executionProviders:[provider],graphOptimizationLevel:'all'});
   // Two CPU inference loops can compete for the same limited compute budget.
@@ -37,7 +38,7 @@ export async function loadDetector(base,onProgress,{inputMode='reuse',asyncPose=
  return Object.assign(execution,{provider,modelManifest:manifest,poseWorker,poseMode:poseWorker?'independent-wasm-worker':'sequential'});
 }
 
-async function loadGpuCandidate({ort,base,manifest,onProgress,asyncPose}){
+async function loadGpuCandidate({ort,base,manifest,onProgress,asyncPose,freshAtAdmission=false}){
  if(!navigator.gpu||!await navigator.gpu.requestAdapter())throw new Error('GPU acceleration is unavailable on this device. The standard Camera Test 20 is still available.');
  const sessions={};let execution;
  try{
@@ -45,7 +46,7 @@ async function loadGpuCandidate({ort,base,manifest,onProgress,asyncPose}){
    onProgress(kind==='ball'?'Loading ball tracking…':'Preparing body and wrist tracking…');
    sessions[kind]=await ort.InferenceSession.create(`${base}ai/models/${manifest[kind].file}`,{executionProviders:['webgpu'],graphOptimizationLevel:'all',preferredOutputLocation:'gpu-buffer'});
   }
-  execution=createGpuDetectorExecution({ort,manifest,sessions});
+  execution=createGpuDetectorExecution({ort,manifest,sessions,freshAtAdmission});
   const warm=document.createElement('canvas');warm.width=warm.height=640;
   warm.getContext('2d').fillRect(0,0,640,640);
   await execution.detect(warm,[0,0,640,640],true);

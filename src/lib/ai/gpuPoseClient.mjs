@@ -13,7 +13,7 @@ export function createGpuPoseClient({runPose, clock = () => performance.now() / 
       pending = job;
       job.then(result => {
         if (!closed && currentGeneration === generation) latest = {id: currentId, capturedAt, sourceVideoTime,
-          completedAt: clock(), person: result.value, ms: Object.values(result.timings).reduce((a, b) => a + b, 0)};
+          completedAt: clock(), person: result.value, ms: ['preprocessMs','inferenceMs','decodeMs'].reduce((sum,key)=>sum+(result.timings[key]??0),0),timings:{...result.timings}};
       }, e => { if (!closed && currentGeneration === generation) error = e; })
         .finally(() => { if (pending === job) pending = null; });
       return true;
