@@ -1,8 +1,10 @@
+import {createGpuDetectorExecution} from './gpuDetectorExecution.mjs';
+import {createGpuPoseClient} from './gpuPoseClient.mjs';
 import { createDetectorExecution } from './detectorExecution.mjs';
 export {iou,decodeOutput} from './detectorOutput.mjs';
 import {decodeOutput} from './detectorOutput.mjs';
 import {createPoseWorker} from './poseWorkerClient.mjs';
-export async function loadDetector(base,onProgress,{inputMode='reuse',asyncPose=false}={}){
+export async function loadDetector(base,onProgress,{inputMode='reuse',asyncPose=false,executionMode='standard'}={}){
  const ort=await import('onnxruntime-web/webgpu');
  ort.env.wasm.numThreads=1; // GitHub Pages does not provide cross-origin isolation.
  ort.env.wasm.wasmPaths=new URL(`${base}ai/runtime/`,location.href).href;
@@ -10,6 +12,8 @@ export async function loadDetector(base,onProgress,{inputMode='reuse',asyncPose=
  if(!manifestResponse.ok)throw new Error('The ball and body models have not been published. Run the model export step and publish public/ai.');
  const manifest=await manifestResponse.json();
  if(manifest.version!==1||!manifest.ball||!manifest.pose)throw new Error('Detector files do not match this tracker version.');
+ if(executionMode==='gpu-stream')return loadGpuCandidate({ort,base,manifest,onProgress,asyncPose});
+ if(executionMode!=='standard')throw new Error('Unknown detector execution mode.');
  let provider=navigator.gpu?'webgpu':'wasm',ball,pose,poseWorker=null;
  const create=async()=>{
   onProgress('Loading ball detector…');ball=await ort.InferenceSession.create(`${base}ai/models/${manifest.ball.file}`,{executionProviders:[provider],graphOptimizationLevel:'all'});
@@ -31,4 +35,27 @@ export async function loadDetector(base,onProgress,{inputMode='reuse',asyncPose=
  const idle=execution.idle.bind(execution),close=execution.close.bind(execution);
  if(poseWorker){execution.idle=async()=>{await Promise.all([idle(),poseWorker.idle()]);};execution.close=async()=>{poseWorker.close();await close();};}
  return Object.assign(execution,{provider,modelManifest:manifest,poseWorker,poseMode:poseWorker?'independent-wasm-worker':'sequential'});
+}
+
+async function loadGpuCandidate({ort,base,manifest,onProgress,asyncPose}){
+ if(!navigator.gpu||!await navigator.gpu.requestAdapter())throw new Error('GPU acceleration is unavailable on this device. The standard Camera Test 20 is still available.');
+ const sessions={};let execution;
+ try{
+  for(const kind of ['ball','pose']){
+   onProgress(kind==='ball'?'Loading ball tracking…':'Preparing body and wrist tracking…');
+   sessions[kind]=await ort.InferenceSession.create(`${base}ai/models/${manifest[kind].file}`,{executionProviders:['webgpu'],graphOptimizationLevel:'all',preferredOutputLocation:'gpu-buffer'});
+  }
+  execution=createGpuDetectorExecution({ort,manifest,sessions});
+  const warm=document.createElement('canvas');warm.width=warm.height=640;
+  warm.getContext('2d').fillRect(0,0,640,640);
+  await execution.detect(warm,[0,0,640,640],true);
+  const poseWorker=asyncPose?createGpuPoseClient({runPose:source=>execution.runPose(source)}):null;
+  const idle=execution.idle.bind(execution),close=execution.close.bind(execution);
+  execution.idle=async()=>{await poseWorker?.idle();await idle();};
+  execution.close=async()=>{poseWorker?.close();await close();};
+  return Object.assign(execution,{provider:'webgpu',modelManifest:manifest,poseWorker,poseMode:poseWorker?'independent-webgpu':'sequential-webgpu'});
+ }catch(error){
+  if(execution)await execution.close();else await Promise.allSettled(Object.values(sessions).map(s=>s.release()));
+  throw error;
+ }
 }

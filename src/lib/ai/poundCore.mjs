@@ -1,7 +1,8 @@
 // Right-hand pound browser port of the saved CourtStreak 0.7.8 count-repair baseline.
 // All coordinates use the SAME mirrored, 1280px-wide frame as the Python engine.
 import {timedBallContinuation,strongBallContinuation,corroboratedBallContinuation,floorBallContinuation,crossoverFloorReconnect,observedMotionContinuation} from './ballTiming.mjs';
-import {observedBallProposal} from './observedBallIdentity.mjs';
+import {partialBallDecision} from './partialBallGuard.mjs';
+import {observedBallProposal,hasFreshMotionWindow} from './observedBallIdentity.mjs';
 import {ORDINARY_BALL_SCORE} from './ballProposalPolicy.mjs';
 export const BALL_TRACKER_REVISION = 'COUNT 03';
 export const EXPERIMENTAL_COUNTER_REVISION = 'COUNT 08';
@@ -25,7 +26,7 @@ const center=b=>[(b[0]+b[2])/2,(b[1]+b[3])/2];
 export const geometry = c => ({center:center(c.box), diameter:Math.sqrt(Math.max((c.box[2]-c.box[0])*(c.box[3]-c.box[1]),1))});
 const wrists = p => p ? [9,10].filter(i=>p.confidence[i]>=.15 && p.xy[i][0]>0 && p.xy[i][1]>0).map(i=>p.xy[i]) : [];
 export class BallIdentityTracker {
- constructor({observedIdentity=false,handContinuity=false,objectBackgroundRadius=false,timedContinuity=false,strongContinuity=false,corroboratedContinuity=false,floorContinuity=false,turnContinuity=false,weakContinuity=false,regularFloorContinuity=false,twoHandedMotion=false,crossoverReconnect=false,motionLock=false,diagnostics=false}={}){this.observedIdentity=observedIdentity;this.crossoverReconnect=crossoverReconnect;this.motionLock=motionLock;this.twoHandedMotion=twoHandedMotion;this.regularFloorContinuity=regularFloorContinuity;this.weakContinuity=weakContinuity;this.diagnostics=diagnostics;this.decisions=[];this.turnContinuity=turnContinuity;this.floorContinuity=floorContinuity;this.corroboratedContinuity=corroboratedContinuity;this.provisionalBall=null;this.strongContinuity=strongContinuity;this.handContinuity=handContinuity;this.objectBackgroundRadius=objectBackgroundRadius;this.timedContinuity=timedContinuity;this.samples=[];this.last=null;this.velocity=[0,0];this.diameter=null;this.missed=0;this.diameters=[];this.lanes=[];this.background=[];this.frame=0;}
+ constructor({partialObjectGuard=false,cadenceAwareWeakGuard=false,observedIdentity=false,handContinuity=false,objectBackgroundRadius=false,timedContinuity=false,strongContinuity=false,corroboratedContinuity=false,floorContinuity=false,turnContinuity=false,weakContinuity=false,regularFloorContinuity=false,twoHandedMotion=false,crossoverReconnect=false,motionLock=false,diagnostics=false}={}){this.partialObjectGuard=partialObjectGuard;this.cadenceAwareWeakGuard=cadenceAwareWeakGuard;this.observedIdentity=observedIdentity;this.crossoverReconnect=crossoverReconnect;this.motionLock=motionLock;this.twoHandedMotion=twoHandedMotion;this.regularFloorContinuity=regularFloorContinuity;this.weakContinuity=weakContinuity;this.diagnostics=diagnostics;this.decisions=[];this.turnContinuity=turnContinuity;this.floorContinuity=floorContinuity;this.corroboratedContinuity=corroboratedContinuity;this.provisionalBall=null;this.strongContinuity=strongContinuity;this.handContinuity=handContinuity;this.objectBackgroundRadius=objectBackgroundRadius;this.timedContinuity=timedContinuity;this.samples=[];this.last=null;this.velocity=[0,0];this.diameter=null;this.missed=0;this.diameters=[];this.lanes=[];this.background=[];this.frame=0;}
  decision(index,status,reason){if(this.diagnostics)this.decisions[index]={candidateIndex:index,status,reason};}
  typical(){return this.diameters.length?median(this.diameters):this.diameter;}
  lane(){return this.lanes.length?median(this.lanes):this.last?.[0];}
@@ -33,8 +34,13 @@ export class BallIdentityTracker {
  freezeCalibration(){this.calibrationFrozen=true;}
  roi(w,h){const x=this.lane(),d=this.typical()||72; if(x==null)return [0,0,w,h]; const half=Math.floor(Math.max(210,Math.min(w*.28,d*2.7))); return [Math.max(0,Math.floor(x)-half),Math.floor(h*.14),Math.min(w,Math.floor(x)+half),h];}
  select(candidates,person,phase,w,h,now=null){
-  if(!this.observedIdentity||phase!=='drill'||!this.ready())return this.selectObserved(candidates,person,phase,w,h,now);
-  const decisions=candidates.map(c=>observedBallProposal(c,this.samples,person,now,this.typical())),indices=[];
+  const motionGuard=this.observedIdentity&&phase==='drill'&&this.ready()&&(!this.cadenceAwareWeakGuard||hasFreshMotionWindow(this.samples,now));
+  const shapeGuard=this.partialObjectGuard&&phase==='drill';
+  if(!motionGuard&&!shapeGuard)return this.selectObserved(candidates,person,phase,w,h,now);
+  const decisions=candidates.map(c=>{
+   const shape=shapeGuard?partialBallDecision(c):{allowed:true};
+   return !shape.allowed?shape:motionGuard?observedBallProposal(c,this.samples,person,now,this.typical()):shape;
+  }),indices=[];
   const filtered=candidates.filter((_,i)=>{if(decisions[i].allowed){indices.push(i);return true;}return false;});
   const selected=this.selectObserved(filtered,person,phase,w,h,now);
   if(this.diagnostics){const mapped=candidates.map((_,i)=>({candidateIndex:i,status:'rejected',reason:decisions[i].reason??'ranking'}));for(const decision of this.decisions){const index=indices[decision.candidateIndex];mapped[index]={...decision,candidateIndex:index};}this.decisions=mapped;}

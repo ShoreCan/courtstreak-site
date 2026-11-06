@@ -8,6 +8,10 @@ export default defineConfig({
   plugins: [react()],
   css: { postcss: { plugins: [courtStreakAppearanceCss()] } },
   base: '/courtstreak-site/',
+  build: {rollupOptions: {input: {
+    app: fileURLToPath(new URL('./index.html', import.meta.url)),
+    safariCheck: fileURLToPath(new URL('./tests/browser/safari-gpu-check.html', import.meta.url)),
+  }}},
   server: { allowedHosts: ['terminal.local'] },
   define: { __COURTSTREAK_TRACKER_BUILD__: JSON.stringify(trackerBuildInfo(fileURLToPath(new URL('.', import.meta.url)))) },
 })

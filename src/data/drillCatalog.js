@@ -13,7 +13,7 @@ const drill=(key,name,hand,section,kind,benefit,steps,repeat,actions,repeatMode=
 export const LAUNCH_DRILLS=[
  drill('right-hand-pound','Right-Hand Pound','right','foundations','bounce','Build a strong, repeatable right-hand bounce.',
  ['Start with the ball in your right hand beside your right foot.','Drive the ball into the floor and receive it below your waist with the same hand.'],
- 'Keep the ball in your right hand for the entire interval.',[{move:'pound',from:'right',to:'right'}]),
+ 'Keep the ball in your right hand for the entire interval. Controlled low bounces count; there is no minimum height.',[{move:'pound',from:'right',to:'right'}]),
  drill('left-hand-pound','Left-Hand Pound','left','foundations','bounce','Build the same dependable control on your left side.',
  ['Start with the ball in your left hand beside your left foot.','Drive the ball into the floor and receive it below your waist with the same hand.'],
  'Keep the ball in your left hand for the entire interval.',[{move:'pound',from:'left',to:'left'}]),
@@ -41,5 +41,23 @@ export const LAUNCH_DRILLS=[
  drill('crossover-between','Crossover → Between-the-Legs Return','both','combinations','sequence','Change direction, then bring the ball back through a protected lane.',
  ['Start with the ball in your right hand and your left foot slightly forward.','Cross in front from right to left with one floor bounce.','From your left hand, bounce between your legs back to your right hand. Receive under control to finish one sequence.'],
  'The between-the-legs transfer returns you to your starting hand. Repeat right-to-left crossover → left-to-right between-the-legs. Two transfers equal one sequence.',[{move:'cross',from:'right',to:'left'},{move:'between',from:'left',to:'right'}],'same','Developing'),
-].map((d,index)=>({...d,display_order:index+1,status:'active'}));
+].map((d,index)=>{
+ const prerequisites={
+  'right-hand-pound':[], 'left-hand-pound':[],
+  'front-v-right':['right-hand-pound'], 'front-v-left':['left-hand-pound'],
+  'in-out-right':['front-v-right'], 'in-out-left':['front-v-left'],
+  'stationary-crossover':['right-hand-pound','left-hand-pound'],
+  'stationary-between-legs':['stationary-crossover'], 'stationary-behind-back':['stationary-crossover'],
+  'double-crossover':['stationary-crossover'],
+  'pound-cross-alternating':['right-hand-pound','left-hand-pound','stationary-crossover'],
+  'crossover-between':['stationary-crossover','stationary-between-legs'],
+ };
+ return {...d,display_order:index+1,status:'active',
+  rep_rule:d.count_kind==='transfer'?'Count one named hand-to-hand transfer with a floor bounce and a controlled opposite-hand receive. There and back counts twice. Reset bounces, airborne wraps and mishandles do not count.':d.rep_rule,
+  sequence_contract:{version:1,actions:d.actions.map(action=>({...action,requires_floor_bounce:true,requires_controlled_receive:true,requires_verified_move:true})),repeat_mode:d.repeat_mode,partial_sequence_counts:false,minimum_bounce_height:null},
+  progression:{version:1,prerequisites:prerequisites[d.drill_key],reviewed_days_required:2,clean_reps_per_day:10,access_locked:false,
+   readiness_cue:'Build comfortable control on two different days before adding speed. This is practice guidance, not camera verification.'},
+  camera_support:{web:['right-hand-pound','stationary-crossover'].includes(d.drill_key)?'experimental':'unvalidated',native:['right-hand-pound','stationary-crossover'].includes(d.drill_key)?'candidate':'unvalidated'},
+ };
+});
 export const LAUNCH_DRILL_BY_KEY=Object.fromEntries(LAUNCH_DRILLS.map(d=>[d.drill_key,d]));

@@ -4,6 +4,13 @@ import {ORDINARY_BALL_SCORE} from './ballProposalPolicy.mjs';
 const center=b=>[(b[0]+b[2])/2,(b[1]+b[3])/2];
 const distance=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
 export const OBSERVED_IDENTITY_REVISION='OBSERVED ID 01';
+// Motion fits require recent observations. Sparse phone packets keep the
+// existing recovery path rather than extrapolating across long gaps.
+export function hasFreshMotionWindow(samples,now){
+ const recent=samples.slice(-3);
+ return recent.length===3&&Number.isFinite(now)&&recent.every(s=>Number.isFinite(s.at))&&
+  now>=recent[2].at&&now-recent[2].at<=.08&&recent.slice(1).every((s,i)=>s.at>recent[i].at&&s.at-recent[i].at<=.08);
+}
 export function observedBallProposal(candidate,samples,person,now,diameter){
  const b=candidate?.box,score=candidate?.score;
  if(!Array.isArray(b)||b.length!==4||![...b,score].every(Number.isFinite)||b[2]<=b[0]||b[3]<=b[1])return {allowed:false,reason:'invalid_geometry'};

@@ -21,6 +21,7 @@ export default function DrillGuide({ drill, showVideo = true }) {
     {showVideo && demoVideo && !failedVideo ? <video key={demoVideo} controls playsInline preload="metadata" src={demoVideo} onError={() => setFailedVideo(true)} aria-label={`${drill.name} demonstration`} /> : null}
     <h3>What counts</h3><p>{spec?.rep_rule || repRule(drill)}</p>
     {spec && <div className="cs-drill-cycle"><span>ONE REP</span><ol aria-label="One rep, in order">{spec.actions.map((a,index)=><li key={index}><strong>{a.move==='front-v'?'V-dribble':a.move==='in-out'?'In-and-out':a.move==='cross'?'Crossover':a.move==='between'?'Between the legs':a.move==='behind'?'Behind the back':'Pound'}</strong><small>{a.from} → {a.to}</small></li>)}</ol><strong>Then repeat</strong><p>{spec.repeat}</p></div>}
+    {spec?.progression.prerequisites.length>0 && <details className="cs-guide-more"><summary>Build up to this drill</summary><p>Get comfortable with {spec.progression.prerequisites.map(key=>LAUNCH_DRILL_BY_KEY[key].name).join(', ')} first.</p><p>{spec.progression.readiness_cue}</p><p>Aim for ten controlled reps on each prerequisite on two different days. You can still practice this drill at your own pace.</p></details>}
     <details className="cs-guide-more"><summary>Technique & setup</summary>
     <h3>Set up</h3>
     <p>Use {twoBalls ? 'two basketballs' : 'one basketball'}{markers ? ' and safe floor markers' : ''} and enough clear space for the movement. Start balanced with your knees bent and chest up. Read the sequence before starting the timer.</p>

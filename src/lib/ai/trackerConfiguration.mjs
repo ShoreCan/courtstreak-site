@@ -1,3 +1,4 @@
+import {safariConfiguration} from './safariPolicy.mjs';
 import { BALL_TRACKER_REVISION, EXPERIMENTAL_COUNTER_REVISION, BALL_IDENTITY_REVISION, poundCounterOptions } from './poundCore.mjs';
 import { LIVE_FRAME_REVISION } from './detectionPass.mjs';
 import {POUND_RECOVERY_REVISION} from './poundRecoverySession.mjs';
@@ -34,6 +35,10 @@ export function configurationForEvidence(data) {
   if(data.trackerConfiguration?.recoveryRevision){
     if(data.trackerConfiguration.recoveryRevision!==POUND_RECOVERY_REVISION)throw new Error('The saved recovery revision is unsupported.');
     result=Object.freeze({...result,id:result.id+'/OBSERVEDFLOOR01',recoveryRevision:POUND_RECOVERY_REVISION,observationPolicy:sessionObservationPolicy('right-hand-pound',true,false,true,Number(match[1])>=11)});
+  }
+  if(data.trackerConfiguration?.safariRevision){
+    if(data.trackerConfiguration.safariRevision!=='SAFARI GPU 01'||data.trackerConfiguration.shapePolicyRevision!=='SHAPE 01')throw new Error('Unsupported saved Safari revision.');
+    result=safariConfiguration(result,'right-hand-pound');
   }
   if(data.trackerConfiguration){
     const saved=data.trackerConfiguration;
