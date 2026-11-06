@@ -4,8 +4,8 @@ import {GapAwareBounceCounter,PoundControlValidator} from '../src/lib/ai/poundCo
 
 // Synthetic camera samples of a short down/up motion around a capture gap.
 // With no gap the sampled motion is deliberately too shallow to be a rep.
-function trial({gap=.09,reverse=false,knownFloor=true,floor=580,hand=true,offset=0,disable=false,missing=false}={}){
- const counter=new GapAwareBounceCounter(),validator=new PoundControlValidator();
+function trial({gap=.09,reverse=false,knownFloor=true,floor=580,hand=true,offset=0,disable=false,missing=false,maxFloorSamplingGapSeconds=.15}={}){
+ const counter=new GapAwareBounceCounter({maxFloorSamplingGapSeconds}),validator=new PoundControlValidator();
  if(knownFloor)counter.floorSamples=Array.from({length:6},()=>[floor,60]);
  if(disable)counter.samplingGapContact=()=>null;
  const person={box:[400,100,900,700],confidence:Array(17).fill(.95),xy:Array.from({length:17},()=>[700,450])};
@@ -26,6 +26,24 @@ test('a known-floor sampling gap recovers one event without lowering clean thres
 test('the gap can precede the larger of the two observed positions',()=>assert.equal(trial({reverse:true}).recovered.length,1));
 test('uniform shallow motion is not promoted into a floor bounce',()=>assert.equal(trial({gap:.03}).validator.count,0));
 test('a gap beyond the bounded interval is not extrapolated',()=>assert.equal(trial({gap:.20}).validator.count,0));
+test('opt-in quarter-second gap still requires a turnaround at the previously established floor',()=>{
+ const gap=.25,floor=525+(40/.03)*gap/2;
+ assert.equal(trial({gap,floor}).validator.count,0);
+ const candidate=trial({gap,floor,maxFloorSamplingGapSeconds:.3});
+ assert.equal(candidate.validator.count,1);assert.equal(candidate.recovered.length,1);
+ assert.ok(candidate.recovered[0].sampling_gap_contact.gap_seconds>.24);
+ assert.equal(trial({gap,floor:580,maxFloorSamplingGapSeconds:.3}).validator.count,0);
+});
+test('opt-in gap handling retains floor, hand, observed-segment and upper-time bounds',()=>{
+ const gap=.25,floor=525+(40/.03)*gap/2;
+ for(const options of [{knownFloor:false},{hand:false},{offset:-200},{gap:.35}])
+  assert.equal(trial({gap,floor,maxFloorSamplingGapSeconds:.3,...options}).validator.count,0,JSON.stringify(options));
+ // Other historical recovery proofs may still accept a missing sample; a
+ // reconstructed point must not supply this observed-segment intersection.
+ assert.equal(trial({gap,floor,maxFloorSamplingGapSeconds:.3,missing:true}).recovered.length,0);
+ assert.throws(()=>new GapAwareBounceCounter({maxFloorSamplingGapSeconds:Infinity}),/150 and 300/);
+ assert.throws(()=>new GapAwareBounceCounter({maxFloorSamplingGapSeconds:.31}),/150 and 300/);
+});
 test('floor recovery requires established contacts',()=>assert.equal(trial({knownFloor:false}).validator.count,0));
 test('the extrapolated turnaround must agree with the established floor',()=>assert.equal(trial({floor:700}).validator.count,0));
 test('above-knee held-ball movement remains uncounted',()=>assert.equal(trial({offset:-150}).validator.count,0));

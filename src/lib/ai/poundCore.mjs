@@ -142,7 +142,7 @@ export class BallIdentityTracker {
  }
 }
 export class GapAwareBounceCounter {
- constructor({directionalPeaks=false,timeWindows=false,earlyConfirmation=false,lowControlledPounds=false,earlySampling=false,symmetricReturns=false}={}){this.earlySampling=earlySampling;this.symmetricReturns=symmetricReturns;this.lowControlledPounds=lowControlledPounds;this.earlyConfirmation=earlyConfirmation;this.timeWindows=timeWindows;this.directionalPeaks=directionalPeaks;this.points=[];this.next=5;this.last=null;this.count=0;this.floorSamples=[];}
+ constructor({directionalPeaks=false,timeWindows=false,earlyConfirmation=false,lowControlledPounds=false,earlySampling=false,symmetricReturns=false,maxFloorSamplingGapSeconds=.15}={}){if(!Number.isFinite(maxFloorSamplingGapSeconds)||maxFloorSamplingGapSeconds<.15||maxFloorSamplingGapSeconds>.3)throw new Error('Floor sampling gap must be between 150 and 300 milliseconds.');this.maxFloorSamplingGapSeconds=maxFloorSamplingGapSeconds;this.earlySampling=earlySampling;this.symmetricReturns=symmetricReturns;this.lowControlledPounds=lowControlledPounds;this.earlyConfirmation=earlyConfirmation;this.timeWindows=timeWindows;this.directionalPeaks=directionalPeaks;this.points=[];this.next=5;this.last=null;this.count=0;this.floorSamples=[];}
  rememberControlledFloor(e){if(this.lowControlledPounds&&e.validation_path==='controlled_low_pound')this.last=Math.max(this.last??-1,e.event_frame-1);if((e.validation_path==='clean_full_pound'||e.validation_path==='controlled_low_pound')&&e.bottom_center_y!=null&&e.ball_scale_pixels!=null){this.floorSamples.push([e.bottom_center_y,e.ball_scale_pixels]);this.floorSamples=this.floorSamples.slice(-16);}}
  floorReference(){if(this.floorSamples.length<6)return null;const ys=this.floorSamples.map(p=>p[0]),d=median(this.floorSamples.map(p=>p[1])),y=median(ys);if(median(ys.map(v=>Math.abs(v-y)))>d*.30)return null;return {center_y:y,diameter:d,trusted_contacts:this.floorSamples.length};}
  // A long capture interval can hide the lowest point without a null detection.
@@ -156,7 +156,7 @@ export class GapAwareBounceCounter {
    if(q.length!==4||q.some(p=>!p.observed||p.reconstructed))continue;
    const [before,entry,exit,after]=q;
    const dtIn=entry.timestamp-before.timestamp,dtOut=after.timestamp-exit.timestamp,gap=exit.timestamp-entry.timestamp;
-   if(dtIn<=0||dtOut<=0||gap<=Math.max(dtIn,dtOut)*1.5||gap>.15)continue;
+   if(dtIn<=0||dtOut<=0||gap<=Math.max(dtIn,dtOut)*1.5||gap>this.maxFloorSamplingGapSeconds)continue;
    const down=(entry.y-before.y)/dtIn,up=(after.y-exit.y)/dtOut;
    if(down<=0||up>=0)continue;
    const offset=(exit.y-entry.y-up*gap)/(down-up),y=entry.y+down*offset;
