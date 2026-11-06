@@ -10,7 +10,7 @@ export const isPoundCameraMode = mode => [CURRENT_POUND_MODE, 'iphone-vision-tes
 
 const identityOptions = rank => Object.freeze({
   handContinuity:rank>=2, objectBackgroundRadius:rank>=3, timedContinuity:rank>=4,
-  strongContinuity:rank>=5, corroboratedContinuity:rank>=6, floorContinuity:rank>=7, turnContinuity:rank>=8, ...(rank>=9?{weakContinuity:true}:{}), ...(rank>=10?{regularFloorContinuity:true}:{}),
+  strongContinuity:rank>=5, corroboratedContinuity:rank>=6, floorContinuity:rank>=7, turnContinuity:rank>=8, ...(rank>=9?{weakContinuity:true}:{}), ...(rank>=10?{regularFloorContinuity:true}:{}),...(rank>=11?{observedIdentity:true}:{}),
 });
 const configuration = (counterRevision, identityRevision, rank, liveFrameRevision) => Object.freeze({
   id:`${counterRevision.replaceAll(' ','')}/${identityRevision?.replaceAll(' ','')??'legacy'}/${liveFrameRevision.replaceAll(' ','')}`,
@@ -19,6 +19,7 @@ const configuration = (counterRevision, identityRevision, rank, liveFrameRevisio
 });
 
 export const CURRENT_POUND_CONFIGURATION = configuration(EXPERIMENTAL_COUNTER_REVISION, BALL_IDENTITY_REVISION, 10, LIVE_FRAME_REVISION);
+export const STREAM_POUND_CONFIGURATION=configuration(EXPERIMENTAL_COUNTER_REVISION,'LOCK 11',11,LIVE_FRAME_REVISION);
 export const LEGACY_POUND_CONFIGURATION = configuration(BALL_TRACKER_REVISION, null, 1, 'FRAME 00');
 
 // A missing historical identity revision cannot be guessed from the counter.
@@ -27,12 +28,12 @@ export function configurationForEvidence(data) {
   const counterRevision=data?.trackerRevision;
   poundCounterOptions(counterRevision);
   const identityRevision=data.ballIdentityRevision;
-  const match=/^LOCK (0[2-9]|10)$/.exec(identityRevision??'');
+  const match=/^LOCK (0[2-9]|10|11)$/.exec(identityRevision??'');
   if(!match)throw new Error('The saved identity revision is missing or unsupported; exact identity configuration is unavailable.');
   let result=configuration(counterRevision,identityRevision,Number(match[1]),data.liveFrameRevision??'unrecorded');
   if(data.trackerConfiguration?.recoveryRevision){
     if(data.trackerConfiguration.recoveryRevision!==POUND_RECOVERY_REVISION)throw new Error('The saved recovery revision is unsupported.');
-    result=Object.freeze({...result,id:result.id+'/OBSERVEDFLOOR01',recoveryRevision:POUND_RECOVERY_REVISION,observationPolicy:sessionObservationPolicy('right-hand-pound',true,false,true)});
+    result=Object.freeze({...result,id:result.id+'/OBSERVEDFLOOR01',recoveryRevision:POUND_RECOVERY_REVISION,observationPolicy:sessionObservationPolicy('right-hand-pound',true,false,true,Number(match[1])>=11)});
   }
   if(data.trackerConfiguration){
     const saved=data.trackerConfiguration;

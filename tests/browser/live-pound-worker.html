@@ -1,0 +1,12 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CourtStreak body worker check</title><style>body{background:#091422;color:#ecf2fc;font:17px/1.6 system-ui;max-width:760px;margin:60px auto;padding:20px}button{font:inherit;background:#ff873d;padding:15px;border:0;border-radius:12px;cursor:pointer}pre{white-space:pre-wrap;background:#122032;padding:24px;border-radius:12px}small{color:#adbed2}</style><h1>Independent body worker</h1><p>This checks that the browser can load and run the existing body model separately from the ball loop.</p><button id="run">Run functional check</button><pre id="output" role="status">Not run.</pre><small>Synthetic blank image. This checks execution, not tracking accuracy or iPhone speed. No camera is opened.</small><script type="module">
+import {createPoseWorker} from '../../src/lib/ai/poseWorkerClient.mjs';
+const button=document.querySelector('#run'),output=document.querySelector('#output');
+button.onclick=async()=>{button.disabled=true;let worker;try{
+ output.textContent='Loading existing model and body worker…';const base=new URL(import.meta.env.BASE_URL,location.origin).href;
+ const manifest=await fetch(new URL('ai/models/manifest.json',base)).then(r=>r.json());worker=await createPoseWorker({base,manifest});
+ const frame=document.createElement('canvas');frame.width=720;frame.height=1280;frame.getContext('2d').fillRect(0,0,720,1280);
+ const at=performance.now()/1000;worker.request(frame,{capturedAt:at,sourceVideoTime:0,coordinateSize:{width:1280,height:2276}});await worker.idle();
+ if(worker.error)throw worker.error;const result=worker.latest;if(!result||result.capturedAt!==at||result.sourceVideoTime!==0)throw Error('Worker lost its input identity.');
+ output.textContent='PASS: independent body job returned.\nNative portrait input: 720 × 1280.\nCoordinate size: 1280 × 2276.\nOriginal capture identity retained.\nJob time here: '+Math.round(result.ms)+' ms.\nPerson on blank input: '+(result.person?'unexpected proposal':'none')+'.\n\nThis is a desktop execution check, not an iPhone timing measurement.';
+ }catch(e){output.textContent='FAILED: '+e.message;}finally{worker?.close();button.disabled=false;}};
+</script></html>

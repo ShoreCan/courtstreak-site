@@ -1,13 +1,16 @@
+import {STREAM_POUND_CONFIGURATION} from './trackerConfiguration.mjs';
 import {createPoundTrackingState,resetPoundTrackingCounter,resetPoundTrackingIdentity} from './poundTrackingState.mjs';
 import {createCrossoverCounter,CROSSOVER_COUNTER_REVISION,crossoverROI} from './crossoverCounter.mjs';
 import {sessionObservationPolicy} from './sessionObservationPolicy.mjs';
 import {createPoundRecoverySession,updatePoundRecoverySession,POUND_RECOVERY_REVISION} from './poundRecoverySession.mjs';
 export const CROSSOVER_DRILL_KEY='stationary-crossover';
-export function createSessionTrackingState(freshFrames,drillKey,counterRevision=CROSSOVER_COUNTER_REVISION,independentCrossoverPose=false,{enhancedTracking=false}={}){
+export function createSessionTrackingState(freshFrames,drillKey,counterRevision=CROSSOVER_COUNTER_REVISION,independentCrossoverPose=false,{enhancedTracking=false,streamingPound=false}={}){
  if(enhancedTracking&&!['right-hand-pound',CROSSOVER_DRILL_KEY].includes(drillKey))throw new Error('Camera Test 20 currently supports right-hand pounds and crossovers.');
+ if(streamingPound&&(!enhancedTracking||drillKey!=='right-hand-pound'))throw new Error('Streaming pound is an independent right-hand-pound test.');
  const state=createPoundTrackingState(freshFrames);
+ if(streamingPound){state.configuration=STREAM_POUND_CONFIGURATION;resetPoundTrackingIdentity(state);}
  if(drillKey!==CROSSOVER_DRILL_KEY){
-  if(enhancedTracking){state.configuration=Object.freeze({...state.configuration,id:state.configuration.id+'/OBSERVEDFLOOR01',recoveryRevision:POUND_RECOVERY_REVISION,observationPolicy:sessionObservationPolicy(drillKey,freshFrames,false,true)});state.recovery=createPoundRecoverySession();}
+  if(enhancedTracking){state.configuration=Object.freeze({...state.configuration,id:state.configuration.id+'/OBSERVEDFLOOR01',recoveryRevision:POUND_RECOVERY_REVISION,observationPolicy:sessionObservationPolicy(drillKey,freshFrames,false,true,streamingPound)});state.recovery=createPoundRecoverySession();}
   return state;
  }
  state.crossover=true;

@@ -3,12 +3,14 @@ const crossover=Object.freeze({revision:CROSSOVER_OBSERVATION_REVISION,asyncPose
 const crossoverWorker=Object.freeze({...crossover,revision:'INDEPENDENT POSE 01',asyncPose:true,poseEveryPass:false,maxActivePoseSkew:.12});
 const currentPound=Object.freeze({revision:'WORKER 01 / FRAME 02',asyncPose:true,poseEveryPass:false,refreshBallFrame:true});
 const legacyPound=Object.freeze({revision:'SEQUENTIAL / FRAME 00',asyncPose:false,poseEveryPass:false,refreshBallFrame:false});
+const streamPound=Object.freeze({...currentPound,revision:'STREAM POUND 01',nativeCapture:true,floorView:true,continuousPose:true,maxActivePoseSkew:.3});
 const enhancedPound=Object.freeze({...crossover,revision:'PAIRED POUND 01',floorView:true});
 
 // Crossovers need the wrists and ball to describe the same instant. Run both
 // existing models on one captured image; adequate joint throughput is still
 // required before Go. The pound paths keep their existing scheduling.
-export function sessionObservationPolicy(drillKey,freshFrames=true,independentCrossoverPose=false,enhancedTracking=false){
+export function sessionObservationPolicy(drillKey,freshFrames=true,independentCrossoverPose=false,enhancedTracking=false,streamingPound=false){
+ if(streamingPound&&drillKey==='right-hand-pound')return streamPound;
  if(enhancedTracking&&drillKey!=='stationary-crossover')return enhancedPound;
  return drillKey==='stationary-crossover'?(independentCrossoverPose?crossoverWorker:crossover):freshFrames?currentPound:legacyPound;
 }

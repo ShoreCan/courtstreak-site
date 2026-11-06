@@ -92,6 +92,8 @@ export default function App() {
       <Route path="/tracker-tests/crossovers-test13" element={<CrossoverCameraTest key="crossover-test13" drillKey="stationary-crossover" standalone counterRevision="CROSS 05" independentCrossoverPose />} />
       <Route path="/tracker-tests/crossovers-test14" element={<CrossoverCameraTest key="crossover-test14" drillKey="stationary-crossover" standalone counterRevision="CROSS 06" />} />
       <Route path="/tracker-tests/test20" element={<CameraTest20 />} />
+      <Route path="/tracker-tests/test21" element={<Navigate to="/tracker-tests/right-hand-pound-test21" replace/>} />
+      <Route path="/tracker-tests/right-hand-pound-test21" element={<CrossoverCameraTest key="pound-test21" drillKey="right-hand-pound" standalone enhancedTracking streamingPound />} />
       <Route path="/tracker-tests/right-hand-pound-test20" element={<CrossoverCameraTest key="pound-test20" drillKey="right-hand-pound" standalone enhancedTracking />} />
       <Route path="/tracker-tests/crossovers-test20" element={<CrossoverCameraTest key="crossover-test20" drillKey="stationary-crossover" standalone counterRevision="CROSS 11" enhancedTracking />} />
       <Route path="/preview/hub/*" element={<Hub preview />} />
