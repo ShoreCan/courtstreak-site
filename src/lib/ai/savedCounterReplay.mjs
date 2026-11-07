@@ -4,11 +4,14 @@ import {geometry} from './poundCore.mjs';
 import {CountdownReadinessClock} from './countdownReadiness.mjs';
 import {shiftPreGoTimeline} from './setupGuidance.mjs';
 import {RoundEvidence} from './roundEvidence.mjs';
+import {configurationForEvidence} from './trackerConfiguration.mjs';
 
 export function replaySavedCounter(data,{configure=()=>{},personForFrame=frame=>frame.person,onFrame=()=>{}}={}){
  if(data.droppedFrameRecords||!Array.isArray(data.frames)||!data.frames.length)throw new Error('Complete saved counter inputs are required.');
- if(data.trackerCheckRevision!=='CAMERA TEST 22')throw new Error('This audit reconstructs the deployed Test22 flow only.');
+ if(!['CAMERA TEST 22','CAMERA TEST 23'].includes(data.trackerCheckRevision))throw new Error('This audit reconstructs the versioned Test22/Test23 session flow only.');
+ if(data.trackerConfiguration?.counterRevision!==data.trackerRevision)throw new Error('The saved counter configuration conflicts with its revision label.');
  const cross=data.drillKey==='stationary-crossover';
+ if(!cross)configurationForEvidence(data);
  const state=createSessionTrackingState(true,data.drillKey,data.trackerRevision,false,{enhancedTracking:true});
  state.configuration=data.trackerConfiguration;
  const timer=data.timerSeconds,clock=new CountdownReadinessClock({handMode:cross?'either':'right'}),evidence=new RoundEvidence(),rows=[];

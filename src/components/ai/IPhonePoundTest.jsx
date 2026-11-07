@@ -432,7 +432,7 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
    recordingAvailable:!!clip.blob,videoRevision:VIDEO_OVERLAY_REVISION,recordingRevision:RECORDING_TAIL_REVISION,countingStoppedAt:s.countingStoppedAt??null,recordedUntil:s.recordedUntil??null,interruptionReason:s.interruptionReason??null,reviewInterruptionReason:s.reviewInterruptionReason??null,videoExport:countedClip.exportInfo??null,countDisplayStartedAt:countTimeline.current.startedAt,
    displayedCountTimeline:countTimeline.current.snapshot(),savedVideoStyle:countedClip.status==='ready'?'count-overlay':'original',
    countOverlayTiming:'Display changes at live acceptance time; final card includes the post-round review. No bounce-time backdating.',
-   rejectedEvents:s.recovery?[...s.validator.rejected,...s.recovery.counter.rejected]:s.validator.rejected,pendingEvents:s.validator.pending});
+   ...(repairTracking?{noiseCalibration:s.counter.noiseCalibration??null}:{}),rejectedEvents:s.recovery?[...s.validator.rejected,...s.recovery.counter.rejected]:s.validator.rejected,pendingEvents:s.validator.pending});
   if(evidenceURL.current)URL.revokeObjectURL(evidenceURL.current);
   evidenceURL.current=URL.createObjectURL(new Blob([JSON.stringify(data)],{type:'application/json'}));
   const link=document.createElement('a');link.href=evidenceURL.current;link.download=`CourtStreak-${fileKey}-${s.count}-reps-test-details.json`;document.body.append(link);link.click();link.remove();

@@ -77,4 +77,14 @@ export function shiftPreGoTimeline(state, seconds) {
   if (!Number.isFinite(seconds) || seconds <= 0) return;
   for (const point of state.counter.points) point.timestamp-=seconds;
   for (const context of state.validator.context) context.time-=seconds;
+  const noise=state.counter.noiseCalibration;
+  if(noise){noise.start-=seconds;noise.end-=seconds;}
+  const recovery=state.recovery?.counter;
+  // Keep the new recovery guard and its held-ball clock on the same Go origin.
+  // Historical revisions retain their original timeline for exact comparison.
+  if(recovery?.guardFirstReturn){
+    recovery.lastTime-=seconds;
+    if(recovery.held)recovery.held.time-=seconds;
+    for(const row of recovery.guardContext)row.time-=seconds;
+  }
 }

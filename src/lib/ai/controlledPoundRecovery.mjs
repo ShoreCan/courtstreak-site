@@ -1,12 +1,23 @@
 // Experimental causal counter. It consumes observed detector proposals and
 // never changes the production identity anchor or detector crop.
+import {poundHandConflict} from './poundHandEvidence.mjs';
 const distance=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
 const visible=(p,i)=>p?.confidence?.[i]>=.5&&p.xy?.[i]?.length===2&&p.xy[i].every(v=>Number.isFinite(v)&&v>0);
 export class ControlledPoundCandidate {
- constructor(){this.count=0;this.confirmed=[];this.rejected=[];this.held=null;this.flight=null;this.frame=0;this.lastTime=-Infinity;this.measurement=null;}
- update(candidates,person,now,diameter,deadline=Infinity){
+ constructor({guardFirstReturn=false}={}){this.guardFirstReturn=guardFirstReturn;this.guardContext=[];this.count=0;this.confirmed=[];this.rejected=[];this.held=null;this.flight=null;this.frame=0;this.lastTime=-Infinity;this.measurement=null;}
+ observeGuard(measurement,person,time){
+  const hands={};for(const [hand,i]of [['left',9],['right',10]])if(visible(person,i))hands[hand]=[...person.xy[i]];
+  const row={time,measurement:measurement?[...measurement]:null,hands},last=this.guardContext.at(-1);
+  if(last?.time===time){if(!last.measurement&&measurement)this.guardContext[this.guardContext.length-1]=row;return;}
+  this.guardContext.push(row);this.guardContext=this.guardContext.slice(-64);
+ }
+ update(candidates,person,now,diameter,deadline=Infinity,guardMeasurement=null){
   if(!Number.isFinite(now)||now<=this.lastTime)return [];
   this.lastTime=now;this.frame++;this.measurement=null;
+  // Guard evidence follows the owned selected ball even when the right-hand
+  // recovery crop rejects it. Otherwise a left-hand receipt disappears from
+  // this path's history and the next bounce can falsely finish the old one.
+  if(this.guardFirstReturn)this.observeGuard(guardMeasurement,person,now);
   if(!(diameter>0)||!visible(person,10)||!visible(person,15)||!visible(person,16))return [];
   const d=diameter,feet=Math.max(person.xy[15][1],person.xy[16][1]),wrist=person.xy[10];
   const rows=candidates.flatMap(c=>{
@@ -38,10 +49,13 @@ export class ControlledPoundCandidate {
   });
   const row=options[0];if(!row)return [];
   this.measurement=[...row.p,row.size];
+  if(this.guardFirstReturn&&!guardMeasurement)this.observeGuard([...row.p,row.size],person,now);
   if(!f.floor&&row.p[1]>f.peak.p[1])f.peak=row;
   const peak=f.peak,bottom=peak.p[1]+peak.size*.5;
   if(!f.floor&&peak.score>=.008&&peak.time>f.source.time&&row.time>peak.time&&bottom>=peak.feet-d*.65&&bottom<=peak.feet+d*1.2&&peak.p[1]-f.source.p[1]>=d*.8&&peak.p[1]-row.p[1]>=d*.4)f.floor=peak;
   if(f.floor){
+   const conflict=this.guardFirstReturn?poundHandConflict({event_timestamp_exact:f.floor.time,bottom_center_y:f.floor.p[1],ball_scale_pixels:d},this.guardContext):null;
+   if(conflict){this.rejected.push({reason:conflict,time:now,floorTime:f.floor.time});this.flight=null;this.held=owned??null;return [];}
    if(f.floor.time>=deadline){this.flight=null;return [];}
    if(row.time>f.floor.time&&row.p[1]<=f.floor.p[1]-d*.4&&row.p[1]>=f.source.p[1]+d*.5)f.observedAscent=true;
    if(owned&&now>f.floor.time&&owned.p[1]<=f.floor.p[1]-d*.6)f.receipts.push(owned);

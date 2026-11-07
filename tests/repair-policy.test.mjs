@@ -27,7 +27,17 @@ test('body work rests between hand receipts but has a bounded refresh interval',
 test('candidate has its own count rules, crop/pose policy and exact evidence identity',()=>{
  const state=createSessionTrackingState(true,'right-hand-pound',undefined,false,{enhancedTracking:true});
  const base=safariConfiguration(state.configuration,'right-hand-pound'),config=repairConfiguration(base,'right-hand-pound');
- assert.equal(base.counterRevision,'COUNT 08');assert.equal(config.counterRevision,'COUNT 09');assert.equal(config.observationPolicy.floorView,false);
+ assert.equal(base.counterRevision,'COUNT 08');assert.equal(config.counterRevision,'COUNT 10');assert.equal(config.observationPolicy.floorView,false);
  const decoded=configurationForEvidence({trackerRevision:config.counterRevision,ballIdentityRevision:config.identityRevision,liveFrameRevision:config.liveFrameRevision,trackerConfiguration:config});
  assert.deepEqual(decoded,config);
+ assert.throws(()=>configurationForEvidence({trackerRevision:config.counterRevision,ballIdentityRevision:config.identityRevision,liveFrameRevision:config.liveFrameRevision,trackerConfiguration:{...config,recoveryOptions:{guardFirstReturn:false}}}),/recovery options conflict/);
+});
+test('saved first-repair evidence retains its original counter and policy',()=>{
+ const state=createSessionTrackingState(true,'right-hand-pound',undefined,false,{enhancedTracking:true});
+ const base=safariConfiguration(state.configuration,'right-hand-pound');
+ const config=repairConfiguration(base,'right-hand-pound','TRACKING REPAIR 01');
+ assert.equal(config.counterRevision,'COUNT 09');assert.equal(config.id.split('/').at(-1),'REPAIR01');
+ assert.deepEqual(configurationForEvidence({trackerRevision:config.counterRevision,ballIdentityRevision:config.identityRevision,liveFrameRevision:config.liveFrameRevision,trackerConfiguration:config}),config);
+ assert.throws(()=>configurationForEvidence({trackerRevision:'COUNT 10',ballIdentityRevision:config.identityRevision,liveFrameRevision:config.liveFrameRevision,trackerConfiguration:config}),/conflicts/);
+ assert.throws(()=>configurationForEvidence({trackerRevision:config.counterRevision,ballIdentityRevision:config.identityRevision,liveFrameRevision:config.liveFrameRevision,trackerConfiguration:{...config,recoveryOptions:{guardFirstReturn:true}}}),/recovery options conflict/);
 });

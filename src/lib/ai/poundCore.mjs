@@ -4,6 +4,7 @@ import {timedBallContinuation,strongBallContinuation,corroboratedBallContinuatio
 import {partialBallDecision} from './partialBallGuard.mjs';
 import {observedBallProposal,hasFreshMotionWindow} from './observedBallIdentity.mjs';
 import {ORDINARY_BALL_SCORE} from './ballProposalPolicy.mjs';
+import {poundHandConflict} from './poundHandEvidence.mjs';
 export const BALL_TRACKER_REVISION = 'COUNT 03';
 export const EXPERIMENTAL_COUNTER_REVISION = 'COUNT 08';
 export const BALL_IDENTITY_REVISION = 'LOCK 10';
@@ -14,12 +15,13 @@ export function poundCounterOptions(revision) {
  if(revision==='COUNT 05')return {directionalPeaks:true,timeWindows:true};
  if(revision==='COUNT 06')return {directionalPeaks:true,timeWindows:true,earlyConfirmation:true};
  if(revision==='COUNT 07')return {directionalPeaks:true,timeWindows:true,earlyConfirmation:true,lowControlledPounds:true};
+ if(revision==='COUNT 10')return {...poundCounterOptions('COUNT 09'),timeBasedNoiseCalibration:true,fullPoundFloorEvidence:true,cycleHandEvidence:true};
  if(revision==='COUNT 09')return {...poundCounterOptions('COUNT 08'),adaptiveLowPounds:true,maxFloorSamplingGapSeconds:.3};
  if(revision==='COUNT 08')return {directionalPeaks:true,timeWindows:true,earlyConfirmation:true,lowControlledPounds:true,earlySampling:true,symmetricReturns:true};
  throw new Error(`Unsupported counter revision: ${String(revision)}. Exact replay is unavailable.`);
 }
 export function createPoundCounter(revision){return new GapAwareBounceCounter(poundCounterOptions(revision));}
-export function createPoundValidator(revision){return new PoundControlValidator({lowControlledPounds:!!poundCounterOptions(revision).lowControlledPounds,adaptiveLowPounds:!!poundCounterOptions(revision).adaptiveLowPounds});}
+export function createPoundValidator(revision){const options=poundCounterOptions(revision);return new PoundControlValidator({lowControlledPounds:!!options.lowControlledPounds,adaptiveLowPounds:!!options.adaptiveLowPounds,fullPoundFloorEvidence:!!options.fullPoundFloorEvidence,cycleHandEvidence:!!options.cycleHandEvidence});}
 export const median = a => percentile(a, .5);
 export function percentile(a, q) { const s = [...a].sort((a,b)=>a-b); if (!s.length) return 0; const p=(s.length-1)*q, i=Math.floor(p); return s[i]+(s[Math.ceil(p)]-s[i])*(p-i); }
 const distance=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
@@ -143,7 +145,7 @@ export class BallIdentityTracker {
  }
 }
 export class GapAwareBounceCounter {
- constructor({directionalPeaks=false,timeWindows=false,earlyConfirmation=false,lowControlledPounds=false,earlySampling=false,symmetricReturns=false,adaptiveLowPounds=false,maxFloorSamplingGapSeconds=.15}={}){if(!Number.isFinite(maxFloorSamplingGapSeconds)||maxFloorSamplingGapSeconds<.15||maxFloorSamplingGapSeconds>.3)throw new Error('Floor sampling gap must be between 150 and 300 milliseconds.');this.adaptiveLowPounds=adaptiveLowPounds;this.preGoSamples=[];this.minimumObservedMotion=3;this.maxFloorSamplingGapSeconds=maxFloorSamplingGapSeconds;this.earlySampling=earlySampling;this.symmetricReturns=symmetricReturns;this.lowControlledPounds=lowControlledPounds;this.earlyConfirmation=earlyConfirmation;this.timeWindows=timeWindows;this.directionalPeaks=directionalPeaks;this.points=[];this.next=5;this.last=null;this.count=0;this.floorSamples=[];}
+ constructor({directionalPeaks=false,timeWindows=false,earlyConfirmation=false,lowControlledPounds=false,earlySampling=false,symmetricReturns=false,adaptiveLowPounds=false,timeBasedNoiseCalibration=false,maxFloorSamplingGapSeconds=.15}={}){if(!Number.isFinite(maxFloorSamplingGapSeconds)||maxFloorSamplingGapSeconds<.15||maxFloorSamplingGapSeconds>.3)throw new Error('Floor sampling gap must be between 150 and 300 milliseconds.');this.timeBasedNoiseCalibration=timeBasedNoiseCalibration;this.adaptiveLowPounds=adaptiveLowPounds;this.preGoSamples=[];this.minimumObservedMotion=3;this.noiseCalibration=null;this.maxFloorSamplingGapSeconds=maxFloorSamplingGapSeconds;this.earlySampling=earlySampling;this.symmetricReturns=symmetricReturns;this.lowControlledPounds=lowControlledPounds;this.earlyConfirmation=earlyConfirmation;this.timeWindows=timeWindows;this.directionalPeaks=directionalPeaks;this.points=[];this.next=5;this.last=null;this.count=0;this.floorSamples=[];}
  rememberControlledFloor(e){if(this.lowControlledPounds&&e.validation_path==='controlled_low_pound')this.last=Math.max(this.last??-1,e.event_frame-1);if((e.validation_path==='clean_full_pound'||e.validation_path==='controlled_low_pound')&&e.bottom_center_y!=null&&e.ball_scale_pixels!=null){this.floorSamples.push([e.bottom_center_y,e.ball_scale_pixels]);this.floorSamples=this.floorSamples.slice(-16);}}
  floorReference(){if(this.floorSamples.length<6)return null;const ys=this.floorSamples.map(p=>p[0]),d=median(this.floorSamples.map(p=>p[1])),y=median(ys);if(median(ys.map(v=>Math.abs(v-y)))>d*.30)return null;return {center_y:y,diameter:d,trusted_contacts:this.floorSamples.length};}
  // A long capture interval can hide the lowest point without a null detection.
@@ -169,8 +171,21 @@ export class GapAwareBounceCounter {
  }
  update(now,measurement,height){
   if(this.adaptiveLowPounds&&now<0&&measurement){
-   this.preGoSamples.push(measurement[0]);this.preGoSamples=this.preGoSamples.slice(-30);
-   if(this.preGoSamples.length>=8)this.minimumObservedMotion=Math.max(3,(percentile(this.preGoSamples,.95)-percentile(this.preGoSamples,.05))*1.25);
+   if(this.timeBasedNoiseCalibration){
+    // Repositioning is motion, not localization noise. Let it leave the
+    // calibration after the same settling time at every processing rate.
+    // Use the existing points so countdown pauses shift every clock together.
+    const samples=this.points.filter(p=>p.observed&&!p.reconstructed&&p.timestamp<now&&now-p.timestamp<=.5);
+    samples.push({timestamp:now,y:measurement[0]});
+    if(samples.length>=5&&now-samples[0].timestamp>=.25){
+     const values=samples.map(p=>p.y);
+     this.minimumObservedMotion=Math.max(3,(percentile(values,.95)-percentile(values,.05))*1.25);
+     this.noiseCalibration={windowSeconds:.5,start:samples[0].timestamp,end:now,samples:samples.length,minimumMotionPixels:this.minimumObservedMotion};
+    }
+   }else{
+    this.preGoSamples.push(measurement[0]);this.preGoSamples=this.preGoSamples.slice(-30);
+    if(this.preGoSamples.length>=8)this.minimumObservedMotion=Math.max(3,(percentile(this.preGoSamples,.95)-percentile(this.preGoSamples,.05))*1.25);
+   }
   }
   this.points.push({frame:this.points.length+1,timestamp:now,y:measurement?.[0]??null,diameter:measurement?.[1]??null,observed:!!measurement,reconstructed:false});
   const a=this.points,end=a.length-1; let start=end-1; while(start>=0&&a[start].y===null)start--;
@@ -228,7 +243,7 @@ export class GapAwareBounceCounter {
    const needed=this.adaptiveLowPounds?1:2,travel=this.adaptiveLowPounds?this.minimumObservedMotion:d*.6;
    if(c-left>=needed&&right-c>=needed&&localDown>=travel&&localRise>=travel
     &&a.slice(left,right+1).every(q=>q.observed&&!q.reconstructed&&q.diameter/d>=.8&&q.diameter/d<=1.25)){
-    low={start:a[left].timestamp,end:a[right].timestamp,down:localDown/d,rise:localRise/d,...(this.adaptiveLowPounds?{adaptive:true,minimumObservedMotionPixels:travel}:{} )};
+    low={start:a[left].timestamp,end:a[right].timestamp,down:localDown/d,rise:localRise/d,...(this.adaptiveLowPounds?{adaptive:true,minimumObservedMotionPixels:travel,...(this.timeBasedNoiseCalibration?{noiseCalibration:this.noiseCalibration}:{})}:{} )};
    }
   }
   if(!clean&&!recovered&&!anchored&&!low)return null;
@@ -244,7 +259,7 @@ export class GapAwareBounceCounter {
  }
 }
 export class PoundControlValidator {
- constructor({lowControlledPounds=false,adaptiveLowPounds=false}={}){this.adaptiveLowPounds=adaptiveLowPounds;this.lowControlledPounds=lowControlledPounds;this.frame=0;this.count=0;this.pending=[];this.confirmed=[];this.rejected=[];this.context=[];}
+ constructor({lowControlledPounds=false,adaptiveLowPounds=false,fullPoundFloorEvidence=false,cycleHandEvidence=false}={}){this.cycleHandEvidence=cycleHandEvidence;this.fullPoundFloorEvidence=fullPoundFloorEvidence;this.adaptiveLowPounds=adaptiveLowPounds;this.lowControlledPounds=lowControlledPounds;this.frame=0;this.count=0;this.pending=[];this.confirmed=[];this.rejected=[];this.context=[];}
  update(proposals,measurement,person,now,deadline=Infinity){
   this.frame++;
   const kneeY=person&&[13,14].every(i=>person.confidence[i]>=.5&&person.xy[i][0]>0&&person.xy[i][1]>0)?Math.min(person.xy[13][1],person.xy[14][1]):null;
@@ -260,17 +275,31 @@ export class PoundControlValidator {
    bo=p.confidence[11]>=.20&&p.confidence[12]>=.20?Math.abs(x-(p.xy[11][0]+p.xy[12][0])/2)/Math.max(bw,1):99;
   }
   const other=measurement&&person&&person.confidence[9]>=.2?distance(measurement,person.xy[9])/Math.max(measurement[2],1):null;
-  Object.assign(this.context.at(-1),{handDistance:hd,otherHandDistance:other,bodyOffset:bo});
+  const hands={};
+  for(const [hand,index] of [['left',9],['right',10]])if(person?.confidence?.[index]>=.2&&person.xy?.[index]?.every(Number.isFinite))hands[hand]=[...person.xy[index]];
+  Object.assign(this.context.at(-1),{handDistance:hd,otherHandDistance:other,bodyOffset:bo,...(this.cycleHandEvidence?{hands}:{})});
+  const distinctRight=!this.cycleHandEvidence||other===null||hd!==null&&other-hd>=.15;
   for(const item of this.pending){
-   if(hd!==null&&(item.best_hand_distance_ball_diameters===null||hd<item.best_hand_distance_ball_diameters)){item.best_hand_distance_ball_diameters=hd;item.best_body_offset_units=bo;}
+   if(distinctRight&&hd!==null&&(item.best_hand_distance_ball_diameters===null||hd<item.best_hand_distance_ball_diameters)){item.best_hand_distance_ball_diameters=hd;item.best_body_offset_units=bo;}
   }
   const events=[],remaining=[];
   for(const p of this.pending){const hd=p.best_hand_distance_ball_diameters,bo=p.best_body_offset_units,down=p.down_ball_diameters,rise=p.rise_ball_diameters;
    // An entire ball above both visible knees cannot be this player's floor bounce.
    if(!(this.adaptiveLowPounds&&p.low_control_window?.adaptive)&&p.event_knee_y!==null&&p.bottom_center_y!=null&&p.ball_scale_pixels>0&&p.bottom_center_y+p.ball_scale_pixels*.5<p.event_knee_y){p.control_status='rejected_above_knee';this.rejected.push(p);continue;}
+   const handConflict=this.cycleHandEvidence?poundHandConflict(p,this.context):null;
+   if(handConflict){p.control_status=handConflict.startsWith('observed_')?'observed_wrong_hand':'unverified_rep';p.failed_checks=[handConflict];this.rejected.push(p);continue;}
    const clean=p.validation_path==='clean_full_pound'&&rise>=1.5&&rise>=down*.42&&hd!==null&&hd<=2.6&&bo!==null&&bo<=2.2;
    const recovered=p.validation_path==='gap_recovered_pound'&&down>=1.25&&rise>=1.25&&hd!==null&&hd<=1.8&&bo!==null&&bo<=1.65;
    const floor=p.validation_path==='floor_anchored_pound'&&p.floor_reference&&down>=1&&rise>=1&&rise>=down*.42&&hd!==null&&hd<=1.8&&bo!==null&&bo<=1.65;
+   // Large motion alone cannot prove a bounce. Apply contact evidence to the
+   // full and gap paths too, before any accepted peak can teach a floor.
+   const contact=this.context.find(c=>c.frame===p.event_frame),diameter=p.ball_scale_pixels,reference=p.floor_reference;
+   const knownFloor=reference&&diameter/reference.diameter>=.8&&diameter/reference.diameter<=1.2&&Math.abs(p.bottom_center_y-reference.center_y)<=diameter*.45;
+   // Feet are a projected floor anchor, not the contact point beneath the
+   // ball. Retain the same 0.45-diameter uncertainty as the learned floor.
+   const feetFloor=contact?.measurement&&contact.feetY!=null&&p.bottom_center_y+diameter*.5>=contact.feetY-diameter*.45&&p.bottom_center_y+diameter*.5<=contact.feetY+diameter*1.6;
+   const estimatedFloor=p.sampling_gap_contact&&reference&&Math.abs(p.sampling_gap_contact.center_y-reference.center_y)<=diameter*.45;
+   const fullFloorVerified=!this.fullPoundFloorEvidence||!!(knownFloor||feetFloor||estimatedFloor);
    let low=false,lowFailures=null;
    if(this.lowControlledPounds&&p.validation_path==='controlled_low_pound'&&p.low_control_window){
     const contact=this.context.find(c=>c.frame===p.event_frame),d=p.ball_scale_pixels,w=p.low_control_window;
@@ -288,7 +317,7 @@ export class PoundControlValidator {
     low=!!(contact?.measurement&&(known||feet)&&movement&&handBefore&&handAfter);
     if(adaptive)lowFailures=[!contact?.measurement&&'missing_contact_measurement',!(known||feet)&&'unverified_floor',!movement&&'motion_below_measured_noise',!handBefore&&'unverified_release_hand',!handAfter&&'unverified_receiving_hand'].filter(Boolean);
    }
-   if(clean||recovered||floor||low){p.count=++this.count;p.control_status='confirmed';events.push(p);this.confirmed.push(p);}
+   if((clean||recovered||floor)&&fullFloorVerified||low){p.count=++this.count;p.control_status='confirmed';if(this.fullPoundFloorEvidence&&p.validation_path!=='controlled_low_pound')p.floor_evidence=estimatedFloor?'estimated_between_observed_frames':knownFloor?'established_floor_reference':'observed_ball_and_feet';events.push(p);this.confirmed.push(p);}
    else if(this.adaptiveLowPounds?(now-p.proposal_timestamp>=.5):this.frame-p.proposal_frame>=14){
     p.control_status=this.adaptiveLowPounds?'unverified_rep':'rejected_mishandle';
     if(this.adaptiveLowPounds){
@@ -298,6 +327,7 @@ export class PoundControlValidator {
       down<limits.down&&'insufficient_observed_descent',rise<limits.rise&&'insufficient_observed_return',rise<down*limits.ratio&&'insufficient_return_ratio',
       (hd===null||hd>limits.hand)&&'unverified_receiving_hand',(bo===null||bo>limits.body)&&'unverified_control_region',
       p.validation_path==='floor_anchored_pound'&&!p.floor_reference&&'unverified_floor',
+      this.fullPoundFloorEvidence&&!fullFloorVerified&&'unverified_floor',
      ].filter(Boolean);
     }
     this.rejected.push(p);

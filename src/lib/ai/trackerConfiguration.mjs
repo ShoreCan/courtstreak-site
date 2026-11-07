@@ -42,20 +42,21 @@ export function configurationForEvidence(data) {
     result=safariConfiguration(result,'right-hand-pound');
   }
   if(data.trackerConfiguration?.repairRevision){
-    if(data.trackerConfiguration.repairRevision!=='TRACKING REPAIR 01')throw new Error('Unsupported saved repair revision.');
-    // Base is already COUNT09 when reconstructed from trackerRevision.
-    const original={...result,counterRevision:'COUNT 08',id:result.id.replace(/^COUNT09/,'COUNT08')};
-    result=repairConfiguration(original,'right-hand-pound');
+    // Reconstruct from the original policy; keep COUNT09 evidence reproducible.
+    const original={...result,counterRevision:'COUNT 08',id:result.id.replace(/^COUNT(?:09|10)/,'COUNT08')};
+    result=repairConfiguration(original,'right-hand-pound',data.trackerConfiguration.repairRevision);
+    if(result.counterRevision!==counterRevision)throw new Error('Saved counter revision conflicts with the repair revision.');
   }
   if(data.trackerConfiguration){
     const saved=data.trackerConfiguration;
-    const sameOptions=(a,b)=>a&&Object.keys(a).length===Object.keys(b).length&&Object.keys(b).every(key=>a[key]===b[key]);
+    const sameOptions=(a,b)=>a&&b&&Object.keys(a).length===Object.keys(b).length&&Object.keys(b).every(key=>a[key]===b[key]);
     if(saved.id!==result.id||saved.counterRevision!==result.counterRevision||saved.identityRevision!==result.identityRevision
       ||saved.liveFrameRevision!==result.liveFrameRevision
       ||!sameOptions(saved.identityOptions,result.identityOptions)||!sameOptions(saved.counterOptions,result.counterOptions)){
       throw new Error('Saved tracker configuration conflicts with its revision labels.');
     }
     if(result.recoveryRevision&&!sameOptions(saved.observationPolicy,result.observationPolicy))throw new Error('Saved observation policy conflicts with the recovery revision.');
+    if((result.recoveryOptions||saved.recoveryOptions)&&!sameOptions(saved.recoveryOptions,result.recoveryOptions))throw new Error('Saved recovery options conflict with the repair revision.');
   }
   return result;
 }

@@ -1,13 +1,18 @@
 import fs from 'node:fs';
 import {pathToFileURL} from 'node:url';
-import {BallIdentityTracker,GapAwareBounceCounter,PoundControlValidator,geometry,percentile} from '../src/lib/ai/poundCore.mjs';
+import {BallIdentityTracker,GapAwareBounceCounter,PoundControlValidator,createPoundCounter,createPoundValidator,geometry,percentile} from '../src/lib/ai/poundCore.mjs';
 import {CURRENT_POUND_CONFIGURATION,configurationForEvidence,replayOptionsForConfiguration} from '../src/lib/ai/trackerConfiguration.mjs';
 
-export function replayBallLock(data,{handContinuity=false,objectBackgroundRadius=false,timedContinuity=false,directionalPeaks=false,timeWindows=false,strongContinuity=false,earlyConfirmation=false,corroboratedContinuity=false,floorContinuity=false,turnContinuity=false,weakContinuity=false,regularFloorContinuity=false,lowControlledPounds=false,earlySampling=false,symmetricReturns=false,diagnostics=false}={}){
+export function replayBallLock(data,options={}){
+ const {counterRevision=null,handContinuity=false,objectBackgroundRadius=false,timedContinuity=false,directionalPeaks=false,timeWindows=false,earlyConfirmation=false,lowControlledPounds=false,earlySampling=false,symmetricReturns=false,diagnostics=false}=options;
  if(data.droppedFrameRecords)throw new Error('Early inputs were discarded; an exact identity replay is unavailable.');
  if(!Array.isArray(data.frames)||!Array.isArray(data.frameSize))throw new Error('Expected a CourtStreak round-evidence JSON.');
- const tracker=new BallIdentityTracker({handContinuity,objectBackgroundRadius,timedContinuity,strongContinuity,corroboratedContinuity,floorContinuity,turnContinuity,weakContinuity,regularFloorContinuity,diagnostics});
- let counter=new GapAwareBounceCounter({directionalPeaks,timeWindows,earlyConfirmation,lowControlledPounds,earlySampling,symmetricReturns}),validator=new PoundControlValidator({lowControlledPounds}),previous=0;
+ const tracker=new BallIdentityTracker({...options,diagnostics});
+ // Revision-labelled diagnostics must use the live factories. Copying a list
+ // of options here silently omitted new rules when later revisions were added.
+ const makeCounters=()=>counterRevision?{counter:createPoundCounter(counterRevision),validator:createPoundValidator(counterRevision)}:
+  {counter:new GapAwareBounceCounter({directionalPeaks,timeWindows,earlyConfirmation,lowControlledPounds,earlySampling,symmetricReturns}),validator:new PoundControlValidator({lowControlledPounds})};
+ let {counter,validator}=makeCounters(),previous=0;
  const changedFrames=[],restoredFrames=[],lostFrames=[],events=[],confirmationDelays=[],frameDecisions=[];
  let selectionMatches=0,selectedFrames=0,roiMismatches=0;
  for(const f of data.frames){
@@ -23,7 +28,7 @@ export function replayBallLock(data,{handContinuity=false,objectBackgroundRadius
   if(!ball&&f.selected)lostFrames.push(f.frameId);
   const cf=f.counterFrame;
   if(cf==null||cf===previous)continue;
-  if(cf<previous){counter=new GapAwareBounceCounter({directionalPeaks,timeWindows,earlyConfirmation,lowControlledPounds,earlySampling,symmetricReturns});validator=new PoundControlValidator({lowControlledPounds});previous=0;}
+  if(cf<previous){({counter,validator}=makeCounters());previous=0;}
   if(cf!==previous+1)throw new Error(`Missing counter input at frame ${f.frameId}.`);
   const g=ball?geometry(ball):null,measurement=g?[...g.center,g.diameter]:null;
   const proposals=counter.update(f.elapsed,measurement?measurement.slice(1):null,data.frameSize[1]);
@@ -37,7 +42,7 @@ export function replayBallLock(data,{handContinuity=false,objectBackgroundRadius
 
 export function replayConfiguredRound(data,configuration=configurationForEvidence(data),{diagnostics=false}={}){
  const resolvedOptions=replayOptionsForConfiguration(configuration);
- const result=replayBallLock(data,{...resolvedOptions,diagnostics});
+ const result=replayBallLock(data,{...resolvedOptions,counterRevision:configuration.counterRevision,diagnostics});
  return {available:true,configuration,resolvedOptions,...result,cropCompatible:result.roiMismatches===0,
   matchesSavedAcceptedEvents:Array.isArray(data.countedReps)?result.events.length===data.countedReps.length&&result.events.every((e,i)=>Math.abs(e.time-data.countedReps[i].time)<1e-8):null,
   comparisonLimit:result.roiMismatches?'Changed requested crops require fresh model inference; these cached counts are not a full-pipeline result.':result.limit};

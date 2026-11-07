@@ -23,7 +23,7 @@ export function createSessionTrackingState(freshFrames,drillKey,counterRevision=
  resetPoundTrackingIdentity(state);resetSessionTrackingCounter(state);return state;
 }
 export function resetSessionTrackingCounter(state){
- if(!state.crossover){resetPoundTrackingCounter(state);if(state.configuration.recoveryRevision)state.recovery=createPoundRecoverySession();return;}
+ if(!state.crossover){resetPoundTrackingCounter(state);if(state.configuration.recoveryRevision)state.recovery=createPoundRecoverySession(state.configuration.recoveryOptions);return;}
  state.counter=createCrossoverCounter(state.configuration.counterRevision);state.validator=state.counter;
 }
 export function updateSessionCounter(state,time,measurement,person,height,deadline,candidates=[]){
@@ -31,7 +31,7 @@ export function updateSessionCounter(state,time,measurement,person,height,deadli
  const proposals=state.counter.update(time,measurement?[measurement[1],measurement[2]]:null,height);
  const confirmed=state.validator.update(proposals,measurement,person,time,deadline);
  confirmed.forEach(event=>state.counter.rememberControlledFloor(event));
- if(state.recovery){const recovered=updatePoundRecoverySession(state.recovery,{primaryEvents:confirmed,candidates,person,time,diameter:state.tracker.typical(),deadline});return {proposals,confirmed:recovered.confirmed,primaryConfirmed:confirmed,count:recovered.count,recoveryMeasurement:recovered.measurement};}
+ if(state.recovery){const recovered=updatePoundRecoverySession(state.recovery,{primaryEvents:confirmed,candidates,person,time,diameter:state.tracker.typical(),deadline,measurement});return {proposals,confirmed:recovered.confirmed,primaryConfirmed:confirmed,count:recovered.count,recoveryMeasurement:recovered.measurement};}
  return {proposals,confirmed,count:state.validator.count};
 }
 export function sessionROI(state,person,w,h){return state.crossover?crossoverROI(person,state.tracker,w,h):state.tracker.roi(w,h);}

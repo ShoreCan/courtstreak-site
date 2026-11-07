@@ -39,7 +39,7 @@ export class RoundEvidence {
     for (const event of confirmed) this.repEvents.push({ rep: event.count,
       time: event.event_timestamp_exact ?? event.event_time_seconds,
       confirmedOnFrame: frameId, confirmedAt: Number.isFinite(decisionCompletedAt)?decisionCompletedAt:capturedAt, counterFrame: event.event_frame,
-      path: event.validation_path,...(event.evidence_sources?{evidenceSources:[...event.evidence_sources]}:{}),...(event.finished_after_time?{finishedAfterTime:true}:{}),...(event.from_hand?{fromHand:event.from_hand,toHand:event.to_hand,floorTime:event.floor_contact_time_seconds,reviewFrom:Math.max(0,event.release_time_seconds),controlEvidence:event.control_evidence}:{}) });
+      path: event.validation_path,...(event.floor_evidence?{floorEvidence:event.floor_evidence}:{}),...(event.evidence_sources?{evidenceSources:[...event.evidence_sources]}:{}),...(event.finished_after_time?{finishedAfterTime:true}:{}),...(event.from_hand?{fromHand:event.from_hand,toHand:event.to_hand,floorTime:event.floor_contact_time_seconds,reviewFrom:Math.max(0,event.release_time_seconds),controlEvidence:event.control_evidence}:{}) });
   }
   export({ startedAt = null, ...metadata }) {
     return { schema: 'courtstreak-round-evidence-v1', reviewRevision: REP_REVIEW_REVISION, ...metadata,

@@ -85,14 +85,14 @@ export function replayProfileCounter(data) {
     if(data.recoveryRevision&&data.recoveryRevision!==POUND_RECOVERY_REVISION)throw new Error('The saved recovery revision is unsupported.');
     const enhanced=!!data.recoveryRevision;
     if(enhanced&&!(data.calibratedBallDiameter>0))throw new Error('The saved recovery calibration is missing.');
-    let recovery=enhanced?createPoundRecoverySession():null;
+    let recovery=enhanced?createPoundRecoverySession(data.trackerConfiguration?.recoveryOptions):null;
     const confirmationDelays=[];
-    for(const f of data.frames){const cf=f.counterFrame;if(cf==null||cf===previous)continue;if(cf<previous){counter=createPoundCounter(revision);validator=createPoundValidator(revision);recovery=enhanced?createPoundRecoverySession():null;previous=0;}
+    for(const f of data.frames){const cf=f.counterFrame;if(cf==null||cf===previous)continue;if(cf<previous){counter=createPoundCounter(revision);validator=createPoundValidator(revision);recovery=enhanced?createPoundRecoverySession(data.trackerConfiguration?.recoveryOptions):null;previous=0;}
       if(cf!==previous+1)throw new Error('The saved counter inputs are incomplete.');
       const g=f.selected?geometry(f.selected):null,m=g?[...g.center,g.diameter]:null;
       const events=counter.update(f.elapsed,m?[m[1],m[2]]:null,data.frameSize[1]);
       const primary=validator.update(events,m,f.person,f.elapsed,data.timerSeconds??20);primary.forEach(e=>counter.rememberControlledFloor(e));
-      const accepted=recovery?updatePoundRecoverySession(recovery,{primaryEvents:primary,candidates:mergeFloorProposals(f.balls??[],f.floorView?.balls??[]),person:f.person,time:f.elapsed,diameter:data.calibratedBallDiameter,deadline:data.timerSeconds??20}).confirmed:primary;
+      const accepted=recovery?updatePoundRecoverySession(recovery,{primaryEvents:primary,candidates:mergeFloorProposals(f.balls??[],f.floorView?.balls??[]),person:f.person,time:f.elapsed,diameter:data.calibratedBallDiameter,deadline:data.timerSeconds??20,measurement:m}).confirmed:primary;
       accepted.forEach(e=>confirmationDelays.push((f.elapsed-(e.event_timestamp_exact??e.event_time_seconds))*1000));previous=cf;updates++;
     }
     const output=recovery?recovery.ledger:validator;

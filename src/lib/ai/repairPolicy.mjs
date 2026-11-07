@@ -1,18 +1,24 @@
 import {poundCounterOptions} from './poundCore.mjs';
-export const REPAIR_REVISION='TRACKING REPAIR 01';
+export const REPAIR_REVISION='TRACKING REPAIR 02';
+const repairRank=revision=>{
+ if(!['TRACKING REPAIR 01',REPAIR_REVISION].includes(revision))throw new Error('Unsupported saved repair revision.');
+ return revision===REPAIR_REVISION?2:1;
+};
 const visible=(p,i)=>p?.confidence?.[i]>=.5&&p.xy?.[i]?.every(Number.isFinite);
-export function repairObservationPolicy(drillKey){
- return Object.freeze({revision:REPAIR_REVISION,asyncPose:true,poseEveryPass:false,
+export function repairObservationPolicy(drillKey,revision=REPAIR_REVISION){
+ repairRank(revision);
+ return Object.freeze({revision,asyncPose:true,poseEveryPass:false,
   refreshBallFrame:true,freshAtAdmission:true,nativeCapture:true,floorView:false,cropRevision:'SESSION ROI 01',
   maxPoseAge:.3,maxActivePoseSkew:.3,maxWristSkew:.12,
   poseRequestIntervalSeconds:.12,poseMaximumIntervalSeconds:.22,setupPoseRequestIntervalSeconds:.08});
 }
-export function repairConfiguration(base,drillKey){
- const counterRevision=drillKey==='right-hand-pound'?'COUNT 09':'CROSS 12';
- return Object.freeze({...base,id:base.id.replace(/^(COUNT08|CROSS11)/,counterRevision.replaceAll(' ',''))+'/REPAIR01',
-  counterRevision,repairRevision:REPAIR_REVISION,
+export function repairConfiguration(base,drillKey,revision=REPAIR_REVISION){
+ const rank=repairRank(revision),counterRevision=drillKey==='right-hand-pound'?(rank===2?'COUNT 10':'COUNT 09'):'CROSS 12';
+ return Object.freeze({...base,id:base.id.replace(/^(COUNT08|CROSS11)/,counterRevision.replaceAll(' ',''))+'/REPAIR0'+rank,
+  counterRevision,repairRevision:revision,
+  ...(rank===2&&drillKey==='right-hand-pound'&&base.recoveryRevision?{recoveryOptions:Object.freeze({guardFirstReturn:true})}:{}),
   counterOptions:Object.freeze(drillKey==='right-hand-pound'?poundCounterOptions(counterRevision):{...base.counterOptions,gapReceiptRecovery:true}),
-  observationPolicy:repairObservationPolicy(drillKey)});
+  observationPolicy:repairObservationPolicy(drillKey,revision)});
 }
 // A recent floor/body anchor can remain useful while a wrist is too old to
 // establish possession. Never move or invent wrist coordinates.
