@@ -1,7 +1,7 @@
 // Shared saved-counter replay for offline diagnostics. No model execution or live latency simulation.
 import {createSessionTrackingState,resetSessionTrackingCounter,updateSessionCounter} from './sessionTracking.mjs';
 import {geometry} from './poundCore.mjs';
-import {CountdownReadinessClock} from './countdownReadiness.mjs';
+import {CountdownReadinessClock,BALL_BRIDGE_COUNTDOWN_REVISION} from './countdownReadiness.mjs';
 import {shiftPreGoTimeline} from './setupGuidance.mjs';
 import {RoundEvidence} from './roundEvidence.mjs';
 import {configurationForEvidence} from './trackerConfiguration.mjs';
@@ -14,7 +14,7 @@ export function replaySavedCounter(data,{configure=()=>{},personForFrame=frame=>
  if(!cross)configurationForEvidence(data);
  const state=createSessionTrackingState(true,data.drillKey,data.trackerRevision,false,{enhancedTracking:true});
  state.configuration=data.trackerConfiguration;
- const timer=data.timerSeconds,clock=new CountdownReadinessClock({handMode:cross?'either':'right'}),evidence=new RoundEvidence(),rows=[];
+ const timer=data.timerSeconds,clock=new CountdownReadinessClock({handMode:cross?'either':'right',bridgeBallDropouts:data.countdownReadinessRevision===BALL_BRIDGE_COUNTDOWN_REVISION}),evidence=new RoundEvidence(),rows=[];
  let countdownAt=null,started=null;
  const newCounters=()=>{resetSessionTrackingCounter(state);configure(state);};
  newCounters();

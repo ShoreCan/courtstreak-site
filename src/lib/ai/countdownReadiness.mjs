@@ -2,13 +2,14 @@ import {SetupReadinessClock} from './setupReadiness.mjs';
 import {SETUP_GRACE_SECONDS} from './cameraReadiness.mjs';
 
 export const COUNTDOWN_READINESS_REVISION='COUNTDOWN 01';
+export const BALL_BRIDGE_COUNTDOWN_REVISION='COUNTDOWN 02';
 
 // Setup establishes the initial framing/ball reference. Once the countdown
 // begins, detector interruptions pause it; they do not send the player through
 // setup again. Fresh checks must still pass before Go. No stale frame can
 // authorize a round, and unobserved wall time is never added to the countdown.
 export class CountdownReadinessClock{
- constructor(options={}){this.verification=new SetupReadinessClock(options);this.reset();}
+ constructor(options={}){this.verification=new SetupReadinessClock(options);this.revision=options.bridgeBallDropouts?BALL_BRIDGE_COUNTDOWN_REVISION:COUNTDOWN_READINESS_REVISION;this.reset();}
  reset(now=null){this.verification.reset(now);this.elapsed=0;this.lastAt=now;this.wasTicking=false;this.last=null;}
  update(now,checks,speedReady,lockReady){
   if(!Number.isFinite(now)||(this.lastAt!==null&&now<this.lastAt))return {...this.last,ready:false,ticking:false,reset:false,clockError:true,countdownElapsed:Math.min(4.999,this.elapsed)};
