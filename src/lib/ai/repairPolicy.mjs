@@ -1,23 +1,26 @@
 import {poundCounterOptions} from './poundCore.mjs';
-export const REPAIR_REVISION='TRACKING REPAIR 02';
+export const REPAIR_REVISION='TRACKING REPAIR 03';
+const REPAIR_REVISIONS=['TRACKING REPAIR 01','TRACKING REPAIR 02',REPAIR_REVISION];
 const repairRank=revision=>{
- if(!['TRACKING REPAIR 01',REPAIR_REVISION].includes(revision))throw new Error('Unsupported saved repair revision.');
- return revision===REPAIR_REVISION?2:1;
+ const rank=REPAIR_REVISIONS.indexOf(revision)+1;
+ if(!rank)throw new Error('Unsupported saved repair revision.');
+ return rank;
 };
 const visible=(p,i)=>p?.confidence?.[i]>=.5&&p.xy?.[i]?.every(Number.isFinite);
 export function repairObservationPolicy(drillKey,revision=REPAIR_REVISION){
- repairRank(revision);
+ const rank=repairRank(revision);
  return Object.freeze({revision,asyncPose:true,poseEveryPass:false,
   refreshBallFrame:true,freshAtAdmission:true,nativeCapture:true,floorView:false,cropRevision:'SESSION ROI 01',
   maxPoseAge:.3,maxActivePoseSkew:.3,maxWristSkew:.12,
-  poseRequestIntervalSeconds:.12,poseMaximumIntervalSeconds:.22,setupPoseRequestIntervalSeconds:.08});
+  poseRequestIntervalSeconds:.12,poseMaximumIntervalSeconds:.22,setupPoseRequestIntervalSeconds:.08,
+  ...(rank>=3?{flightAwarePose:true,receiptPoseRequestIntervalSeconds:.09}: {})});
 }
 export function repairConfiguration(base,drillKey,revision=REPAIR_REVISION){
- const rank=repairRank(revision),counterRevision=drillKey==='right-hand-pound'?(rank===2?'COUNT 10':'COUNT 09'):'CROSS 12';
- return Object.freeze({...base,id:base.id.replace(/^(COUNT08|CROSS11)/,counterRevision.replaceAll(' ',''))+'/REPAIR0'+rank,
+ const rank=repairRank(revision),counterRevision=drillKey==='right-hand-pound'?(rank>=2?'COUNT 10':'COUNT 09'):(rank>=3?'CROSS 13':'CROSS 12');
+ return Object.freeze({...base,id:base.id.replace(/^(COUNT08|CROSS1[123])/,counterRevision.replaceAll(' ',''))+'/REPAIR0'+rank,
   counterRevision,repairRevision:revision,
-  ...(rank===2&&drillKey==='right-hand-pound'&&base.recoveryRevision?{recoveryOptions:Object.freeze({guardFirstReturn:true})}:{}),
-  counterOptions:Object.freeze(drillKey==='right-hand-pound'?poundCounterOptions(counterRevision):{...base.counterOptions,gapReceiptRecovery:true}),
+  ...(rank>=2&&drillKey==='right-hand-pound'&&base.recoveryRevision?{recoveryOptions:Object.freeze({guardFirstReturn:true})}:{}),
+  counterOptions:Object.freeze(drillKey==='right-hand-pound'?poundCounterOptions(counterRevision):{...base.counterOptions,gapReceiptRecovery:true,...(rank>=3?{carryReceivingHand:true}:{})}),
   observationPolicy:repairObservationPolicy(drillKey,revision)});
 }
 // A recent floor/body anchor can remain useful while a wrist is too old to
@@ -38,6 +41,54 @@ export function repairPoseNeeded({person,poseAt=-Infinity,lastRequestedAt=-Infin
  const center=[(ball.box[0]+ball.box[2])/2,(ball.box[1]+ball.box[3])/2];
  return [9,10].some(i=>visible(person,i)&&Math.hypot(center[0]-person.xy[i][0],center[1]-person.xy[i][1])<=d*2.5);
 }
+// Schedule pose using the last two actual ball observations. Projections are
+// used only for scheduling and are never sent to either counter.
+export function flightPoseDecision({person, poseAt, lastRequestedAt, now, ball, ballAt, previousBall, poseSeconds, phase, policy, drillKey}) {
+ const base = {person, poseAt, lastRequestedAt, now, ball, phase};
+ const routine = () => repairPoseNeeded(base) ? 'routine' : null;
+ if (!['active', 'review'].includes(phase) || !person || !ball || !Number.isFinite(ballAt)) return routine();
+
+ const age = now - poseAt;
+ const sinceRequest = now - (lastRequestedAt ?? -Infinity);
+ if (age >= policy.poseMaximumIntervalSeconds) return routine();
+ if (now - ballAt > .14 || now < ballAt) return routine();
+
+ const [x1, y1, x2, y2] = ball.box;
+ const diameter = Math.sqrt((x2 - x1) * (y2 - y1));
+ if (!Number.isFinite(diameter) || diameter <= 0) return routine();
+ const x = (x1 + x2) / 2;
+ const y = (y1 + y2) / 2;
+ const delta = ballAt - (previousBall?.at ?? -Infinity);
+ let vx = 0, vy = 0;
+ if (delta >= .018 && delta <= .14) {
+  const [a, b, c, d] = previousBall.ball.box;
+  const scale = Math.sqrt((c - a) * (d - b)) / diameter;
+  if (scale >= .7 && scale <= 1.4 && Math.abs(x - (a + c) / 2) <= diameter * 3) {
+   vx = (x - (a + c) / 2) / delta;
+   vy = (y - (b + d) / 2) / delta;
+  }
+ }
+
+ const feet = [15, 16].filter(i => visible(person, i));
+ const floor = feet.length === 2 ? Math.max(...feet.map(i => person.xy[i][1])) : null;
+ const lead = Math.max(.07, Math.min(.13, (poseSeconds || .07) + .033));
+ if (floor !== null && vy >= 0 && y2 + vy * (now - ballAt + lead) >= floor - diameter * 1.05) {
+  return 'protect_floor';
+ }
+
+ if (vy < -diameter && sinceRequest >= policy.receiptPoseRequestIntervalSeconds && age >= .065) {
+  const hands = drillKey === 'right-hand-pound' ? [10] : [9, 10];
+  const approaching = hands.filter(i => visible(person, i)).some(i => {
+   const [wx, wy] = person.xy[i];
+   const arrival = (y - wy - diameter * 1.3) / -vy;
+   if (arrival > now - ballAt + lead || arrival < -(now - ballAt)) return false;
+   return Math.abs(x + vx * Math.max(0, arrival) - wx) <= diameter * 2;
+  });
+  if (approaching) return 'anticipate_receipt';
+ }
+ return routine();
+}
+
 // Diagnostic-only crop. The paired saved-frame comparison regressed indoors;
 // it is deliberately not used by the live candidate.
 // Concentrate the same model on the hand-to-floor region. Missing ball/body

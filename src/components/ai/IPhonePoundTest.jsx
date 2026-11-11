@@ -1,4 +1,4 @@
-import {repairConfiguration,repairObservationPolicy,repairCounterPose,repairPoseNeeded} from '../../lib/ai/repairPolicy.mjs';
+import {repairConfiguration,repairObservationPolicy,repairCounterPose,repairPoseNeeded,flightPoseDecision} from '../../lib/ai/repairPolicy.mjs';
 import {safariConfiguration,safariObservationPolicy,overlayFreshness,nextOverlayExpiry} from '../../lib/ai/safariPolicy.mjs';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
@@ -210,9 +210,20 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
    // Even a "no person" result gets the normal resting interval; looking for
    // someone outside the camera must not turn into continuous body inference.
    const activeCrossoverWorker=independentCrossoverPose&&['active','review'].includes(s.phase);
-   if(bodyWorker&&!bodyWorker.busy&&(repairTracking?repairPoseNeeded({person:s.person,poseAt:s.poseAt,lastRequestedAt:s.poseRequestedAt,now,ball:s.ball,phase:s.phase}):safariGpu?now-(s.poseRequestedAt??-Infinity)>=observationPolicy.poseRequestIntervalSeconds:(observationPolicy.continuousPose||activeCrossoverWorker||s.poseClock.shouldRun(now,!!bodyWorker.latest)))){
-    s.poseRequestedAt=now;
-    bodyWorker.request(f,{capturedAt:now,sourceVideoTime:s.videoTime,coordinateSize:observationPolicy.nativeCapture?{width:w,height:h}:undefined});
+   let poseScheduling;
+   if(bodyWorker&&!bodyWorker.busy){
+    const poseInput={person:s.person,poseAt:s.poseAt,lastRequestedAt:s.poseRequestedAt,now,ball:s.ball,phase:s.phase};
+    if(observationPolicy.flightAwarePose){
+     poseScheduling=flightPoseDecision({...poseInput,ballAt:s.ballCapturedAt,previousBall:s.previousBall,poseSeconds:s.poseMs/1000,policy:observationPolicy,drillKey});
+    }
+    const shouldRequest=observationPolicy.flightAwarePose
+     ? poseScheduling==='routine'||poseScheduling==='anticipate_receipt'
+     : repairTracking?repairPoseNeeded(poseInput)
+     : safariGpu?now-(s.poseRequestedAt??-Infinity)>=observationPolicy.poseRequestIntervalSeconds
+     : observationPolicy.continuousPose||activeCrossoverWorker||s.poseClock.shouldRun(now,!!bodyWorker.latest);
+    if(shouldRequest&&bodyWorker.request(f,{capturedAt:now,sourceVideoTime:s.videoTime,coordinateSize:observationPolicy.nativeCapture?{width:w,height:h}:undefined})){
+     s.poseRequestedAt=now;
+    }
    }
    const result=await d.detect(frozenFrame,roi,withPose,freshFrames?{minimumBallScore:ballProposalMinimumScore({phase:s.phase,calibrated:s.tracker.ready(),weakContinuity:s.tracker.weakContinuity}),refreshBallFrame:observationPolicy.refreshBallFrame?()=>{
     if(!mounted.current||currentToken!==token.current||s!==m.current||!stream.current||['error','interrupted','finished','recording-only'].includes(s.phase))return null;
@@ -255,6 +266,7 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
     const framing=evaluateSetup(framePerson,null,w,h,cameraOptions);
     if(s.calibration.update(now,framing.body&&framing.hand&&framing.floor,!framePerson&&!!s.person))resetPoundTrackingIdentity(s);
    }
+   if(observationPolicy.flightAwarePose)s.previousBall=s.ball?{ball:s.ball,at:s.ballCapturedAt}:null;
    s.ball=s.tracker.select(result.balls,framePerson,phase,w,h,now);s.ballCapturedAt=now;
    let recoveryBalls=result.balls,floorView=null;
    if(enhancedTracking){
@@ -278,7 +290,7 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
    const speedReady=s.setupProcessing.ready;
    if(['setup','countdown'].includes(s.phase))s.setupAttemptState=s.setupAttempt.update(completed,checks,speedReady,s.tracker.ready());
    let frameProposals=[],frameConfirmed=[],setupReadiness;
-   const recordEvidence=()=>s.evidence.record({capturedAt:now,decisionCompletedAt:completed,...(enhancedTracking?{floorView,liveBudget:s.budget.snapshot(),recoveryMeasurement:s.recoveryMeasurement}:{}),sourceVideoTime:s.videoTime,sourceVideoFrameNumber:s.videoFrameSerial,inputPhase,phase:s.phase,roi,balls:result.balls,person:framePerson,selected:s.ball,selectionDecisions:s.tracker.decisions,ballProposalMinimumScore:result.ballProposalMinimumScore,ms:result.ms,timings:result.timings,fps:s.fps,poseUpdated,poseAge:completed-s.poseAt,poseCapturedAt:s.poseAt,poseSourceVideoTime:s.poseVideoTime,poseFrameSkewSeconds:poseFrameSkew(now,s.poseAt),poseInferenceMs:s.poseMs??null,...(repairTracking?{poseTimings:s.poseTimings??null}:{}),passStartedAt,ballFrameRefreshed:!!result.ballFrameRefreshed,positionChecks:checks,setupReadiness,counterFrame:s.counter.points.at(-1)?.frame??null,proposedCount:s.counter.count,count:s.count,proposals:frameProposals,confirmed:frameConfirmed,...(crossover?{handoffState:s.counter.snapshot()}:{} )});
+   const recordEvidence=()=>s.evidence.record({capturedAt:now,decisionCompletedAt:completed,...(enhancedTracking?{floorView,liveBudget:s.budget.snapshot(),recoveryMeasurement:s.recoveryMeasurement}:{}),sourceVideoTime:s.videoTime,sourceVideoFrameNumber:s.videoFrameSerial,inputPhase,phase:s.phase,roi,balls:result.balls,person:framePerson,selected:s.ball,selectionDecisions:s.tracker.decisions,ballProposalMinimumScore:result.ballProposalMinimumScore,ms:result.ms,timings:result.timings,fps:s.fps,poseUpdated,poseAge:completed-s.poseAt,poseCapturedAt:s.poseAt,poseSourceVideoTime:s.poseVideoTime,poseFrameSkewSeconds:poseFrameSkew(now,s.poseAt),poseInferenceMs:s.poseMs??null,...(repairTracking?{poseTimings:s.poseTimings??null,poseScheduling}:{}),passStartedAt,ballFrameRefreshed:!!result.ballFrameRefreshed,positionChecks:checks,setupReadiness,counterFrame:s.counter.points.at(-1)?.frame??null,proposedCount:s.counter.count,count:s.count,proposals:frameProposals,confirmed:frameConfirmed,...(crossover?{handoffState:s.counter.snapshot()}:{} )});
    if(['setup','countdown'].includes(s.phase)&&s.setupAttemptState?.expired){recordEvidence();pauseSetup(s.setupAttemptState);return;}
    if(s.phase==='setup'){
     const readiness=s.readiness.update(now,checks,speedReady,s.tracker.ready()),condition=readiness.condition;
@@ -458,7 +470,7 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
   clip={clip} countedClip={countedClip} replayChanges={replayChanges} preparing={preparing}
   canSave={canSave} savedClip={savedClip} sharing={sharing} shareMessage={shareMessage}
   filename={filename} originalFilename={originalFilename}
-  versions={{setupTiming:m.current.readiness.revision,countdown:m.current.countdownReadiness.revision,counter:m.current.configuration.counterRevision,camera:enhancedTracking?VISIBLE_SETUP_REVISION:CAMERA_SETUP_REVISION,setup:SETUP_GUIDANCE_REVISION,frame:LIVE_FRAME_REVISION,identity:m.current.configuration.identityRevision??BALL_IDENTITY_REVISION,check:testRevision,poundPath:repairTracking?'/tracker-tests/right-hand-pound-test23':safariGpu?'/tracker-tests/right-hand-pound-test22':streamingPound?'/tracker-tests/right-hand-pound-test21':'/tracker-tests/right-hand-pound-test20',crossPath:repairTracking?'/tracker-tests/crossovers-test23':safariGpu?'/tracker-tests/crossovers-test22':'/tracker-tests/crossovers-test20',recovery:m.current.configuration.recoveryRevision}}
+  versions={{repair:m.current.configuration.repairRevision,setupTiming:m.current.readiness.revision,countdown:m.current.countdownReadiness.revision,counter:m.current.configuration.counterRevision,camera:enhancedTracking?VISIBLE_SETUP_REVISION:CAMERA_SETUP_REVISION,setup:SETUP_GUIDANCE_REVISION,frame:LIVE_FRAME_REVISION,identity:m.current.configuration.identityRevision??BALL_IDENTITY_REVISION,check:testRevision,poundPath:repairTracking?'/tracker-tests/right-hand-pound-test23':safariGpu?'/tracker-tests/right-hand-pound-test22':streamingPound?'/tracker-tests/right-hand-pound-test21':'/tracker-tests/right-hand-pound-test20',crossPath:repairTracking?'/tracker-tests/crossovers-test23':safariGpu?'/tracker-tests/crossovers-test22':'/tracker-tests/crossovers-test20',recovery:m.current.configuration.recoveryRevision}}
   onBack={()=>navigate(standalone?'/':`/lab/drill/${drillKey}`)} onOpen={open}
   onStart={startSession} onCloseCamera={()=>{token.current++;scheduler.current.cancel();stopCamera();if(['placing','setup','countdown','loading','error'].includes(m.current.phase)){m.current.phase='idle';m.current.message='Open the camera when you’re ready.';}publish(true);}} onRetrySetup={()=>open({restart:true})} onManual={()=>{if(!standalone){navigate(`/lab/drill/${drillKey}/session`);return;}token.current++;scheduler.current.cancel();stopCamera();m.current.phase='error';m.current.message='Camera check paused. Retry when ready.';publish(true);setManual(true);}}
   onStop={()=>{const s=m.current,preGo=['idle','loading','placing','setup','countdown','error'].includes(s.phase);token.current++;scheduler.current.cancel();s.phase=preGo?'idle':'interrupted';s.message=preGo?'Open the camera when you’re ready.':'Attempt stopped. Your count is partial.';stopCamera();publish(true);}}

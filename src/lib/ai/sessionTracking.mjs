@@ -19,7 +19,7 @@ export function createSessionTrackingState(freshFrames,drillKey,counterRevision=
  const identityRevision=`TWOHAND 0${identityRank}`;
  state.configuration=Object.freeze({...state.configuration,id:`${counterRevision.replaceAll(' ','')}/${state.configuration.id}/${identityRevision.replaceAll(' ','')}/${observationPolicy.revision.replaceAll(' ','')}`,counterRevision,identityRevision:state.configuration.identityRevision+' + '+identityRevision,
   identityOptions:Object.freeze({...state.configuration.identityOptions,twoHandedMotion:true,...(rank>=9?{crossoverReconnect:true}:{}),...(rank>=11?{motionLock:true}:{})}),
-  counterOptions:Object.freeze({oppositeHand:true,floorEvidence:true,kneeHeightRule:false,sizeOutlierRecovery:true,preFloorSizeRecovery:true,releaseSizeRecovery:rank>=5,...(rank>=6?{nearFloorRelease:true}:{}),...(rank>=7?{reanchorAfterGap:true}:{}),...(rank>=8?{stableReleaseSize:true}:{}),...(rank>=9?{ignoreOneOversizedSample:true}:{}),...(rank>=10?{finishWindowSeconds:.15}:{}),...(rank>=12?{gapReceiptRecovery:true}:{})}),observationPolicy});
+  counterOptions:Object.freeze({oppositeHand:true,floorEvidence:true,kneeHeightRule:false,sizeOutlierRecovery:true,preFloorSizeRecovery:true,releaseSizeRecovery:rank>=5,...(rank>=6?{nearFloorRelease:true}:{}),...(rank>=7?{reanchorAfterGap:true}:{}),...(rank>=8?{stableReleaseSize:true}:{}),...(rank>=9?{ignoreOneOversizedSample:true}:{}),...(rank>=10?{finishWindowSeconds:.15}:{}),...(rank>=12?{gapReceiptRecovery:true}:{}),...(rank>=13?{carryReceivingHand:true}:{})}),observationPolicy});
  resetPoundTrackingIdentity(state);resetSessionTrackingCounter(state);return state;
 }
 export function resetSessionTrackingCounter(state){
