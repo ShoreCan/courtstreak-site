@@ -81,10 +81,12 @@ export function shiftPreGoTimeline(state, seconds) {
   if(noise){noise.start-=seconds;noise.end-=seconds;}
   // Keep the new recovery guard and its held-ball clock on the same Go origin.
   // Historical revisions retain their original timeline for exact comparison.
-  for(const recovery of [state.recovery?.counter,state.recovery?.pixelFloor]){
+  for(const recovery of [state.recovery?.counter,state.recovery?.pixelFloor,state.recovery?.bridgedFloor,state.recovery?.scaledFloor]){
     if(!recovery?.guardFirstReturn)continue;
     recovery.lastTime-=seconds;
     if(recovery.held)recovery.held.time-=seconds;
     for(const row of recovery.guardContext)row.time-=seconds;
+    for(const row of recovery.ownedScales)row.time-=seconds;
   }
+  if(state.recovery?.previousPose)state.recovery.previousPose.time-=seconds;
 }

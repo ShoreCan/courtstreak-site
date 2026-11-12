@@ -4,13 +4,16 @@ export const VIDEO_FRAME_CLOCK_REVISION='VIDEO FRAMES 01';
 // Keep presentation metadata separate from the monotonic capture timestamp.
 export class VideoFrameClock {
  constructor(){this.video=null;this.callback=null;this.latest=null;this.generation=0;this.mode=null;this.waiter=null;}
- start(video){
+ start(video,onPresented){
   this.stop();this.video=video;const generation=this.generation;
   if(typeof video.requestVideoFrameCallback==='function'){
    this.mode='video-frame-callback';
-   const presented=(_now,metadata)=>{
+   const presented=(now,metadata)=>{
     if(this.video!==video||this.generation!==generation)return;
-    if(Number.isFinite(metadata.presentedFrames)&&Number.isFinite(metadata.mediaTime))this.latest={serial:metadata.presentedFrames,sourceVideoTime:metadata.mediaTime};
+    if(Number.isFinite(metadata.presentedFrames)&&Number.isFinite(metadata.mediaTime)){
+     this.latest={serial:metadata.presentedFrames,sourceVideoTime:metadata.mediaTime};
+     onPresented?.(this.latest,now/1000);
+    }
     this.callback=video.requestVideoFrameCallback(presented);
     const waiting=this.waiter;
     if(waiting&&this.hasNew(waiting.previous)){this.waiter=null;waiting.notify();}

@@ -49,7 +49,7 @@ function machine(...args){
  const state=initialMachine(...args);
  if(args[6]){state.safariGpu=true;state.configuration=safariConfiguration(state.configuration,args[1]);resetPoundTrackingIdentity(state);}
  if(args[7]){const setupOptions={handMode:args[1]===CROSSOVER_DRILL_KEY?'either':'right',bridgeBallDropouts:true};state.readiness=new SetupReadinessClock(setupOptions);state.countdownReadiness=new CountdownReadinessClock(setupOptions);state.repairTracking=true;state.configuration=repairConfiguration(state.configuration,args[1]);resetPoundTrackingIdentity(state);resetSessionTrackingCounter(state);
-  if(state.configuration.observationPolicy.pixelFloorRevision)state.floorPixels=new LivePoundFloorPixels();
+  if(state.configuration.observationPolicy.pixelFloorRevision)state.floorPixels=new LivePoundFloorPixels({bridge:state.configuration.observationPolicy.cameraFloorBridge});
  }
  return state;
 }
@@ -272,10 +272,10 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
    if(observationPolicy.flightAwarePose)s.previousBall=s.ball?{ball:s.ball,at:s.ballCapturedAt}:null;
    s.ball=s.tracker.select(result.balls,framePerson,phase,w,h,now);s.ballCapturedAt=now;
    if(s.ball&&observationPolicy.cropRevision===POUND_SEARCH_REVISION)s.lastBallSeenAt=now;
-   let recoveryBalls=result.balls,floorView=null,floorPixelEvidence,floorPixelTiming;
+   let recoveryBalls=result.balls,floorView=null,floorPixelEvidence,floorPixelTiming,floorPixelBridge;
    if(s.floorPixels&&['active','review'].includes(inputPhase)){
     const sample=s.floorPixels.sample(frozenFrame,{time:now,selected:s.ball,person:framePerson,frameWidth:w,frameHeight:h,serial:s.videoFrameSerial});
-    floorPixelEvidence=sample.evidence;floorPixelTiming=sample.timing;
+    floorPixelEvidence=sample.evidence;floorPixelTiming=sample.timing;floorPixelBridge=sample.bridge;
    }
    if(enhancedTracking){
     s.budget.observeBase(result.timings?.ball);
@@ -298,7 +298,7 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
    const speedReady=s.setupProcessing.ready;
    if(['setup','countdown'].includes(s.phase))s.setupAttemptState=s.setupAttempt.update(completed,checks,speedReady,s.tracker.ready());
    let frameProposals=[],frameConfirmed=[],setupReadiness;
-   const recordEvidence=()=>s.evidence.record({capturedAt:now,decisionCompletedAt:completed,floorPixelEvidence,floorPixelTiming,...(enhancedTracking?{floorView,liveBudget:s.budget.snapshot(),recoveryMeasurement:s.recoveryMeasurement}:{}),sourceVideoTime:s.videoTime,sourceVideoFrameNumber:s.videoFrameSerial,inputPhase,phase:s.phase,roi,balls:result.balls,person:framePerson,selected:s.ball,selectionDecisions:s.tracker.decisions,ballProposalMinimumScore:result.ballProposalMinimumScore,ms:result.ms,timings:result.timings,fps:s.fps,poseUpdated,poseAge:completed-s.poseAt,poseCapturedAt:s.poseAt,poseSourceVideoTime:s.poseVideoTime,poseFrameSkewSeconds:poseFrameSkew(now,s.poseAt),poseInferenceMs:s.poseMs??null,...(repairTracking?{poseTimings:s.poseTimings??null,poseScheduling}:{}),passStartedAt,ballFrameRefreshed:!!result.ballFrameRefreshed,positionChecks:checks,setupReadiness,counterFrame:s.counter.points.at(-1)?.frame??null,proposedCount:s.counter.count,count:s.count,proposals:frameProposals,confirmed:frameConfirmed,...(crossover?{handoffState:s.counter.snapshot()}:{} )});
+   const recordEvidence=()=>s.evidence.record({capturedAt:now,decisionCompletedAt:completed,floorPixelEvidence,floorPixelTiming,floorPixelBridge,...(enhancedTracking?{floorView,liveBudget:s.budget.snapshot(),recoveryMeasurement:s.recoveryMeasurement}:{}),sourceVideoTime:s.videoTime,sourceVideoFrameNumber:s.videoFrameSerial,inputPhase,phase:s.phase,roi,balls:result.balls,person:framePerson,selected:s.ball,selectionDecisions:s.tracker.decisions,ballProposalMinimumScore:result.ballProposalMinimumScore,ms:result.ms,timings:result.timings,fps:s.fps,poseUpdated,poseAge:completed-s.poseAt,poseCapturedAt:s.poseAt,poseSourceVideoTime:s.poseVideoTime,poseFrameSkewSeconds:poseFrameSkew(now,s.poseAt),poseInferenceMs:s.poseMs??null,...(repairTracking?{poseTimings:s.poseTimings??null,poseScheduling}:{}),passStartedAt,ballFrameRefreshed:!!result.ballFrameRefreshed,positionChecks:checks,setupReadiness,counterFrame:s.counter.points.at(-1)?.frame??null,proposedCount:s.counter.count,count:s.count,proposals:frameProposals,confirmed:frameConfirmed,...(crossover?{handoffState:s.counter.snapshot()}:{} )});
    if(['setup','countdown'].includes(s.phase)&&s.setupAttemptState?.expired){recordEvidence();pauseSetup(s.setupAttemptState);return;}
    if(s.phase==='setup'){
     const readiness=s.readiness.update(now,checks,speedReady,s.tracker.ready()),condition=readiness.condition;
@@ -334,7 +334,7 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
     if(elapsed>=DURATION&&s.phase==='active'){if(!enhancedTracking)stopRecording();s.phase='review';s.message='Time. Hold the ball while we confirm the last return.';cue(400);}
     const measurement=s.ball?(()=>{const g=geometry(s.ball);return [...g.center,g.diameter];})():null;
     if(elapsed>=0&&elapsed<DURATION){s.total++;if(measurement)s.detected++;}
-    const {proposals,confirmed,count,recoveryMeasurement}=updateSessionCounter(s,elapsed,measurement,framePerson,h,DURATION,recoveryBalls,{balls:result.balls,decisions:s.tracker.decisions,floorPixelEvidence});s.count=count;s.recoveryMeasurement=recoveryMeasurement??null;s.left=Math.max(0,Math.min(DURATION,Math.ceil(DURATION-elapsed)));
+    const {proposals,confirmed,count,recoveryMeasurement}=updateSessionCounter(s,elapsed,measurement,framePerson,h,DURATION,recoveryBalls,{balls:result.balls,decisions:s.tracker.decisions,floorPixelEvidence,floorPixelBridge});s.count=count;s.recoveryMeasurement=recoveryMeasurement??null;s.left=Math.max(0,Math.min(DURATION,Math.ceil(DURATION-elapsed)));
     frameProposals=proposals;frameConfirmed=confirmed;
     if(enhancedTracking&&elapsed>.9){
      const activeCadence=trackingCadence(s.budget.captures,{windowSeconds:1.2,minimumSpan:.9,minimumSamples:12,minimumHz:16,p90Limit:.12,maxLimit:.25});
@@ -374,7 +374,16 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
    m.current.cameraReady=true;flushSync(()=>publish(true));
    video.current.srcObject=camera;await video.current.play();
    if(id!==token.current||!mounted.current)return;
-   if(observationPolicy.nativeCapture){videoClock.current.start(video.current);m.current.videoFrameClockMode=videoClock.current.mode;}
+   if(observationPolicy.nativeCapture){
+    videoClock.current.start(video.current,observationPolicy.cameraFloorBridge?(presented,time)=>{
+     const s=m.current,v=video.current;
+     if(!v||!s.frameSize||!['active','review'].includes(s.phase))return;
+     const [frameWidth,frameHeight]=s.frameSize;
+     if(Math.abs(v.videoWidth/v.videoHeight-frameWidth/frameHeight)>.002)return;
+     s.floorPixels.capturePresented(v,{time,serial:presented.serial,frameWidth,frameHeight});
+    }:undefined);
+    m.current.videoFrameClockMode=videoClock.current.mode;
+   }
    m.current.cameraReady=true;setRatio(video.current.videoWidth/video.current.videoHeight||16/9);
    m.current.placement=new PhonePlacement(performance.now()/1000);m.current.phase='placing';m.current.modelsReady=false;m.current.loadingStartedAt=performance.now()/1000;
    if(overlay.current)overlay.current.getContext('2d').clearRect(0,0,overlay.current.width,overlay.current.height);

@@ -5,7 +5,27 @@ const MAX_OBSERVATION_GAP_SECONDS = .28;
 const distance=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
 const visible=(p,i)=>p?.confidence?.[i]>=.5&&p.xy?.[i]?.length===2&&p.xy[i].every(v=>Number.isFinite(v)&&v>0);
 export class ControlledPoundCandidate {
- constructor({guardFirstReturn=false}={}){this.guardFirstReturn=guardFirstReturn;this.guardContext=[];this.count=0;this.confirmed=[];this.rejected=[];this.held=null;this.flight=null;this.frame=0;this.lastTime=-Infinity;this.measurement=null;}
+ constructor({guardFirstReturn=false,adaptiveScale=false}={}){this.guardFirstReturn=guardFirstReturn;this.adaptiveScale=adaptiveScale;this.ownedScales=[];this.guardContext=[];this.count=0;this.confirmed=[];this.rejected=[];this.held=null;this.flight=null;this.frame=0;this.lastTime=-Infinity;this.measurement=null;}
+ scaleForCycle(candidates,person,now,calibrated){
+  this.ownedScales=this.ownedScales.filter(row=>now-row.time<=1);
+  if(visible(person,10)&&visible(person,15)&&visible(person,16)){
+   const wrist=person.xy[10],other=visible(person,9)?person.xy[9]:null;
+   const feet=Math.max(person.xy[15][1],person.xy[16][1]);
+   const choices=candidates.flatMap(candidate=>{
+    if(candidate.source==='floor_pixels'||candidate.score<.12||candidate.box?.length!==4)return [];
+    const [left,top,right,bottom]=candidate.box,w=right-left,h=bottom-top;
+    const size=Math.sqrt(w*h),center=[(left+right)/2,(top+bottom)/2],hd=distance(center,wrist);
+    if(!Number.isFinite(size)||w<=0||h<=0||w/h<.65||w/h>1.55||size<calibrated*.46||size>calibrated*1.45||
+      hd>size*.85||(other&&distance(center,other)-hd<size*.22)||center[1]>feet-size*.6)return [];
+    return [{time:now,size,cost:hd/size-Math.log(candidate.score)*.16}];
+   }).sort((a,b)=>a.cost-b.cost);
+   if(choices.length)this.ownedScales=[...this.ownedScales.slice(-8),choices[0]];
+  }
+  if(this.flight)return this.flight.scale;
+  if(this.ownedScales.length<3)return calibrated;
+  const sizes=this.ownedScales.map(row=>row.size).sort((a,b)=>a-b);
+  return sizes[Math.floor(sizes.length/2)];
+ }
  observeGuard(measurement,person,time){
   const hands={};for(const [hand,i]of [['left',9],['right',10]])if(visible(person,i))hands[hand]=[...person.xy[i]];
   const row={time,measurement:measurement?[...measurement]:null,hands},last=this.guardContext.at(-1);
@@ -20,7 +40,8 @@ export class ControlledPoundCandidate {
   // this path's history and the next bounce can falsely finish the old one.
   if(this.guardFirstReturn)this.observeGuard(guardMeasurement,person,now);
   if(!(diameter>0)||!visible(person,10)||!visible(person,15)||!visible(person,16))return [];
-  const d=diameter,feet=Math.max(person.xy[15][1],person.xy[16][1]),wrist=person.xy[10];
+  const d=this.adaptiveScale?this.scaleForCycle(candidates,person,now,diameter):diameter;
+  const feet=Math.max(person.xy[15][1],person.xy[16][1]),wrist=person.xy[10];
   const rows=candidates.flatMap(c=>{
    if(!c?.box||c.box.length!==4||![...c.box,c.score].every(Number.isFinite)||c.score<.001)return [];
    const [x1,y1,x2,y2]=c.box;if(x2<=x1||y2<=y1)return [];
@@ -29,7 +50,7 @@ export class ControlledPoundCandidate {
    if(size/d<(c.score>=.008?.58:.76)||size/d>1.45||aspect<.65||aspect>(floorShape?2.2:1.6)||Math.abs(p[0]-wrist[0])>d*3.5||p[1]>feet+d*.8)return [];
    const pixels=c.source==='floor_pixels';
    const hd=distance(p,wrist)/d,other=visible(person,9)?distance(p,person.xy[9])/d:Infinity;
-   return [{p,size,score:c.score,time:now,frame:this.frame,hd,owner:!pixels&&hd<=1.15&&other-hd>=.2&&c.score>=.008,feet,...(pixels?{pixels}: {})}];
+   return [{p,size,score:c.score,time:now,frame:this.frame,hd,owner:!pixels&&hd<=1.15&&other-hd>=.2&&c.score>=.008,feet,...(pixels?{pixels,betweenPasses:c.betweenPasses}: {})}];
   });
   const owned=rows.filter(r=>r.owner&&r.p[1]<feet-d*.5).sort((a,b)=>a.hd-b.hd||b.score-a.score)[0];
   if(now<0){this.held=owned??null;this.flight=null;return [];}
@@ -38,7 +59,7 @@ export class ControlledPoundCandidate {
    const source=this.held;
    const release=source&&now-source.time<=.65?rows.filter(r=>r.score>=.003&&r.p[1]-source.p[1]>=d*.5&&Math.abs(r.p[0]-source.p[0])<=d*2).sort((a,b)=>distance(a.p,source.p)-distance(b.p,source.p)||b.score-a.score)[0]:null;
    if(!release){if(owned)this.held=owned;else if(source&&now-source.time>.65)this.held=null;return [];}
-   this.flight={source,last:source,peak:source,floor:null,receipts:[]};
+   this.flight={source,last:source,peak:source,floor:null,receipts:[],scale:d};
   }
   const f=this.flight;
   if(now>deadline+.15){this.flight=null;return [];}
@@ -68,7 +89,8 @@ export class ControlledPoundCandidate {
    const control=best&&f.receipts.some(prior=>prior!==owned&&owned&&now-prior.time>=.03&&now-prior.time<=.2&&distance(prior.p,owned.p)<=d*.6);
    const redirect=best&&!row.pixels&&now>best.time&&now-best.time<=.2&&row.p[1]-best.p[1]>=d*.2;
    if(f.observedAscent&&(control||redirect)){
-    const event={count:++this.count,event_frame:f.floor.frame,event_timestamp_exact:f.floor.time,event_time_seconds:f.floor.time,floor_contact_time_seconds:f.floor.time,release_time_seconds:f.source.time,from_hand:'right',to_hand:'right',validation_path:'experimental_observed_pound_cycle',control_evidence:control?'observed_hand_control':'observed_hand_redirect',...(f.floor.pixels?{floor_evidence:'observed_floor_pixels'}:{})};
+    const rescaled=this.adaptiveScale&&(d<diameter*.82||d>diameter*1.18)&&(f.floor.pixels||f.floor.score>=.025);
+    const event={count:++this.count,event_frame:f.floor.frame,event_timestamp_exact:f.floor.time,event_time_seconds:f.floor.time,floor_contact_time_seconds:f.floor.time,release_time_seconds:f.source.time,from_hand:'right',to_hand:'right',validation_path:'experimental_observed_pound_cycle',control_evidence:control?'observed_hand_control':'observed_hand_redirect',...(f.floor.pixels?{floor_evidence:'observed_floor_pixels'}:{}),...(rescaled?{rescaled:true,ball_scale_pixels:d}:{}),...(f.floor.betweenPasses?{between_passes:true}:{})};
     this.confirmed.push(event);this.flight=null;this.held=owned??best;return [event];
    }
   }

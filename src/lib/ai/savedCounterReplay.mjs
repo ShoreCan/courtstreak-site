@@ -40,7 +40,7 @@ export function replaySavedCounter(data,{configure=()=>{},personForFrame=frame=>
    const time=started!==null?now-started:now-(countdownAt+5);
    const g=frame.selected?geometry(frame.selected):null;
    const candidates=[...frame.balls,...(frame.floorView?.balls??[])];
-   result=updateSessionCounter(state,time,g?[...g.center,g.diameter]:null,personForFrame(frame,time),data.frameSize[1],timer,candidates,{balls:frame.balls,decisions:frame.selectionDecisions??[],floorPixelEvidence:frame.floorPixelEvidence});
+   result=updateSessionCounter(state,time,g?[...g.center,g.diameter]:null,personForFrame(frame,time),data.frameSize[1],timer,candidates,{balls:frame.balls,decisions:frame.selectionDecisions??[],floorPixelEvidence:frame.floorPixelEvidence,floorPixelBridge:frame.floorPixelBridge});
    onFrame({state,frame,time,result});
    rows.push({frameId:frame.frameId,time,count:result.count,recordedCount:frame.count,counterFrame:state.counter.points.at(-1)?.frame??null,
     confirmed:result.confirmed,...(cross?{snapshot:state.counter.snapshot()}:{} )});

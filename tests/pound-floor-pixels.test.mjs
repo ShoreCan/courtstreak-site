@@ -70,3 +70,35 @@ test('the original proof takes priority when both paths confirm one bounce',()=>
  assert.equal(event.event_timestamp_exact,.31);
  assert.deepEqual(event.evidence_sources,['primary','pixel_floor_recovery']);
 });
+
+test('a real intervening camera frame can prove a floor turn skipped by inference',()=>{
+ const frames=trial({sameHand:true,reps:1}).frames;
+ for(const bridge of [false,true]){
+  const recovery=createPoundRecoverySession({guardFirstReturn:true,pixelFloorEvidence:true,cameraFloorBridge:bridge});
+  for(const {time,person,measurement} of [...frames,{...frames.at(-1),time:1.4}]){
+   if(time>=.18&&time<.46)continue;
+   const model=ball(...measurement);
+   const floorPixelBridge=time>=.46&&time<.48?{intermediate:[{box:ball(840,630).box,offset:.30-time}]}:undefined;
+   updatePoundRecoverySession(recovery,{primaryEvents:[],candidates:[model],person,time,diameter:60,
+    measurement,observations:{floorPixelBridge}});
+  }
+  assert.equal(recovery.ledger.count,bridge?1:0);
+  if(bridge)assert.deepEqual(recovery.ledger.confirmed[0].evidence_sources,['between_pass_floor_recovery']);
+ }
+});
+
+test('a recent wrist-owned ball supplies local scale after the user changes depth',()=>{
+ for(const adaptiveRecoveryScale of [false,true]){
+  const recovery=createPoundRecoverySession({guardFirstReturn:true,pixelFloorEvidence:true,adaptiveRecoveryScale});
+  const frames=trial({sameHand:true,reps:1}).frames;
+  for(const {time,person,measurement} of [...frames,{...frames.at(-1),time:1.4}]){
+   const model=ball(...measurement);
+   updatePoundRecoverySession(recovery,{primaryEvents:[],candidates:[model],person,time,diameter:110,measurement});
+  }
+  assert.equal(recovery.ledger.count,adaptiveRecoveryScale?1:0);
+  if(adaptiveRecoveryScale){
+   assert.equal(recovery.ledger.confirmed[0].ball_scale_pixels,60);
+   assert.deepEqual(recovery.ledger.confirmed[0].evidence_sources,['adaptive_scale_recovery']);
+  }
+ }
+});

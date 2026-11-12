@@ -151,37 +151,91 @@ export class PoundFloorPixels {
 }
 
 export class LivePoundFloorPixels {
- constructor() {
+ constructor({bridge=false,now=()=>performance.now()}={}) {
   this.pixels = new PoundFloorPixels();
+  this.densePixels = bridge ? new PoundFloorPixels() : null;
+  this.presented = [];
+  this.previous = null;
+  this.now = now;
   this.context = null;
   this.pausedUntil = -Infinity;
+  this.bridgePausedUntil = -Infinity;
   this.slowSamples = 0;
   this.unavailable = false;
  }
 
+ readImage(source, frameWidth, frameHeight, mirror=false) {
+  this.context ??= document.createElement('canvas').getContext('2d', {willReadFrequently: true});
+  const canvas = this.context.canvas;
+  const scale = 320 / Math.max(frameWidth,frameHeight);
+  const width = Math.max(1, Math.round(frameWidth * scale));
+  const height = Math.max(1, Math.round(frameHeight * scale));
+  if (canvas.width !== width || canvas.height !== height) {
+   canvas.width = width;
+   canvas.height = height;
+  }
+  this.context.setTransform?.(mirror?-1:1,0,0,1,mirror?width:0,0);
+  this.context.drawImage(source, 0, 0, width, height);
+  return this.context.getImageData(0, 0, width, height);
+ }
+
+ capturePresented(video, {time,serial,frameWidth,frameHeight}) {
+  if (!this.densePixels || this.unavailable || time<this.pausedUntil || time<this.bridgePausedUntil || !this.previous ||
+      serial<=this.previous.serial || time-this.previous.time<.02) return;
+  const started=this.now();
+  try {
+   const image=this.readImage(video,frameWidth,frameHeight,true);
+   this.presented=[...this.presented.slice(-4),{time,serial,image}];
+   this.captureMs=(this.captureMs??0)+this.now()-started;
+   if (this.captureMs>8) {
+    this.bridgePausedUntil=time+.5;
+    this.presented=[];
+   }
+  } catch {
+   // The frozen model frame can still provide the ordinary pixel check.
+   this.densePixels=null;
+   this.presented=[];
+  }
+ }
+
  sample(frame, input) {
   if (this.unavailable) return {timing: {status: 'unavailable'}};
-  if (input.time < this.pausedUntil) return {timing: {status: 'budget'}};
-  const started = performance.now();
+  if (input.time < this.pausedUntil) {
+   this.previous=null;
+   this.presented=[];
+   this.captureMs=0;
+   return {timing: {status: 'budget'}};
+  }
+  const started = this.now();
   try {
-   this.context ??= document.createElement('canvas').getContext('2d', {willReadFrequently: true});
-   const canvas = this.context.canvas;
-   const scale = 320 / Math.max(input.frameWidth, input.frameHeight);
-   const width = Math.max(1, Math.round(input.frameWidth * scale));
-   const height = Math.max(1, Math.round(input.frameHeight * scale));
-   if (canvas.width !== width || canvas.height !== height) {
-    canvas.width = width;
-    canvas.height = height;
+   const image=this.readImage(frame.image??frame,input.frameWidth,input.frameHeight);
+   const evidence = this.pixels.update(image, input);
+   const ms=this.now()-started;
+   let bridge;
+   if(this.densePixels&&input.time>=this.bridgePausedUntil&&ms<8){
+    const previous=this.previous, gap=previous?input.time-previous.time:0, intermediate=[];
+    if(gap>=.075&&gap<=.3){
+     for(const row of this.presented){
+      if(row.serial<=previous.serial||row.serial>=input.serial||row.time<=previous.time||
+         row.time>=input.time||row.time-previous.time>.2||row.image.width!==image.width||row.image.height!==image.height)continue;
+      const hit=this.densePixels.update(row.image,{...input,time:row.time,serial:row.serial,selected:null,person:previous.person});
+      if(hit)intermediate.push({...hit,offset:row.time-input.time,serial:row.serial});
+     }
+    }
+    bridge={evidence:this.densePixels.update(image,input),intermediate};
    }
-   this.context.drawImage(frame.image ?? frame, 0, 0, width, height);
-   const evidence = this.pixels.update(this.context.getImageData(0, 0, width, height), input);
-   const ms = performance.now() - started;
+   this.previous=input;
+   this.presented=this.presented.filter(row=>row.serial>input.serial);
+   const captureMs=this.captureMs??0;
+   this.captureMs=0;
+   const bridgeMs=this.now()-started-ms+captureMs;
+   if(bridgeMs>8)this.bridgePausedUntil=input.time+.5;
    this.slowSamples = ms > 8 ? this.slowSamples + 1 : 0;
    if (ms > 24 || this.slowSamples >= 2) {
     this.pausedUntil = input.time + .5;
     this.slowSamples = 0;
    }
-   return {evidence, timing: {status: 'sampled', ms}};
+   return {evidence,bridge,timing: {status: 'sampled', ms, ...(this.densePixels?{bridgeMs}:{})}};
   } catch {
    this.unavailable = true;
    return {timing: {status: 'unavailable'}};
