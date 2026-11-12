@@ -79,10 +79,10 @@ export function shiftPreGoTimeline(state, seconds) {
   for (const context of state.validator.context) context.time-=seconds;
   const noise=state.counter.noiseCalibration;
   if(noise){noise.start-=seconds;noise.end-=seconds;}
-  const recovery=state.recovery?.counter;
   // Keep the new recovery guard and its held-ball clock on the same Go origin.
   // Historical revisions retain their original timeline for exact comparison.
-  if(recovery?.guardFirstReturn){
+  for(const recovery of [state.recovery?.counter,state.recovery?.pixelFloor]){
+    if(!recovery?.guardFirstReturn)continue;
     recovery.lastTime-=seconds;
     if(recovery.held)recovery.held.time-=seconds;
     for(const row of recovery.guardContext)row.time-=seconds;

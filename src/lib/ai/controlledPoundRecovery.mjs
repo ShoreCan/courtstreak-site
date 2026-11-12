@@ -27,8 +27,9 @@ export class ControlledPoundCandidate {
    const size=Math.sqrt((x2-x1)*(y2-y1)),p=[(x1+x2)/2,(y1+y2)/2],aspect=(x2-x1)/(y2-y1);
    const floorShape=c.score>=.008&&y2>=feet-d*.65&&y2<=feet+d*1.2;
    if(size/d<(c.score>=.008?.58:.76)||size/d>1.45||aspect<.65||aspect>(floorShape?2.2:1.6)||Math.abs(p[0]-wrist[0])>d*3.5||p[1]>feet+d*.8)return [];
+   const pixels=c.source==='floor_pixels';
    const hd=distance(p,wrist)/d,other=visible(person,9)?distance(p,person.xy[9])/d:Infinity;
-   return [{p,size,score:c.score,time:now,frame:this.frame,hd,owner:hd<=1.15&&other-hd>=.2&&c.score>=.008,feet}];
+   return [{p,size,score:c.score,time:now,frame:this.frame,hd,owner:!pixels&&hd<=1.15&&other-hd>=.2&&c.score>=.008,feet,...(pixels?{pixels}: {})}];
   });
   const owned=rows.filter(r=>r.owner&&r.p[1]<feet-d*.5).sort((a,b)=>a.hd-b.hd||b.score-a.score)[0];
   if(now<0){this.held=owned??null;this.flight=null;return [];}
@@ -44,13 +45,16 @@ export class ControlledPoundCandidate {
   if(!f.floor&&owned&&now-f.source.time>.25&&owned.p[1]<=f.source.p[1]+d*.2){this.rejected.push({reason:'unobserved_floor_reanchor',time:now});this.flight=null;this.held=owned;return [];}
   if(now-f.last.time>MAX_OBSERVATION_GAP_SECONDS||now-f.source.time>1.6){this.rejected.push({reason:'observation_gap',time:now});this.flight=null;this.held=owned??null;return [];}
   const options=rows.filter(r=>Math.abs(r.p[0]-f.last.p[0])<=d*2&&distance(r.p,f.last.p)<=d*(2+35*(now-f.last.time))&&(!f.floor||r.p[1]<=f.last.p[1]+d*.35));
-  options.sort((a,b)=>{
-   const cost=r=>distance(r.p,f.last.p)/d+Math.abs(Math.log(r.size/d))*.8-Math.log(Math.max(r.score,.001))*.08;
-   return cost(a)-cost(b);
-  });
+  const cost=r=>{
+   // An observed low point can outrank weak detector proposals when there is
+   // no selected ball. The turn and same-cycle receipt still need proof.
+   const visibleFloor=r.pixels&&!guardMeasurement&&!f.floor&&r.p[1]+r.size*.5>=feet-d*.35;
+   return distance(r.p,f.last.p)/d+Math.abs(Math.log(r.size/d))*.8-Math.log(Math.max(r.score,.001))*.08-(visibleFloor ? .65 : 0);
+  };
+  options.sort((a,b)=>cost(a)-cost(b));
   const row=options[0];if(!row)return [];
   this.measurement=[...row.p,row.size];
-  if(this.guardFirstReturn&&!guardMeasurement)this.observeGuard([...row.p,row.size],person,now);
+  if(this.guardFirstReturn&&!guardMeasurement&&!row.pixels)this.observeGuard([...row.p,row.size],person,now);
   if(!f.floor&&row.p[1]>f.peak.p[1])f.peak=row;
   const peak=f.peak,bottom=peak.p[1]+peak.size*.5;
   if(!f.floor&&peak.score>=.008&&peak.time>f.source.time&&row.time>peak.time&&bottom>=peak.feet-d*.65&&bottom<=peak.feet+d*1.2&&peak.p[1]-f.source.p[1]>=d*.8&&peak.p[1]-row.p[1]>=d*.4)f.floor=peak;
@@ -62,9 +66,9 @@ export class ControlledPoundCandidate {
    if(owned&&now>f.floor.time&&owned.p[1]<=f.floor.p[1]-d*.6)f.receipts.push(owned);
    const best=f.receipts.slice().sort((a,b)=>a.hd-b.hd)[0];
    const control=best&&f.receipts.some(prior=>prior!==owned&&owned&&now-prior.time>=.03&&now-prior.time<=.2&&distance(prior.p,owned.p)<=d*.6);
-   const redirect=best&&now>best.time&&now-best.time<=.2&&row.p[1]-best.p[1]>=d*.2;
+   const redirect=best&&!row.pixels&&now>best.time&&now-best.time<=.2&&row.p[1]-best.p[1]>=d*.2;
    if(f.observedAscent&&(control||redirect)){
-    const event={count:++this.count,event_frame:f.floor.frame,event_timestamp_exact:f.floor.time,event_time_seconds:f.floor.time,floor_contact_time_seconds:f.floor.time,release_time_seconds:f.source.time,from_hand:'right',to_hand:'right',validation_path:'experimental_observed_pound_cycle',control_evidence:control?'observed_hand_control':'observed_hand_redirect'};
+    const event={count:++this.count,event_frame:f.floor.frame,event_timestamp_exact:f.floor.time,event_time_seconds:f.floor.time,floor_contact_time_seconds:f.floor.time,release_time_seconds:f.source.time,from_hand:'right',to_hand:'right',validation_path:'experimental_observed_pound_cycle',control_evidence:control?'observed_hand_control':'observed_hand_redirect',...(f.floor.pixels?{floor_evidence:'observed_floor_pixels'}:{})};
     this.confirmed.push(event);this.flight=null;this.held=owned??best;return [event];
    }
   }

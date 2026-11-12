@@ -92,7 +92,8 @@ export function replayProfileCounter(data) {
       const g=f.selected?geometry(f.selected):null,m=g?[...g.center,g.diameter]:null;
       const events=counter.update(f.elapsed,m?[m[1],m[2]]:null,data.frameSize[1]);
       const primary=validator.update(events,m,f.person,f.elapsed,data.timerSeconds??20);primary.forEach(e=>counter.rememberControlledFloor(e));
-      const accepted=recovery?updatePoundRecoverySession(recovery,{primaryEvents:primary,candidates:mergeFloorProposals(f.balls??[],f.floorView?.balls??[]),person:f.person,time:f.elapsed,diameter:data.calibratedBallDiameter,deadline:data.timerSeconds??20,measurement:m}).confirmed:primary;
+      const pixelInputs=recovery?.pixelFloor?{context:validator.context,observations:{balls:f.balls,decisions:f.selectionDecisions??[],floorPixelEvidence:f.floorPixelEvidence}}:{};
+      const accepted=recovery?updatePoundRecoverySession(recovery,{primaryEvents:primary,candidates:mergeFloorProposals(f.balls??[],f.floorView?.balls??[]),person:f.person,time:f.elapsed,diameter:data.calibratedBallDiameter,deadline:data.timerSeconds??20,measurement:m,...pixelInputs}).confirmed:primary;
       accepted.forEach(e=>confirmationDelays.push((f.elapsed-(e.event_timestamp_exact??e.event_time_seconds))*1000));previous=cf;updates++;
     }
     const output=recovery?recovery.ledger:validator;

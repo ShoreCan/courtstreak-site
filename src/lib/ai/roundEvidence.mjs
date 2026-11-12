@@ -18,11 +18,13 @@ export class RoundEvidence {
     this.limit = limit; this.nextFrame = 1; this.droppedFrames = 0;
   }
   record({ capturedAt, sourceVideoTime, inputPhase, phase, roi, balls, person, selected, ms, timings, fps, poseUpdated, poseAge, poseCapturedAt, poseInferenceMs, positionChecks,
-    passStartedAt, ballFrameRefreshed, setupReadiness, counterFrame, proposedCount, count, selectionDecisions, ballProposalMinimumScore, handoffState, poseSourceVideoTime, poseFrameSkewSeconds, sourceVideoFrameNumber, decisionCompletedAt, floorView,liveBudget,recoveryMeasurement,poseTimings,poseScheduling,proposals = [], confirmed = [] }) {
+    passStartedAt, ballFrameRefreshed, setupReadiness, counterFrame, proposedCount, count, selectionDecisions, ballProposalMinimumScore, handoffState, poseSourceVideoTime, poseFrameSkewSeconds, sourceVideoFrameNumber, decisionCompletedAt, floorView,liveBudget,recoveryMeasurement,poseTimings,poseScheduling,floorPixelEvidence,floorPixelTiming,proposals = [], confirmed = [] }) {
     const frameId = this.nextFrame++;
     this.frames.push({ frameId, capturedAt, sourceVideoTime, inputPhase, phase, roi: [...roi],
       ...(Number.isFinite(decisionCompletedAt)?{decisionCompletedAt}:{}),
       ...(floorView?{floorView:{...floorView,roi:floorView.roi?[...floorView.roi]:null,balls:floorView.balls.map(copyDetection),...(floorView.timings?{timings:{...floorView.timings}}:{})}}:{}),
+      ...(floorPixelEvidence?{floorPixelEvidence:{box:[...floorPixelEvidence.box]}}:{}),
+      ...(floorPixelTiming?{floorPixelTiming:{...floorPixelTiming}}:{}),
       ...(liveBudget?{liveBudget:{...liveBudget,secondarySkips:{...liveBudget.secondarySkips},cadence:{...liveBudget.cadence}}}:{}),
       ...(recoveryMeasurement?{recoveryMeasurement:[...recoveryMeasurement]}:{}),
       ...(handoffState?{handoffState:{...handoffState}}:{}),
