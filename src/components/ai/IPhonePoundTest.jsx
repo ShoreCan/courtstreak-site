@@ -1,4 +1,4 @@
-import {repairConfiguration,repairObservationPolicy,repairCounterPose,repairPoseNeeded,flightPoseDecision} from '../../lib/ai/repairPolicy.mjs';
+import {repairConfiguration,repairObservationPolicy,repairCounterPose,repairPoseNeeded,flightPoseDecision,POUND_SEARCH_REVISION} from '../../lib/ai/repairPolicy.mjs';
 import {safariConfiguration,safariObservationPolicy,overlayFreshness,nextOverlayExpiry} from '../../lib/ai/safariPolicy.mjs';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
@@ -206,7 +206,7 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
    acceptBody();
    if(bodyWorker?.error){interrupt(bodyWorker.error.message,{preserveVideo:true});if(s.phase==='setup')fail(bodyWorker.error.message);return;}
    const withPose=!bodyWorker&&poseNeededForPass({policy:observationPolicy,phase:s.phase,enhancedTracking,clock:s.poseClock,capturedAt:now,hasPerson:Number.isFinite(s.poseAt),countdown:s.countdown});
-   let roi=['active','review'].includes(s.phase)?sessionROI(s,s.person,w,h):[0,0,w,h];
+   let roi=['active','review'].includes(s.phase)?sessionROI(s,s.person,w,h,now):[0,0,w,h];
    // Even a "no person" result gets the normal resting interval; looking for
    // someone outside the camera must not turn into continuous body inference.
    const activeCrossoverWorker=independentCrossoverPose&&['active','review'].includes(s.phase);
@@ -235,7 +235,7 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
     const capturedAt=performance.now()/1000,sourceVideoTime=v.currentTime;
     const nextFrame=captureMirroredFrame(v,f,{width:w,height:h,nativeCapture:!!observationPolicy.nativeCapture});frozenFrame=nextFrame;
     if(refreshedSource)s.videoFrameSerial=refreshedSource.serial;
-    if(repairTracking){acceptBody();roi=['active','review'].includes(s.phase)?sessionROI(s,s.person,w,h):[0,0,w,h];}
+    if(repairTracking){acceptBody();roi=['active','review'].includes(s.phase)?sessionROI(s,s.person,w,h,capturedAt):[0,0,w,h];}
     return {frame:nextFrame,capturedAt,sourceVideoTime:refreshedSource?.sourceVideoTime??sourceVideoTime,...(repairTracking?{roi}:{})};
    }:undefined}:undefined);
    if(!mounted.current||currentToken!==token.current)return;
@@ -268,6 +268,7 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
    }
    if(observationPolicy.flightAwarePose)s.previousBall=s.ball?{ball:s.ball,at:s.ballCapturedAt}:null;
    s.ball=s.tracker.select(result.balls,framePerson,phase,w,h,now);s.ballCapturedAt=now;
+   if(s.ball&&observationPolicy.cropRevision===POUND_SEARCH_REVISION)s.lastBallSeenAt=now;
    let recoveryBalls=result.balls,floorView=null;
    if(enhancedTracking){
     s.budget.observeBase(result.timings?.ball);
@@ -334,7 +335,10 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
     }
     if(framePerson)s.poseLostAt=null;else s.poseLostAt??=completed;
     if(s.ball)s.lostAt=null;else s.lostAt??=completed;
-    s.message=s.phase==='review'?'Time. Confirming the last controlled return…':s.lostAt&&completed-s.lostAt>.35?'Ball lost — counting waits for the same ball.': 'Tracking your basketball';
+    const searching=s.lostAt&&completed-s.lostAt>.35;
+    const searchMessage=observationPolicy.cropRevision===POUND_SEARCH_REVISION?
+     'Finding your ball again. Keep your right hand and the bounce in view.':'Ball lost — counting waits for the same ball.';
+    s.message=s.phase==='review'?'Time. Confirming the last controlled return…':searching?searchMessage:'Tracking your basketball';
     if(s.lostAt&&completed-s.lostAt>2){recordEvidence();interrupt('The ball was lost for more than two seconds.',{preserveVideo:true});return;}
     if(s.poseLostAt&&completed-s.poseLostAt>2){recordEvidence();interrupt('Body and wrist tracking could not stay fresh enough to verify reps.',{preserveVideo:true});return;}
     if(!enhancedTracking&&s.times.length>12&&s.fps<8){recordEvidence();interrupt('Tracking became too slow to count reliably.',{preserveVideo:true});return;}

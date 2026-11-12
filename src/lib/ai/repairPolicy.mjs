@@ -1,6 +1,7 @@
 import {poundCounterOptions} from './poundCore.mjs';
-export const REPAIR_REVISION='TRACKING REPAIR 05';
-const REPAIR_REVISIONS=['TRACKING REPAIR 01','TRACKING REPAIR 02','TRACKING REPAIR 03','TRACKING REPAIR 04',REPAIR_REVISION];
+export const REPAIR_REVISION='TRACKING REPAIR 06';
+export const POUND_SEARCH_REVISION='POUND SEARCH 01';
+const REPAIR_REVISIONS=['TRACKING REPAIR 01','TRACKING REPAIR 02','TRACKING REPAIR 03','TRACKING REPAIR 04','TRACKING REPAIR 05',REPAIR_REVISION];
 const repairRank=revision=>{
  const rank=REPAIR_REVISIONS.indexOf(revision)+1;
  if(!rank)throw new Error('Unsupported saved repair revision.');
@@ -13,7 +14,30 @@ export function repairObservationPolicy(drillKey,revision=REPAIR_REVISION){
   refreshBallFrame:true,freshAtAdmission:true,nativeCapture:true,floorView:false,cropRevision:'SESSION ROI 01',
   maxPoseAge:.3,maxActivePoseSkew:.3,maxWristSkew:.12,
   poseRequestIntervalSeconds:.12,poseMaximumIntervalSeconds:.22,setupPoseRequestIntervalSeconds:.08,
-  ...(rank>=3?{flightAwarePose:true,receiptPoseRequestIntervalSeconds:.09}: {})});
+  ...(rank>=3?{flightAwarePose:true,receiptPoseRequestIntervalSeconds:.09}: {}),
+  ...(rank>=6&&drillKey==='right-hand-pound'?{cropRevision:POUND_SEARCH_REVISION}:{})});
+}
+
+// Keep the crop stable through a bounce. Expand only when current evidence is
+// clipped or the ball has been missing longer than a brief detector dropout.
+export function poundSearchROI({tracker, person, poseAt, ball, lastBallSeenAt, now, width, height}) {
+ const roi = tracker.roi(width, height);
+ if (!ball && tracker.missed >= 3 && now - (lastBallSeenAt ?? -Infinity) >= .4) return [0, 0, width, height];
+
+ const [left, top, right] = roi;
+ const hand = visible(person, 10) && now >= poseAt && now - poseAt <= .18 ? person.xy[10] : null;
+ const diameter = tracker.typical() || 72;
+ const handClipped = hand && (hand[0] < left || hand[0] > right || hand[1] < top);
+ const box = ball?.box;
+ const ballClipped = box && (box[0] < left - diameter * .2 || box[2] > right + diameter * .2 || box[1] < top - diameter * .2);
+ if (!handClipped && !ballClipped) return roi;
+
+ const handMargin = diameter * 1.05;
+ const ballMargin = diameter * .35;
+ const x1 = Math.min(left, hand ? hand[0] - handMargin : left, box ? box[0] - ballMargin : left);
+ const x2 = Math.max(right, hand ? hand[0] + handMargin : right, box ? box[2] + ballMargin : right);
+ const y1 = Math.min(top, hand ? hand[1] - handMargin : top, box ? box[1] - ballMargin : top);
+ return [Math.max(0, Math.floor(x1)), Math.max(0, Math.floor(y1)), Math.min(width, Math.ceil(x2)), height];
 }
 export function repairConfiguration(base,drillKey,revision=REPAIR_REVISION){
  const rank=repairRank(revision),counterRevision=drillKey==='right-hand-pound'?(rank>=2?'COUNT 10':'COUNT 09'):(rank>=5?'CROSS 15':rank>=4?'CROSS 14':rank>=3?'CROSS 13':'CROSS 12');

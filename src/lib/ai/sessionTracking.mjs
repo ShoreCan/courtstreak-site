@@ -3,6 +3,7 @@ import {createPoundTrackingState,resetPoundTrackingCounter,resetPoundTrackingIde
 import {createCrossoverCounter,CROSSOVER_COUNTER_REVISION,crossoverROI} from './crossoverCounter.mjs';
 import {sessionObservationPolicy} from './sessionObservationPolicy.mjs';
 import {createPoundRecoverySession,updatePoundRecoverySession,POUND_RECOVERY_REVISION} from './poundRecoverySession.mjs';
+import {poundSearchROI,POUND_SEARCH_REVISION} from './repairPolicy.mjs';
 export const CROSSOVER_DRILL_KEY='stationary-crossover';
 export function createSessionTrackingState(freshFrames,drillKey,counterRevision=CROSSOVER_COUNTER_REVISION,independentCrossoverPose=false,{enhancedTracking=false,streamingPound=false}={}){
  if(enhancedTracking&&!['right-hand-pound',CROSSOVER_DRILL_KEY].includes(drillKey))throw new Error('Camera Test 20 currently supports right-hand pounds and crossovers.');
@@ -34,4 +35,11 @@ export function updateSessionCounter(state,time,measurement,person,height,deadli
  if(state.recovery){const recovered=updatePoundRecoverySession(state.recovery,{primaryEvents:confirmed,candidates,person,time,diameter:state.tracker.typical(),deadline,measurement,context:state.validator.context,observations});return {proposals,confirmed:recovered.confirmed,primaryConfirmed:confirmed,count:recovered.count,recoveryMeasurement:recovered.measurement};}
  return {proposals,confirmed,count:state.validator.count};
 }
-export function sessionROI(state,person,w,h){return state.crossover?crossoverROI(person,state.tracker,w,h):state.tracker.roi(w,h);}
+export function sessionROI(state, person, w, h, now) {
+ if (state.crossover) return crossoverROI(person, state.tracker, w, h);
+ if (state.configuration.observationPolicy?.cropRevision === POUND_SEARCH_REVISION) {
+  return poundSearchROI({tracker: state.tracker, person, poseAt: state.poseAt, ball: state.ball,
+   lastBallSeenAt: state.lastBallSeenAt, now, width: w, height: h});
+ }
+ return state.tracker.roi(w, h);
+}
