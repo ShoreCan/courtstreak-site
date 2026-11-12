@@ -1,6 +1,7 @@
 // Experimental causal counter. It consumes observed detector proposals and
 // never changes the production identity anchor or detector crop.
 import {poundHandConflict} from './poundHandEvidence.mjs';
+const MAX_OBSERVATION_GAP_SECONDS = .28;
 const distance=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
 const visible=(p,i)=>p?.confidence?.[i]>=.5&&p.xy?.[i]?.length===2&&p.xy[i].every(v=>Number.isFinite(v)&&v>0);
 export class ControlledPoundCandidate {
@@ -41,7 +42,7 @@ export class ControlledPoundCandidate {
   const f=this.flight;
   if(now>deadline+.15){this.flight=null;return [];}
   if(!f.floor&&owned&&now-f.source.time>.25&&owned.p[1]<=f.source.p[1]+d*.2){this.rejected.push({reason:'unobserved_floor_reanchor',time:now});this.flight=null;this.held=owned;return [];}
-  if(now-f.last.time>.28||now-f.source.time>1.6){this.rejected.push({reason:'observation_gap',time:now});this.flight=null;this.held=owned??null;return [];}
+  if(now-f.last.time>MAX_OBSERVATION_GAP_SECONDS||now-f.source.time>1.6){this.rejected.push({reason:'observation_gap',time:now});this.flight=null;this.held=owned??null;return [];}
   const options=rows.filter(r=>Math.abs(r.p[0]-f.last.p[0])<=d*2&&distance(r.p,f.last.p)<=d*(2+35*(now-f.last.time))&&(!f.floor||r.p[1]<=f.last.p[1]+d*.35));
   options.sort((a,b)=>{
    const cost=r=>distance(r.p,f.last.p)/d+Math.abs(Math.log(r.size/d))*.8-Math.log(Math.max(r.score,.001))*.08;
@@ -75,11 +76,20 @@ export const POUND_RECOVERY_REVISION='OBSERVED FLOOR 01';
 // One ledger combines independent proofs of the same floor contact. Original
 // counter state, learned floor references, selection and ROI remain untouched.
 export class PoundEventLedger {
- constructor(){this.count=0;this.confirmed=[];this.pending=[];this.rejected=[];}
+ constructor({cycleAwareDedup=false}={}){this.cycleAwareDedup=cycleAwareDedup;this.count=0;this.confirmed=[];this.pending=[];this.rejected=[];}
  add(event,source,now){
   const time=event.floor_contact_time_seconds??event.event_timestamp_exact??event.event_time_seconds;
   if(!Number.isFinite(time)||time<0||time>now)return null;
-  const duplicate=this.confirmed.find(e=>Math.abs(e.floor_contact_time_seconds-time)<=.16);
+  const duplicate = this.confirmed.find(previous => {
+   const previousTime = previous.floor_contact_time_seconds;
+   if (Math.abs(previousTime - time) <= .16) return true;
+   if (!this.cycleAwareDedup || Math.abs(previousTime - time) > MAX_OBSERVATION_GAP_SECONDS) return false;
+   // Two floor estimates from one release cannot both be controlled pounds.
+   // A distinct fast cycle can begin from new control after the earlier floor.
+   const later = time > previousTime ? event : previous;
+   const earlierFloor = Math.min(time, previousTime);
+   return Number.isFinite(later.release_time_seconds) && later.release_time_seconds < earlierFloor;
+  });
   if(duplicate){if(!duplicate.evidence_sources.includes(source))duplicate.evidence_sources.push(source);return null;}
   const accepted={...event,count:++this.count,floor_contact_time_seconds:time,evidence_sources:[source],confirmed_time_seconds:now};
   this.confirmed.push(accepted);return accepted;

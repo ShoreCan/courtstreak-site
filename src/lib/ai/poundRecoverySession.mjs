@@ -1,7 +1,7 @@
 import {BackgroundFloorRecovery} from './backgroundFloorRecovery.mjs';
 import {ControlledPoundCandidate,PoundEventLedger,POUND_RECOVERY_REVISION} from './controlledPoundRecovery.mjs';
 export {POUND_RECOVERY_REVISION};
-export function createPoundRecoverySession(options){return {counter:new ControlledPoundCandidate(options),backgroundFloor:options?.backgroundFloorRecovery?new BackgroundFloorRecovery():null,ledger:new PoundEventLedger(),measurement:null};}
+export function createPoundRecoverySession(options){return {counter:new ControlledPoundCandidate(options),backgroundFloor:options?.backgroundFloorRecovery?new BackgroundFloorRecovery(options):null,ledger:new PoundEventLedger(options),measurement:null};}
 // Shared by recorded diagnostics and the opt-in live test. All proposals refer
 // to one captured image; primary state and its floor learning stay independent.
 export function updatePoundRecoverySession(recovery,{primaryEvents,candidates,person,time,diameter,deadline=Infinity,measurement=null,context,observations}){

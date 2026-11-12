@@ -42,3 +42,22 @@ test('background recovery requires unambiguous floor evidence and control within
   { candidate: { ...floor, box: [360, 439, 440, 519] } },
  ]) assert.deepEqual(trial(options), []);
 });
+
+test('an observed rise and a right-hand redirect can verify a rejected floor observation', () => {
+ function run({recoverFloorRedirect = true, ascending = true, hand = 'right', delay = .08} = {}) {
+  const recovery = new BackgroundFloorRecovery({recoverFloorRedirect});
+  const context = [row(.1, 360, 'right', 1), row(.14, 400, 'right', 2), row(.18, 459, null, 3)];
+  const samples = [row(.24, null, null, 4), row(.31, ascending ? 490 : null, null, 5),
+   row(.36, 415, hand, 6), row(.36 + delay, 445, null, 7)];
+  return samples.flatMap(sample => {
+   context.push(sample);
+   const observations = sample.frame === 4
+    ? {balls: [floor], decisions: [{candidateIndex: 0, reason: 'background_memory'}]} : null;
+   return recovery.update(context, observations, 80, 20);
+  });
+ }
+ assert.deepEqual(run().map(e => [e.floor_contact_time_seconds, e.control_evidence]), [[.24, 'observed_hand_redirect']]);
+ for (const options of [{recoverFloorRedirect: false}, {ascending: false}, {hand: 'left'}, {delay: .22}]) {
+  assert.deepEqual(run(options), []);
+ }
+});

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createGpuDetectorExecution,POSE_COMPACT_BYTES} from '../src/lib/ai/gpuDetectorExecution.mjs';
+import {BALL_COMPACT_BYTES, BALL_HEAD_TILES} from '../src/lib/ai/ballHeadCompact.mjs';
 import {GpuDetectorInput} from '../src/lib/ai/gpuDetectorInput.mjs';
 import {DetectorInput} from '../src/lib/ai/detectorInput.mjs';
 
@@ -19,15 +20,26 @@ test('GPU input preserves native-coordinate crop and letterbox while avoiding CP
   assert.equal(copies,1);assert.equal(submits,1);gpu.release();
 });
 
-function fixture({overflow=false,block=false,fail=false,freshAtAdmission=false,singleBallReadback=false,clock}={}){
-  const buffers=[],tensors=[],copies=[],releases=[],prepares=[],preparedSources=[];
+function fixture({overflow=false,block=false,fail=false,freshAtAdmission=false,singleBallReadback=false,compactBallReadback=false,clock}={}){
+  const buffers=[],tensors=[],copies=[],releases=[],prepares=[],preparedSources=[],compactions=[];
   let release,active=0,maxActive=0;
   const held=block?new Promise(r=>{release=r;}):Promise.resolve();
   const device={
     createBuffer({size}){const b={size,bytes:new ArrayBuffer(size),destroyed:false,mapped:false,
       destroy(){this.destroyed=true;},async mapAsync(){this.mapped=true;},getMappedRange(offset=0,size=this.size){return this.bytes.slice(offset,offset+size);},unmap(){this.mapped=false;}};buffers.push(b);return b;},
-    createComputePipeline(){return {getBindGroupLayout(){return {};}};},createShaderModule(){return {};},createBindGroup(){return {};},
-    createCommandEncoder(){const tasks=[];return {beginComputePass(){return {setPipeline(){},setBindGroup(){},dispatchWorkgroups(){},end(){}};},
+    createComputePipeline({compute}){return {entryPoint:compute.entryPoint,getBindGroupLayout(){return {};}};},
+    createShaderModule(){return {};},createBindGroup({entries}){return entries;},
+    createCommandEncoder(){const tasks=[];return {beginComputePass(){
+      let pipeline, entries;
+      return {setPipeline(value){pipeline=value;},setBindGroup(_, value){entries=value;},dispatchWorkgroups(groups){
+        if (pipeline.entryPoint !== 'main') compactions.push([pipeline.entryPoint, groups]);
+        if (pipeline.entryPoint === 'copyTopRows') tasks.push(() => {
+          const output = new Uint8Array(entries[2].resource.buffer.bytes);
+          // The fixture's head is already ordered, with the ball in row zero.
+          output.set(new Uint8Array(entries[0].resource.buffer.bytes, 0, output.length));
+        });
+      },end(){}};
+    },
       copyBufferToBuffer(a,ai,b,bi,size){copies.push(size);tasks.push(()=>new Uint8Array(b.bytes,bi,size).set(new Uint8Array(a.bytes,ai,size)));},finish(){return tasks;}};},
     queue:{writeBuffer(buffer,offset,data){new Uint8Array(buffer.bytes,offset,data.byteLength).set(new Uint8Array(data.buffer,data.byteOffset,data.byteLength));if(overflow&&buffer.size===POSE_COMPACT_BYTES)new Uint32Array(buffer.bytes)[0]=257;},submit(commands){for(const tasks of commands)for(const task of tasks)task();}},
   };
@@ -44,9 +56,9 @@ function fixture({overflow=false,block=false,fail=false,freshAtAdmission=false,s
     }finally{active--;}
   },async release(){releases.push(kind);}}]));
   const usage={STORAGE:1,COPY_DST:2,COPY_SRC:4,MAP_READ:8},mapMode={READ:1};
-  const execution=createGpuDetectorExecution({ort,manifest,sessions,device,usage,mapMode,freshAtAdmission,singleBallReadback,...(clock?{clock}:{}),
+  const execution=createGpuDetectorExecution({ort,manifest,sessions,device,usage,mapMode,freshAtAdmission,singleBallReadback,compactBallReadback,...(clock?{clock}:{}),
     createInput:({size})=>({prepare(source,roi){prepares.push(size);preparedSources.push(source);return {transform:{x:0,y:0,scale:1,px:0,py:0}};},release(){}})});
-  return {execution,buffers,tensors,copies,releases,prepares,preparedSources,release,get maxActive(){return maxActive;}};
+  return {execution,buffers,tensors,copies,releases,prepares,preparedSources,compactions,release,get maxActive(){return maxActive;}};
 }
 test('GPU execution reuses fixed tensors, retains detections and releases all resources',async()=>{
   const f=fixture(),frame={width:640,height:640};
@@ -108,4 +120,22 @@ test('single-readback GPU execution decodes the same sports ball and unmaps its 
   assert.equal(candidate.execution.ballProcessingRevision,'BALL READBACK 01');
   await Promise.all([original.execution.close(),candidate.execution.close()]);
   assert.ok(candidate.buffers.every(b=>b.destroyed&&!b.mapped));
+});
+
+test('compact readback runs both GPU stages and maps only the retained ball rows', async () => {
+  const original = fixture({singleBallReadback: true});
+  const compact = fixture({singleBallReadback: true, compactBallReadback: true});
+  const frame = {width: 640, height: 640};
+  const roi = [0, 0, 640, 640];
+  const before = await original.execution.detect(frame, roi, false);
+  const after = await compact.execution.detect(frame, roi, false);
+  assert.deepEqual(after.balls, before.balls);
+  assert.deepEqual(compact.compactions, [['sortTiles', BALL_HEAD_TILES], ['copyTopRows', BALL_HEAD_TILES]]);
+  assert.deepEqual(compact.copies, [BALL_COMPACT_BYTES]);
+  assert.equal(after.timings.ball.ballReadbackBytes, BALL_COMPACT_BYTES);
+  assert.ok(Number.isFinite(after.timings.ball.gpuMapWaitMs));
+  assert.ok(Number.isFinite(after.timings.ball.ballOutputProcessingMs));
+  assert.equal(compact.execution.ballProcessingRevision, 'BALL READBACK 02');
+  await Promise.all([original.execution.close(), compact.execution.close()]);
+  assert.ok(compact.buffers.every(buffer => buffer.destroyed && !buffer.mapped));
 });

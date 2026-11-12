@@ -73,3 +73,44 @@ test('a rejected same-hand bounce cannot block the following independently verif
   assert.deepEqual(runTransfer('CROSS 14', { ...options, ...missing }), []);
  }
 });
+
+function rejectedFloorTransfer(reason, {sameHand = false, airborne = false, missingAscent = false,
+ missingReceipt = false, primarySeesFloor = false, competingFloor = false, stationaryDecoy = false, deadline = 20} = {}) {
+ const counter = createCrossoverCounter('CROSS 15');
+ const points = [
+  [-.05, 840, 350], [.02, 830, 365], [.10, 780, 505], [.17, 640, airborne ? 490 : 630],
+  [.22, sameHand ? 690 : 590, 585], [.28, sameHand ? 750 : 530, 514],
+  [.35, sameHand ? 840 : 440, 365], [.41, sameHand ? 840 : 440, 350],
+  [.48, sameHand ? 840 : 440, 350],
+ ];
+ for (const [time, x, y] of points) {
+  const pose = person();
+  if (missingReceipt && time >= .35) pose.confidence[9] = 0;
+  const onFloor = time === .17;
+  const balls = stationaryDecoy ? [ball(640, 630)]
+   : onFloor ? [ball(x, y), ...(competingFloor ? [ball(x + 22, y)] : [])] : [];
+  const observations = {balls, decisions: balls.map((_, candidateIndex) => ({reason, candidateIndex}))};
+  const skipsAscent = missingAscent && time > .17 && time < .35;
+  const measurement = (onFloor && !primarySeesFloor) || skipsAscent ? null
+   : [x, stationaryDecoy ? Math.min(y, 425) : y, 60];
+  counter.update([], measurement, pose, time, deadline, observations);
+ }
+ return counter.confirmed;
+}
+
+test('a rejected crossover floor box can supply proof without replacing the owned ball track', () => {
+ for (const reason of ['jump_from_last', 'background_memory', 'prediction_envelope']) {
+  const events = rejectedFloorTransfer(reason);
+  assert.equal(events.length, 1, reason);
+  assert.equal(events[0].floor_contact_time_seconds, .17);
+  assert.deepEqual(events[0].evidence_sources, ['rejected_floor_candidate']);
+ }
+ assert.equal(rejectedFloorTransfer('background_memory', {primarySeesFloor: true}).length, 1);
+});
+
+test('a rejected floor box without an independent return stays uncounted', () => {
+ for (const options of [{sameHand: true}, {airborne: true}, {missingAscent: true}, {missingReceipt: true},
+  {competingFloor: true}, {stationaryDecoy: true}, {deadline: .16}]) {
+  assert.deepEqual(rejectedFloorTransfer('background_memory', options), [], JSON.stringify(options));
+ }
+});

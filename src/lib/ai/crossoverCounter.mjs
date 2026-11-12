@@ -3,6 +3,7 @@ export const CROSSOVER_TEST_REVISION='CROSSOVER TEST 10';
 export const CROSSOVER_RULE='controlled hand → observed floor bounce → opposite hand under control';
 export const CROSSOVER_FINISH_WINDOW_SECONDS=.15;
 const distance=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
+const floorRecoveryReasons = new Set(['background_memory', 'jump_from_last', 'prediction_envelope']);
 const opposite=hand=>hand==='right'?'left':'right';
 const visible=(p,index)=>p&&p.confidence[index]>=.22&&p.xy[index]?.every(Number.isFinite)&&p.xy[index][0]>0&&p.xy[index][1]>0;
 
@@ -232,7 +233,7 @@ export class CrossoverCounter {
 // It may only complete the SAME previously observed floor contact after a short
 // gap, with the original opposite-hand control checks. It cannot invent a floor.
 export class SupplementalCrossoverCounter {
- constructor({carryReceivingHand=false,independentRelease=false}={}){this.primary=createCrossoverCounter('CROSS 11');this.primary.carryReceivingHand=carryReceivingHand;this.primary.independentRelease=independentRelease;this.shadows=[];this.confirmed=[];this.count=0;this.lastSupplemental=false;}
+ constructor({carryReceivingHand=false,independentRelease=false,observeRejectedFloor=false}={}){this.observeRejectedFloor=observeRejectedFloor;this.primary=createCrossoverCounter('CROSS 11');this.primary.carryReceivingHand=carryReceivingHand;this.primary.independentRelease=independentRelease;this.shadows=[];this.confirmed=[];this.count=0;this.lastSupplemental=false;}
  get frame(){return this.primary.frame;}get points(){return this.primary.points;}get context(){return this.primary.context;}
  get held(){return this.primary.held;}get flight(){return this.primary.flight;}
  get pending(){return this.primary.pending;}get proposalsThisFrame(){return this.primary.proposalsThisFrame;}
@@ -243,8 +244,67 @@ export class SupplementalCrossoverCounter {
   if(prior){if(!prior.evidence_sources.includes(source))prior.evidence_sources.push(source);return null;}
   const accepted={...event,count:++this.count,evidence_sources:[source]};this.confirmed.push(accepted);return accepted;
  }
- update(proposals,measurement,person,now,deadline=Infinity){
+ // Keep the rejected box out of identity tracking and give it a single role
+ // in a second counting path. That path must still observe a turn and receipt.
+ tryRejectedFloor(person, now, deadline, observations) {
+  const primary = this.primary;
+  const anchor = primary.flight?.source ?? primary.held;
+  const last = primary.flight?.last ?? anchor;
+  if (!anchor || !last?.measurement || now >= deadline || now - last.time > .23 ||
+      now - anchor.time > .48 || !visible(person, 15) || !visible(person, 16)) return null;
+
+  const [x, y, diameter] = anchor.measurement;
+  const feetY = Math.max(person.xy[15][1], person.xy[16][1]);
+  const stance = [person.xy[15][0], person.xy[16][0]].sort((a, b) => a - b);
+  const oppositeIndex = anchor.owner.hand === 'left' ? 10 : 9;
+  const targetX = visible(person, oppositeIndex) ? person.xy[oppositeIndex][0] : (stance[0] + stance[1]) / 2;
+  const direction = Math.sign(targetX - x);
+  if (Math.abs(targetX - x) < diameter) return null;
+
+  const choices = observations.decisions.flatMap(({reason, candidateIndex}) => {
+   if (!floorRecoveryReasons.has(reason)) return [];
+   const candidate = observations.balls[candidateIndex];
+   if (!candidate?.box || candidate.score < .12) return [];
+   const [x1, y1, x2, y2] = candidate.box;
+   const width = x2 - x1, height = y2 - y1;
+   const bx = (x1 + x2) / 2, by = (y1 + y2) / 2, size = Math.sqrt(width * height);
+   if (width / height < .7 || width / height > 1.6 || size / diameter < .65 || size / diameter > 1.5 ||
+       y2 < feetY - size * .4 || y2 > feetY + size * 1.4 ||
+       bx < stance[0] - size * .55 || bx > stance[1] + size * .55 ||
+       by - y < diameter || by - last.measurement[1] < diameter * .2 ||
+       (bx - x) * direction < diameter * .5 || (bx - targetX) * direction > diameter * 1.6) return [];
+   return [[bx, by, size]];
+  });
+  if (choices.length !== 1) return null;
+
+  const counter = createCrossoverCounter('CROSS 11');
+  counter.frame = primary.frame;
+  counter.held = anchor;
+  counter.context = primary.context.slice(-12).filter(row => row.measurement && row.time <= anchor.time);
+  counter.update([], choices[0], person, now, deadline);
+  return counter.flight?.peak.time === now
+   ? {counter, floorTime: now, sourceHand: anchor.owner.hand, rejectedFloor: {position: choices[0], direction, moving: false}}
+   : null;
+ }
+ observeFloorAscent(floor, measurement, observations) {
+  const [x, y, size] = floor.position;
+  const movingUp = ([cx, cy, d]) => {
+   const dx = (cx - x) * floor.direction, rise = y - cy;
+   return d >= size * .75 && d <= size * 1.3 && dx >= size * .2 &&
+    rise >= size * .2 && rise <= size * 1.65 && Math.hypot(dx, rise) <= size * 2.35;
+  };
+  if (measurement && movingUp(measurement)) return true;
+  return observations?.balls.some(({box: [x1, y1, x2, y2], score}) => {
+   const w = x2 - x1, h = y2 - y1;
+   return score >= .02 && w / h >= .7 && w / h <= 1.6 &&
+    movingUp([(x1 + x2) / 2, (y1 + y2) / 2, Math.sqrt(w * h)]);
+  }) ?? false;
+ }
+ update(proposals,measurement,person,now,deadline=Infinity,observations=null){
   const p=this.primary,f=p.flight;
+  const alternate = this.observeRejectedFloor && !measurement && !f?.floor && observations &&
+   !this.shadows.some(shadow => shadow.rejectedFloor)
+   ? this.tryRejectedFloor(person, now, deadline, observations) : null;
   if(f?.floor&&now-f.lastSeen>.25&&now-f.lastSeen<=.35&&now-f.floor.time<=.55&&now-f.source.time<=1.2&&
    !this.shadows.some(s=>s.floorTime===f.floor.time&&s.sourceHand===f.source.owner.hand)){
    const counter=new CrossoverCounter({sizeOutlierRecovery:true,preFloorSizeRecovery:true,releaseSizeRecovery:true,
@@ -256,22 +316,31 @@ export class SupplementalCrossoverCounter {
   const events=[],primary=p.update(proposals,measurement,person,now,deadline);this.lastSupplemental=false;
   for(const e of primary){const accepted=this.accept(e,'primary');if(accepted)events.push(accepted);}
   this.shadows=this.shadows.filter(shadow=>{
-   if(now-shadow.floorTime>.55)return false;
+   const age = now - shadow.floorTime;
+   const floor = shadow.rejectedFloor;
+   if (age > (floor ? .48 : .55)) return false;
+   if (floor && !floor.moving) {
+    if (age > .18) return false;
+    floor.moving = this.observeFloorAscent(floor, measurement, observations);
+   }
    const found=shadow.counter.update([],measurement,person,now,deadline);
    for(const e of found){
-    if(e.from_hand!==shadow.sourceHand||Math.abs(e.floor_contact_time_seconds-shadow.floorTime)>1e-9)continue;
-    const accepted=this.accept(e,'observed_floor_gap_receipt');if(accepted){events.push(accepted);this.lastSupplemental=true;}
+    if((floor && !floor.moving) || e.from_hand!==shadow.sourceHand||Math.abs(e.floor_contact_time_seconds-shadow.floorTime)>1e-9)continue;
+    const accepted=this.accept(e,shadow.rejectedFloor?'rejected_floor_candidate':'observed_floor_gap_receipt');if(accepted){events.push(accepted);this.lastSupplemental=true;}
    }
-   return !found.length&&shadow.counter.flight?.floor?.time===shadow.floorTime;
+   const flight = shadow.counter.flight;
+   return !found.length && (flight?.floor?.time === shadow.floorTime ||
+    (shadow.rejectedFloor && !flight?.floor && flight?.peak.time === shadow.floorTime));
   });
+  if (alternate) this.shadows.push(alternate);
   return events;
  }
 }
 
 export function createCrossoverCounter(revision=CROSSOVER_COUNTER_REVISION){
  const rank=Number(/^CROSS (\d{2})$/.exec(revision)?.[1]);
- if(!(rank>=1&&rank<=14))throw new Error(`Unsupported crossover counter revision: ${revision}`);
- if(rank>=12)return new SupplementalCrossoverCounter({carryReceivingHand:rank>=13,independentRelease:rank>=14});
+ if(!(rank>=1&&rank<=15))throw new Error(`Unsupported crossover counter revision: ${revision}`);
+ if(rank>=12)return new SupplementalCrossoverCounter({carryReceivingHand:rank>=13,independentRelease:rank>=14,observeRejectedFloor:rank>=15});
  return new CrossoverCounter({legacy:rank===1,sizeOutlierRecovery:rank>=3,preFloorSizeRecovery:rank>=4,releaseSizeRecovery:rank>=5,nearFloorRelease:rank>=6,reanchorAfterGap:rank>=7,stableReleaseSize:rank>=8,ignoreOneOversizedSample:rank>=9,finishWindowSeconds:rank>=10?CROSSOVER_FINISH_WINDOW_SECONDS:0});
 }
 

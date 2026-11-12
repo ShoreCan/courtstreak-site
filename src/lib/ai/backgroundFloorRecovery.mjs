@@ -7,7 +7,8 @@ const distance = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 // This proof uses a rejected box only as a floor observation. It never feeds
 // that box back into identity selection, wrist evidence, or floor learning.
 export class BackgroundFloorRecovery {
- constructor() {
+ constructor({recoverFloorRedirect=false} = {}) {
+  this.recoverFloorRedirect = recoverFloorRedirect;
   this.pending = null;
  }
 
@@ -22,10 +23,26 @@ export class BackgroundFloorRecovery {
    if (row.time - floor.time > .48 || row.time > deadline + .15) {
     this.pending = null;
    } else if (ball && row.time > floor.time) {
+    const reversed = floor.y - pending.high >= d * .7 && ball[1] - pending.high >= d * .25;
+    const lastReceipt = receipts.at(-1);
+    const redirect = this.recoverFloorRedirect && reversed && pending.observedAscent && lastReceipt &&
+     row.time - lastReceipt.time <= .16 && lastReceipt.measurement[1] - pending.high <= d * .2 &&
+     Math.abs(ball[0] - lastReceipt.measurement[0]) <= d * .65;
+    if (redirect && !poundHandConflict({
+     event_timestamp_exact: floor.time, bottom_center_y: floor.y, ball_scale_pixels: d,
+    }, context)) {
+     this.pending = null;
+     return [this.event(floor, source, 'observed_hand_redirect')];
+    }
     // A later descent ends this cycle, even if the first receipt was missed.
-    if (floor.y - pending.high >= d * .7 && ball[1] - pending.high >= d * .25) {
+    if (reversed) {
      this.pending = null;
     } else {
+     const rise = floor.y - ball[1];
+     if (row.time - floor.time <= .14 && rise >= d * .2 && rise <= d * 1.4 &&
+         Math.abs(ball[0] - floor.x) <= d * .65 && ball[2] >= d * .75 && ball[2] <= d * 1.3) {
+      pending.observedAscent = true;
+     }
      pending.high = Math.min(pending.high, ball[1]);
      const y = ball[1];
      const conflict = poundHandConflict({
@@ -42,12 +59,7 @@ export class BackgroundFloorRecovery {
       });
       if (controlled) {
        this.pending = null;
-       return [{
-        event_frame: floor.frame, event_timestamp_exact: floor.time, event_time_seconds: floor.time,
-        floor_contact_time_seconds: floor.time, release_time_seconds: source.time,
-        from_hand: 'right', to_hand: 'right', validation_path: 'background_overlap_floor',
-        control_evidence: 'observed_hand_control', floor_evidence: 'observed_ball_and_feet',
-       }];
+       return [this.event(floor, source, 'observed_hand_control')];
       }
       receipts.push(row);
      }
@@ -84,5 +96,14 @@ export class BackgroundFloorRecovery {
    this.pending = {floor, source, receipts: [], high: floor.y};
   }
   return [];
+ }
+
+ event(floor, source, control) {
+  return {
+   event_frame: floor.frame, event_timestamp_exact: floor.time, event_time_seconds: floor.time,
+   floor_contact_time_seconds: floor.time, release_time_seconds: source.time,
+   from_hand: 'right', to_hand: 'right', validation_path: 'background_overlap_floor',
+   control_evidence: control, floor_evidence: 'observed_ball_and_feet',
+  };
  }
 }

@@ -19,7 +19,7 @@ export function createSessionTrackingState(freshFrames,drillKey,counterRevision=
  const identityRevision=`TWOHAND 0${identityRank}`;
  state.configuration=Object.freeze({...state.configuration,id:`${counterRevision.replaceAll(' ','')}/${state.configuration.id}/${identityRevision.replaceAll(' ','')}/${observationPolicy.revision.replaceAll(' ','')}`,counterRevision,identityRevision:state.configuration.identityRevision+' + '+identityRevision,
   identityOptions:Object.freeze({...state.configuration.identityOptions,twoHandedMotion:true,...(rank>=9?{crossoverReconnect:true}:{}),...(rank>=11?{motionLock:true}:{})}),
-  counterOptions:Object.freeze({oppositeHand:true,floorEvidence:true,kneeHeightRule:false,sizeOutlierRecovery:true,preFloorSizeRecovery:true,releaseSizeRecovery:rank>=5,...(rank>=6?{nearFloorRelease:true}:{}),...(rank>=7?{reanchorAfterGap:true}:{}),...(rank>=8?{stableReleaseSize:true}:{}),...(rank>=9?{ignoreOneOversizedSample:true}:{}),...(rank>=10?{finishWindowSeconds:.15}:{}),...(rank>=12?{gapReceiptRecovery:true}:{}),...(rank>=13?{carryReceivingHand:true}:{}),...(rank>=14?{independentRelease:true}:{})}),observationPolicy});
+  counterOptions:Object.freeze({oppositeHand:true,floorEvidence:true,kneeHeightRule:false,sizeOutlierRecovery:true,preFloorSizeRecovery:true,releaseSizeRecovery:rank>=5,...(rank>=6?{nearFloorRelease:true}:{}),...(rank>=7?{reanchorAfterGap:true}:{}),...(rank>=8?{stableReleaseSize:true}:{}),...(rank>=9?{ignoreOneOversizedSample:true}:{}),...(rank>=10?{finishWindowSeconds:.15}:{}),...(rank>=12?{gapReceiptRecovery:true}:{}),...(rank>=13?{carryReceivingHand:true}:{}),...(rank>=14?{independentRelease:true}:{}),...(rank>=15?{observeRejectedFloor:true}:{})}),observationPolicy});
  resetPoundTrackingIdentity(state);resetSessionTrackingCounter(state);return state;
 }
 export function resetSessionTrackingCounter(state){
@@ -27,7 +27,7 @@ export function resetSessionTrackingCounter(state){
  state.counter=createCrossoverCounter(state.configuration.counterRevision);state.validator=state.counter;
 }
 export function updateSessionCounter(state,time,measurement,person,height,deadline,candidates=[],observations=null){
- if(state.crossover){const confirmed=state.validator.update([],measurement,person,time,deadline);return {confirmed,proposals:state.counter.proposalsThisFrame,count:state.validator.count};}
+ if(state.crossover){const confirmed=state.validator.update([],measurement,person,time,deadline,observations);return {confirmed,proposals:state.counter.proposalsThisFrame,count:state.validator.count};}
  const proposals=state.counter.update(time,measurement?[measurement[1],measurement[2]]:null,height);
  const confirmed=state.validator.update(proposals,measurement,person,time,deadline);
  confirmed.forEach(event=>state.counter.rememberControlledFloor(event));

@@ -34,3 +34,20 @@ test('the ledger counts two proofs once and preserves separate fast bounces',()=
  assert.equal(ledger.add(event(-.1),'recovery',1.5),null);
  assert.equal(ledger.add(event(2),'recovery',1.5),null);
 });
+
+test('the ledger merges disagreeing floor times when both proofs point to one release', () => {
+ for (const inOrder of [true, false]) {
+  const ledger = new PoundEventLedger({cycleAwareDedup: true});
+  const primary = {event_timestamp_exact: 1};
+  const shifted = {event_timestamp_exact: 1.173, release_time_seconds: .83};
+  const events = [[primary, 'primary'], [shifted, 'controlled_floor_recovery']];
+  if (!inOrder) events.reverse();
+  for (const [event, source] of events) ledger.add(event, source, 1.4);
+  assert.equal(ledger.count, 1);
+  assert.deepEqual(ledger.confirmed[0].evidence_sources, events.map(([, source]) => source));
+ }
+ const ledger = new PoundEventLedger({cycleAwareDedup: true});
+ ledger.add({event_timestamp_exact: 1}, 'primary', 1.12);
+ ledger.add({event_timestamp_exact: 1.173, release_time_seconds: 1.1}, 'controlled_floor_recovery', 1.3);
+ assert.equal(ledger.count, 2);
+});

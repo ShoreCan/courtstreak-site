@@ -12,7 +12,11 @@ export async function loadDetector(base,onProgress,{inputMode='reuse',asyncPose=
  if(!manifestResponse.ok)throw new Error('The ball and body models have not been published. Run the model export step and publish public/ai.');
  const manifest=await manifestResponse.json();
  if(manifest.version!==1||!manifest.ball||!manifest.pose)throw new Error('Detector files do not match this tracker version.');
- if(['gpu-stream','gpu-repair','gpu-ball-speed'].includes(executionMode))return loadGpuCandidate({ort,base,manifest,onProgress,asyncPose,freshAtAdmission:executionMode!=='gpu-stream',singleBallReadback:executionMode==='gpu-ball-speed'});
+ if (['gpu-stream', 'gpu-repair', 'gpu-ball-speed', 'gpu-ball-compact'].includes(executionMode)) {
+  const compactBallReadback = executionMode === 'gpu-ball-compact';
+  return loadGpuCandidate({ort, base, manifest, onProgress, asyncPose, freshAtAdmission: executionMode !== 'gpu-stream',
+   singleBallReadback: compactBallReadback || executionMode === 'gpu-ball-speed', compactBallReadback});
+ }
  if(executionMode!=='standard')throw new Error('Unknown detector execution mode.');
  if(providerOverride!==undefined&&!['wasm','webgpu'].includes(providerOverride))throw new Error('Unknown diagnostic execution provider.');
  let provider=providerOverride??(navigator.gpu?'webgpu':'wasm'),ball,pose,poseWorker=null;
@@ -38,7 +42,7 @@ export async function loadDetector(base,onProgress,{inputMode='reuse',asyncPose=
  return Object.assign(execution,{provider,modelManifest:manifest,poseWorker,poseMode:poseWorker?'independent-wasm-worker':'sequential'});
 }
 
-async function loadGpuCandidate({ort,base,manifest,onProgress,asyncPose,freshAtAdmission=false,singleBallReadback=false}){
+async function loadGpuCandidate({ort,base,manifest,onProgress,asyncPose,freshAtAdmission=false,singleBallReadback=false,compactBallReadback=false}){
  if(!navigator.gpu||!await navigator.gpu.requestAdapter())throw new Error('GPU acceleration is unavailable on this device. The standard Camera Test 20 is still available.');
  const sessions={};let execution;
  const models=singleBallReadback?{...manifest,ball:manifest.ball_single_readback}:manifest;
@@ -48,7 +52,7 @@ async function loadGpuCandidate({ort,base,manifest,onProgress,asyncPose,freshAtA
    onProgress(kind==='ball'?'Loading ball tracking…':'Preparing body and wrist tracking…');
    sessions[kind]=await ort.InferenceSession.create(`${base}ai/models/${models[kind].file}`,{executionProviders:['webgpu'],graphOptimizationLevel:'all',preferredOutputLocation:'gpu-buffer'});
   }
-  execution=createGpuDetectorExecution({ort,manifest:models,sessions,freshAtAdmission,singleBallReadback});
+  execution=createGpuDetectorExecution({ort,manifest:models,sessions,freshAtAdmission,singleBallReadback,compactBallReadback});
   const warm=document.createElement('canvas');warm.width=warm.height=640;
   warm.getContext('2d').fillRect(0,0,640,640);
   await execution.detect(warm,[0,0,640,640],true);

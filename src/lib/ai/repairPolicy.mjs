@@ -1,6 +1,6 @@
 import {poundCounterOptions} from './poundCore.mjs';
-export const REPAIR_REVISION='TRACKING REPAIR 04';
-const REPAIR_REVISIONS=['TRACKING REPAIR 01','TRACKING REPAIR 02','TRACKING REPAIR 03',REPAIR_REVISION];
+export const REPAIR_REVISION='TRACKING REPAIR 05';
+const REPAIR_REVISIONS=['TRACKING REPAIR 01','TRACKING REPAIR 02','TRACKING REPAIR 03','TRACKING REPAIR 04',REPAIR_REVISION];
 const repairRank=revision=>{
  const rank=REPAIR_REVISIONS.indexOf(revision)+1;
  if(!rank)throw new Error('Unsupported saved repair revision.');
@@ -16,11 +16,11 @@ export function repairObservationPolicy(drillKey,revision=REPAIR_REVISION){
   ...(rank>=3?{flightAwarePose:true,receiptPoseRequestIntervalSeconds:.09}: {})});
 }
 export function repairConfiguration(base,drillKey,revision=REPAIR_REVISION){
- const rank=repairRank(revision),counterRevision=drillKey==='right-hand-pound'?(rank>=2?'COUNT 10':'COUNT 09'):(rank>=4?'CROSS 14':rank>=3?'CROSS 13':'CROSS 12');
- return Object.freeze({...base,id:base.id.replace(/^(COUNT08|CROSS1[1234])/,counterRevision.replaceAll(' ',''))+'/REPAIR0'+rank,
+ const rank=repairRank(revision),counterRevision=drillKey==='right-hand-pound'?(rank>=2?'COUNT 10':'COUNT 09'):(rank>=5?'CROSS 15':rank>=4?'CROSS 14':rank>=3?'CROSS 13':'CROSS 12');
+ return Object.freeze({...base,id:base.id.replace(/^(COUNT08|CROSS1[12345])/,counterRevision.replaceAll(' ',''))+'/REPAIR0'+rank,
   counterRevision,repairRevision:revision,
-  ...(rank>=2&&drillKey==='right-hand-pound'&&base.recoveryRevision?{recoveryOptions:Object.freeze({guardFirstReturn:true,...(rank>=4?{backgroundFloorRecovery:true}:{})})}:{}),
-  counterOptions:Object.freeze(drillKey==='right-hand-pound'?poundCounterOptions(counterRevision):{...base.counterOptions,gapReceiptRecovery:true,...(rank>=3?{carryReceivingHand:true}:{}),...(rank>=4?{independentRelease:true}:{})}),
+  ...(rank>=2&&drillKey==='right-hand-pound'&&base.recoveryRevision?{recoveryOptions:Object.freeze({guardFirstReturn:true,...(rank>=4?{backgroundFloorRecovery:true}:{}),...(rank>=5?{cycleAwareDedup:true,recoverFloorRedirect:true}:{})})}:{}),
+  counterOptions:Object.freeze(drillKey==='right-hand-pound'?poundCounterOptions(counterRevision):{...base.counterOptions,gapReceiptRecovery:true,...(rank>=3?{carryReceivingHand:true}:{}),...(rank>=4?{independentRelease:true}:{}),...(rank>=5?{observeRejectedFloor:true}:{})}),
   observationPolicy:repairObservationPolicy(drillKey,revision)});
 }
 // A recent floor/body anchor can remain useful while a wrist is too old to
