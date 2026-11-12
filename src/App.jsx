@@ -95,9 +95,6 @@ export default function App() {
       <Route path="/tracker-tests/test23" element={<Navigate to="/tracker-tests/right-hand-pound-test23" replace/>} />
       <Route path="/tracker-tests/right-hand-pound-test23" element={<CrossoverCameraTest key="pound-test23" drillKey="right-hand-pound" standalone enhancedTracking safariGpu repairTracking />} />
       <Route path="/tracker-tests/crossovers-test23" element={<CrossoverCameraTest key="crossover-test23" drillKey="stationary-crossover" standalone counterRevision="CROSS 12" independentCrossoverPose enhancedTracking safariGpu repairTracking />} />
-      <Route path="/tracker-tests/ball-speed" element={<Navigate to="/tracker-tests/ball-speed/pound" replace/>} />
-      <Route path="/tracker-tests/ball-speed/pound" element={<CrossoverCameraTest key="pound-ball-speed" drillKey="right-hand-pound" standalone enhancedTracking safariGpu repairTracking ballSpeedTest />} />
-      <Route path="/tracker-tests/ball-speed/crossovers" element={<CrossoverCameraTest key="cross-ball-speed" drillKey="stationary-crossover" standalone counterRevision="CROSS 12" independentCrossoverPose enhancedTracking safariGpu repairTracking ballSpeedTest />} />
       <Route path="/tracker-tests/test22" element={<Navigate to="/tracker-tests/right-hand-pound-test22" replace/>} />
       <Route path="/tracker-tests/right-hand-pound-test22" element={<CrossoverCameraTest key="pound-test22" drillKey="right-hand-pound" standalone enhancedTracking safariGpu />} />
       <Route path="/tracker-tests/crossovers-test22" element={<CrossoverCameraTest key="crossover-test22" drillKey="stationary-crossover" standalone counterRevision="CROSS 11" independentCrossoverPose enhancedTracking safariGpu />} />
