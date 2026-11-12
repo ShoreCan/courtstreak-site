@@ -19,7 +19,7 @@ test('GPU input preserves native-coordinate crop and letterbox while avoiding CP
   assert.equal(copies,1);assert.equal(submits,1);gpu.release();
 });
 
-function fixture({overflow=false,block=false,fail=false,freshAtAdmission=false,clock}={}){
+function fixture({overflow=false,block=false,fail=false,freshAtAdmission=false,singleBallReadback=false,clock}={}){
   const buffers=[],tensors=[],copies=[],releases=[],prepares=[],preparedSources=[];
   let release,active=0,maxActive=0;
   const held=block?new Promise(r=>{release=r;}):Promise.resolve();
@@ -32,14 +32,19 @@ function fixture({overflow=false,block=false,fail=false,freshAtAdmission=false,c
     queue:{writeBuffer(buffer,offset,data){new Uint8Array(buffer.bytes,offset,data.byteLength).set(new Uint8Array(data.buffer,data.byteOffset,data.byteLength));if(overflow&&buffer.size===POSE_COMPACT_BYTES)new Uint32Array(buffer.bytes)[0]=257;},submit(commands){for(const tasks of commands)for(const task of tasks)task();}},
   };
   const ort={env:{webgpu:{device}},Tensor:{fromGpuBuffer(buffer,options){const t={buffer,...options,disposed:false,dispose(){this.disposed=true;}};tensors.push(t);return t;}}};
-  const manifest={ball:{size:512,output_shape:[1,300,6]},pose:{size:640,output_shape:[1,56,8400]}};
+  const manifest={ball:{size:512,output_shape:singleBallReadback?[1,5376,84]:[1,300,6]},pose:{size:640,output_shape:[1,56,8400]}};
   const sessions=Object.fromEntries(['ball','pose'].map(kind=>[kind,{inputNames:['input'],outputNames:['output'],async run(feeds,fetches){
     active++;maxActive=Math.max(maxActive,active);try{await held;if(fail)throw new Error('prediction failed');
-      if(kind==='ball')new Float32Array(fetches.output.buffer.bytes).set([100,100,150,150,.9,32]);return fetches;
+      if(kind==='ball'){
+        const output=new Float32Array(fetches.output.buffer.bytes);
+        output.set(singleBallReadback?[100,100,150,150]:[100,100,150,150,.9,32]);
+        if(singleBallReadback)output[36]=.9;
+      }
+      return fetches;
     }finally{active--;}
   },async release(){releases.push(kind);}}]));
   const usage={STORAGE:1,COPY_DST:2,COPY_SRC:4,MAP_READ:8},mapMode={READ:1};
-  const execution=createGpuDetectorExecution({ort,manifest,sessions,device,usage,mapMode,freshAtAdmission,...(clock?{clock}:{}),
+  const execution=createGpuDetectorExecution({ort,manifest,sessions,device,usage,mapMode,freshAtAdmission,singleBallReadback,...(clock?{clock}:{}),
     createInput:({size})=>({prepare(source,roi){prepares.push(size);preparedSources.push(source);return {transform:{x:0,y:0,scale:1,px:0,py:0}};},release(){}})});
   return {execution,buffers,tensors,copies,releases,prepares,preparedSources,release,get maxActive(){return maxActive;}};
 }
@@ -91,4 +96,16 @@ test('orientation changes at GPU admission fail instead of attaching new timesta
  const f=fixture({freshAtAdmission:true});
  await assert.rejects(f.execution.detect({width:640,height:640},[0,0,640,640],false,{refreshBallFrame:()=>({frame:{width:640,height:360},capturedAt:1,sourceVideoTime:1})}),/changed orientation/);
  await f.execution.close();assert.ok(f.buffers.every(b=>b.destroyed));
+});
+
+test('single-readback GPU execution decodes the same sports ball and unmaps its fixed buffer',async()=>{
+  const original=fixture(),candidate=fixture({singleBallReadback:true});
+  const frame={width:640,height:640};
+  const before=await original.execution.detect(frame,[0,0,640,640],false);
+  const after=await candidate.execution.detect(frame,[0,0,640,640],false);
+  assert.deepEqual(after.balls,before.balls);
+  assert.deepEqual(candidate.copies,[5376*84*4]);
+  assert.equal(candidate.execution.ballProcessingRevision,'BALL READBACK 01');
+  await Promise.all([original.execution.close(),candidate.execution.close()]);
+  assert.ok(candidate.buffers.every(b=>b.destroyed&&!b.mapped));
 });

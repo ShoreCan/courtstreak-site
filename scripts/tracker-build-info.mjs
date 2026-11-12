@@ -25,7 +25,7 @@ export function trackerBuildInfo(root,{builtAt=new Date().toISOString()}={}) {
   const manifest=JSON.parse(fs.readFileSync(path.join(root,'public/ai/models/manifest.json'),'utf8'));
   if(manifest.version!==1)throw new Error('Unsupported model manifest version.');
   const models={};
-  for(const kind of ['ball','pose']){
+  for(const kind of ['ball','pose',...(manifest.ball_single_readback?['ball_single_readback']:[])]){
     const model=manifest[kind];
     if(!model||typeof model.file!=='string'||path.basename(model.file)!==model.file||!/^[a-f0-9]{64}$/.test(model.sha256??'')||!Number.isInteger(model.size)||model.size<=0||model.size>2048)throw new Error(`Invalid ${kind} model manifest.`);
     const actual=sha256(fs.readFileSync(path.join(root,'public/ai/models',model.file)));

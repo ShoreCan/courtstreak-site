@@ -1,3 +1,4 @@
+import {BALL_HEAD_ANCHORS, BALL_SINGLE_READBACK_REVISION, rankBallHead} from './ballHeadRanking.mjs';
 import {GpuDetectorInput} from './gpuDetectorInput.mjs';
 import {decodeOutput} from './detectorOutput.mjs';
 import {runDetectionPass} from './detectionPass.mjs';
@@ -40,7 +41,7 @@ export function unpackPoseCompact(bytes) {
 // submission is serialized (ORT's shared dispatch state); GPU readback can overlap.
 export function createGpuDetectorExecution({ort, manifest, sessions, device = ort.env.webgpu.device,
   usage = globalThis.GPUBufferUsage, mapMode = globalThis.GPUMapMode,
-  createInput = options => new GpuDetectorInput(options), clock = () => performance.now(), freshAtAdmission = false}) {
+  createInput = options => new GpuDetectorInput(options), clock = () => performance.now(), freshAtAdmission = false, singleBallReadback = false}) {
   if (!device || !usage || !mapMode) throw new Error('GPU acceleration is unavailable on this device.');
   const resources = {}, buffers = [], pending = new Set();
   let dispatch = Promise.resolve(), ballPending = false, closing = false, closePromise;
@@ -50,7 +51,7 @@ export function createGpuDetectorExecution({ort, manifest, sessions, device = or
   try {
     for (const kind of Object.keys(sessions)) {
       const model = manifest[kind], dims = model.output_shape;
-      if (JSON.stringify(dims) !== JSON.stringify(kind === 'pose' ? [1, 56, 8400] : [1, 300, 6]))
+      if (JSON.stringify(dims) !== JSON.stringify(kind === 'pose' ? [1, 56, 8400] : singleBallReadback ? [1, BALL_HEAD_ANCHORS, 84] : [1, 300, 6]))
         throw new Error('The GPU candidate requires the pinned detector output shapes.');
       const size = model.size, bytes = dims.reduce((a, b) => a * b, 4);
       const inputBuffer = buffer(3 * size * size * 4, usage.STORAGE | usage.COPY_DST);
@@ -73,9 +74,12 @@ export function createGpuDetectorExecution({ort, manifest, sessions, device = or
     for (const r of Object.values(resources)) { r.input?.release(); r.inputTensor?.dispose?.(); r.outputTensor?.dispose?.(); }
     for (const b of buffers) b.destroy(); throw e;
   }
-  async function read(buffer, size) {
+  async function read(buffer, size, transform) {
     await buffer.mapAsync(mapMode.READ);
-    try { return buffer.getMappedRange(0, size).slice(0); } finally { buffer.unmap(); }
+    try {
+      const mapped = buffer.getMappedRange(0, size);
+      return transform ? transform(mapped) : mapped.slice(0);
+    } finally { buffer.unmap(); }
   }
   function run(kind, source, roi, minimumBallScore = ORDINARY_BALL_SCORE, captureAtAdmission) {
     if (closing) throw new Error('The GPU detector has been closed.');
@@ -123,7 +127,11 @@ export function createGpuDetectorExecution({ort, manifest, sessions, device = or
           device.queue.submit([full.finish()]);
           output={data:new Float32Array(await read(r.fullStaging,r.bytes)),dims:manifest.pose.output_shape};
         }
-      }else output={data:new Float32Array(await read(r.staging,r.bytes)),dims:manifest.ball.output_shape};
+      }else{
+        output=singleBallReadback
+          ? await read(r.staging,r.bytes,mapped=>rankBallHead(new Float32Array(mapped),minimumBallScore))
+          : {data:new Float32Array(await read(r.staging,r.bytes)),dims:manifest.ball.output_shape};
+      }
       const value=decodeOutput(output,kind,prepared.transform,{minimumBallScore}),done=clock();
       const preprocessMs=captureAtAdmission?preparedAt-admittedAt:preparedAt-began;
       const queueWaitMs=admittedAt-(captureAtAdmission?queuedAt:preparedAt),runtimeCallMs=inferredAt-runtimeAt;
@@ -135,7 +143,7 @@ export function createGpuDetectorExecution({ort, manifest, sessions, device = or
     return job;
   }
   const execution = {
-    liveInputMode: 'gpu-stream', inputRevision: freshAtAdmission?'SAFARI GPU 02':GPU_EXECUTION_REVISION,
+    liveInputMode: 'gpu-stream', ballProcessingRevision:singleBallReadback?BALL_SINGLE_READBACK_REVISION:null, inputRevision: freshAtAdmission?'SAFARI GPU 02':GPU_EXECUTION_REVISION,
     // This call copies the source into GPU input synchronously before returning.
     runPose(source) { return run('pose', source, [0, 0, source.width, source.height]); },
     async detect(frame, roi, withPose, {minimumBallScore = ORDINARY_BALL_SCORE, refreshBallFrame} = {}) {
