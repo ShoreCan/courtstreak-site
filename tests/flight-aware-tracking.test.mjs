@@ -37,7 +37,7 @@ const fastTransfer = [
  [.52, 590, 625, 575, 600], [.56, 640, 638, 620, 615],
  [.61, 760, 542], [.67, 815, 425], [.73, 840, 350], [.8, 840, 350],
 ];
-function runTransfer(revision, { noSecondFloor = false, noSecondReceipt = false, deadline = 20 } = {}) {
+function runTransfer(revision, { noSecondFloor = false, noSecondReceipt = false, firstReturnsToSameHand = false, deadline = 20 } = {}) {
  const counter = createCrossoverCounter(revision);
  for (const [time, x, y, leftX, leftY] of fastTransfer) {
   const pose = person();
@@ -45,7 +45,8 @@ function runTransfer(revision, { noSecondFloor = false, noSecondReceipt = false,
   if (leftX) pose.xy[9] = [leftX, leftY];
   if (noSecondReceipt && time > .56) pose.confidence[10] = 0;
   const centerY = noSecondFloor && time > .43 ? Math.min(y, 550) : y;
-  counter.update([], [x, centerY, 60], pose, time, deadline);
+  const centerX = firstReturnsToSameHand && time < .18 ? 1280 - x : x;
+  counter.update([], [centerX, centerY, 60], pose, time, deadline);
  }
  return counter.confirmed;
 }
@@ -60,5 +61,15 @@ test('a verified receipt anchors the next cycle even when the wrist follows its 
 test('the carried receipt still requires a separate observed floor and controlled return within the round rules', () => {
  for (const options of [{ noSecondFloor: true }, { noSecondReceipt: true }, { deadline: .42 }]) {
   assert.deepEqual(runTransfer('CROSS 13', options).map(e => e.floor_contact_time_seconds), [.18]);
+ }
+});
+
+test('a rejected same-hand bounce cannot block the following independently verified crossover', () => {
+ const options = { firstReturnsToSameHand: true };
+ assert.deepEqual(runTransfer('CROSS 13', options), []);
+ const reps = runTransfer('CROSS 14', options);
+ assert.deepEqual(reps.map(e => [e.from_hand, e.floor_contact_time_seconds]), [['left', .56]]);
+ for (const missing of [{ noSecondFloor: true }, { noSecondReceipt: true }, { deadline: .42 }]) {
+  assert.deepEqual(runTransfer('CROSS 14', { ...options, ...missing }), []);
  }
 });

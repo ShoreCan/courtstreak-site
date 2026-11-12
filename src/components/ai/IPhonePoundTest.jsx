@@ -326,7 +326,7 @@ export default function IPhonePoundTest({freshFrames=true,drillKey='right-hand-p
     if(elapsed>=DURATION&&s.phase==='active'){if(!enhancedTracking)stopRecording();s.phase='review';s.message='Time. Hold the ball while we confirm the last return.';cue(400);}
     const measurement=s.ball?(()=>{const g=geometry(s.ball);return [...g.center,g.diameter];})():null;
     if(elapsed>=0&&elapsed<DURATION){s.total++;if(measurement)s.detected++;}
-    const {proposals,confirmed,count,recoveryMeasurement}=updateSessionCounter(s,elapsed,measurement,framePerson,h,DURATION,recoveryBalls);s.count=count;s.recoveryMeasurement=recoveryMeasurement??null;s.left=Math.max(0,Math.min(DURATION,Math.ceil(DURATION-elapsed)));
+    const {proposals,confirmed,count,recoveryMeasurement}=updateSessionCounter(s,elapsed,measurement,framePerson,h,DURATION,recoveryBalls,{balls:result.balls,decisions:s.tracker.decisions});s.count=count;s.recoveryMeasurement=recoveryMeasurement??null;s.left=Math.max(0,Math.min(DURATION,Math.ceil(DURATION-elapsed)));
     frameProposals=proposals;frameConfirmed=confirmed;
     if(enhancedTracking&&elapsed>.9){
      const activeCadence=trackingCadence(s.budget.captures,{windowSeconds:1.2,minimumSpan:.9,minimumSamples:12,minimumHz:16,p90Limit:.12,maxLimit:.25});
