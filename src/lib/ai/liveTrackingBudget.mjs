@@ -6,6 +6,31 @@ export function trackingCadence(times,{windowSeconds=2,minimumSpan=1.5,minimumSa
  const ready=recent.length>=minimumSamples&&span>=minimumSpan&&gaps.every(t=>t>0)&&hz>=minimumHz&&p90<=p90Limit&&max<=maxLimit;
  return {revision:LIVE_BUDGET_REVISION,ready,samples:recent.length,span,hz,p90GapSeconds:p90,maxGapSeconds:max};
 }
+
+export const DRILL_TRACKING_CADENCE=Object.freeze({
+ windowSeconds:1.2,minimumSpan:.9,minimumSamples:16,minimumHz:16,p90Limit:.10,maxLimit:.16,
+});
+
+// The countdown can keep its place during a brief interruption. Go requires
+// a fresh, complete view and repeated observations at the counting cadence.
+export class DrillStartEvidence {
+ constructor(){this.frames=[];}
+ observe(time,{checks,poseAt,completedAt}){
+  if(time>(this.frames.at(-1)?.time??-Infinity)){
+   this.frames=this.frames.filter(frame=>time-frame.time<=DRILL_TRACKING_CADENCE.windowSeconds);
+   this.frames.push({time,poseAt,complete:checks.valid,ball:checks.ball});
+  }
+  const cadence=trackingCadence(this.frames.map(frame=>frame.time),DRILL_TRACKING_CADENCE);
+  const complete=this.frames.filter(frame=>frame.complete);
+  const poses=new Set(complete.filter(frame=>Number.isFinite(frame.poseAt)).map(frame=>frame.poseAt)).size;
+  const landmarkCoverage=complete.length/Math.max(1,this.frames.length);
+  const ballCoverage=this.frames.filter(frame=>frame.ball).length/Math.max(1,this.frames.length);
+  const reason=!checks.valid?'framing':!Number.isFinite(completedAt)||completedAt-time<0||completedAt-time>.12?'latency':
+   poses<3||landmarkCoverage<.7?'landmarks':
+   ballCoverage<.85?'ball':!cadence.ready?'cadence':'ready';
+  return {ready:reason==='ready',reason,cadence,poses,landmarkCoverage,ballCoverage};
+ }
+}
 export class LiveTrackingBudget {
  constructor(){this.ballCosts=[];this.captures=[];this.skips={};this.secondaryCalls=0;}
  observeBase(ballTimings){

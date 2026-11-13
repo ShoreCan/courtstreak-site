@@ -7,7 +7,7 @@ export default function CameraSetupPanel({ui,drillKey,onOpen,onStart,onRetry,onC
  const phase=ui.phase,crossover=drillKey==='stationary-crossover',holding=crossover?'either hand':'your right hand';
  const settingUp=['setup','countdown'].includes(phase),failed=phase==='error';
  const title=phase==='placing'?'Ready when you are.':phase==='loading'?'Preparing your tracker.':phase==='countdown'?ui.rechecking?'Checking your view.':'Get ready.':phase==='setup'?ui.setupGuide?.screenText||'Finding your position':failed?'Let’s get you started.':'Your next 20 seconds.';
- const message=phase==='placing'?'Set your phone down, then press Start.':phase==='loading'?'You can position your phone while the tracker loads.':phase==='countdown'?ui.rechecking?'Keep your position. Your countdown will continue.':'Start dribbling when you hear Go.':phase==='setup'?ui.setupGuide?.message||`Keep yourself, the ball and some floor in view. Hold the ball in ${holding}.`:failed?ui.message:`Open the camera, then hold the ball naturally in ${holding}.`;
+ const message=phase==='placing'?'Set your phone down, then press Start.':phase==='loading'?'You can position your phone while the tracker loads.':phase==='countdown'?ui.rechecking?ui.message||'Keep your position. Your countdown will continue.':'Start dribbling when you hear Go.':phase==='setup'?ui.setupGuide?.message||`Keep yourself, the ball and some floor in view. Hold the ball in ${holding}.`:failed?ui.message:`Open the camera, then hold the ball naturally in ${holding}.`;
  const refreshing=phase==='setup'&&['refresh','speed'].includes(ui.setupGuide?.key);
  const rows=[['body','You'],['hand','Hand'],['ball','Ball'],['floor','Floor']];
  return <section className="cs-camera-setup-panel" aria-label="Camera setup">

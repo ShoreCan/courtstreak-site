@@ -1,7 +1,7 @@
 // Shared saved-counter replay for offline diagnostics. No model execution or live latency simulation.
 import {createSessionTrackingState,resetSessionTrackingCounter,updateSessionCounter} from './sessionTracking.mjs';
 import {geometry} from './poundCore.mjs';
-import {CountdownReadinessClock,BALL_BRIDGE_COUNTDOWN_REVISION} from './countdownReadiness.mjs';
+import {CountdownReadinessClock,BALL_BRIDGE_COUNTDOWN_REVISION,TRACKING_CHECK_COUNTDOWN_REVISION} from './countdownReadiness.mjs';
 import {shiftPreGoTimeline} from './setupGuidance.mjs';
 import {RoundEvidence} from './roundEvidence.mjs';
 import {configurationForEvidence} from './trackerConfiguration.mjs';
@@ -14,7 +14,8 @@ export function replaySavedCounter(data,{configure=()=>{},personForFrame=frame=>
  if(!cross)configurationForEvidence(data);
  const state=createSessionTrackingState(true,data.drillKey,data.trackerRevision,false,{enhancedTracking:true});
  state.configuration=data.trackerConfiguration;
- const timer=data.timerSeconds,clock=new CountdownReadinessClock({handMode:cross?'either':'right',bridgeBallDropouts:data.countdownReadinessRevision===BALL_BRIDGE_COUNTDOWN_REVISION}),evidence=new RoundEvidence(),rows=[];
+ const trackingCheck=data.countdownReadinessRevision===TRACKING_CHECK_COUNTDOWN_REVISION;
+ const timer=data.timerSeconds,clock=new CountdownReadinessClock({handMode:cross?'either':'right',bridgeBallDropouts:trackingCheck||data.countdownReadinessRevision===BALL_BRIDGE_COUNTDOWN_REVISION,trackingCheck}),evidence=new RoundEvidence(),rows=[];
  let countdownAt=null,started=null;
  const newCounters=()=>{resetSessionTrackingCounter(state);configure(state);};
  newCounters();
@@ -28,7 +29,9 @@ export function replaySavedCounter(data,{configure=()=>{},personForFrame=frame=>
   if(frame.inputPhase==='countdown'){
    if(countdownAt===null)throw new Error('Missing original countdown start.');
    if(!frame.setupReadiness||typeof frame.setupReadiness.speedReady!=='boolean'||typeof frame.setupReadiness.ballLockReady!=='boolean')throw new Error('Missing original countdown readiness inputs.');
-   const readiness=clock.update(now,frame.positionChecks,frame.setupReadiness.speedReady,frame.setupReadiness.ballLockReady);
+   if(trackingCheck&&typeof frame.setupReadiness.drillStart?.ready!=='boolean')throw new Error('Missing original drill start readiness.');
+   const readiness=clock.update(now,frame.positionChecks,frame.setupReadiness.speedReady,frame.setupReadiness.ballLockReady,
+    !trackingCheck||frame.setupReadiness.drillStart.ready);
    const revised=now-readiness.countdownElapsed,pause=Math.max(0,revised-countdownAt);
    shiftPreGoTimeline(state,pause);countdownAt=revised;
    if(frame.phase==='active'){

@@ -4,7 +4,7 @@ import { createCrossoverCounter } from '../src/lib/ai/crossoverCounter.mjs';
 import { flightPoseDecision, repairObservationPolicy, repairPoseNeeded } from '../src/lib/ai/repairPolicy.mjs';
 import { ball, person } from './helpers/crossover-scenarios.mjs';
 
-const policy = repairObservationPolicy('stationary-crossover');
+const policy = repairObservationPolicy('stationary-crossover','TRACKING REPAIR 09');
 const lowStance = person(510);
 const liveInput = {
  person: lowStance, poseAt: 1, lastRequestedAt: 1, now: 1.15, ballAt: 1.12,

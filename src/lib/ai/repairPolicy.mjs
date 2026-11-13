@@ -1,8 +1,8 @@
 import {poundCounterOptions} from './poundCore.mjs';
 import {POUND_PIXEL_FLOOR_REVISION} from './poundFloorPixels.mjs';
-export const REPAIR_REVISION='TRACKING REPAIR 09';
+export const REPAIR_REVISION='TRACKING REPAIR 10';
 export const POUND_SEARCH_REVISION='POUND SEARCH 01';
-const REPAIR_REVISIONS=['TRACKING REPAIR 01','TRACKING REPAIR 02','TRACKING REPAIR 03','TRACKING REPAIR 04','TRACKING REPAIR 05','TRACKING REPAIR 06','TRACKING REPAIR 07','TRACKING REPAIR 08',REPAIR_REVISION];
+const REPAIR_REVISIONS=['TRACKING REPAIR 01','TRACKING REPAIR 02','TRACKING REPAIR 03','TRACKING REPAIR 04','TRACKING REPAIR 05','TRACKING REPAIR 06','TRACKING REPAIR 07','TRACKING REPAIR 08','TRACKING REPAIR 09',REPAIR_REVISION];
 const repairRank=revision=>{
  const rank=REPAIR_REVISIONS.indexOf(revision)+1;
  if(!rank)throw new Error('Unsupported saved repair revision.');
@@ -18,6 +18,7 @@ export function repairObservationPolicy(drillKey,revision=REPAIR_REVISION){
   maxPoseAge:.3,maxActivePoseSkew:.3,maxWristSkew:.12,
   poseRequestIntervalSeconds:.12,poseMaximumIntervalSeconds:.22,setupPoseRequestIntervalSeconds:.08,
   ...(rank>=3?{flightAwarePose:true,receiptPoseRequestIntervalSeconds:.09}: {}),
+  ...(rank>=10?{verifyDrillStart:true,refreshMissingWrists:true,prioritizeBallReadback:true}:{}),
   ...(rank>=6&&drillKey==='right-hand-pound'?{cropRevision:POUND_SEARCH_REVISION}:{}),
   ...(crossoverPixels||(pound&&rank>=7)?{pixelFloorRevision:POUND_PIXEL_FLOOR_REVISION}:{}),
   ...(crossoverPixels||(pound&&rank>=8)?{cameraFloorBridge:true}:{})});
@@ -46,7 +47,7 @@ export function poundSearchROI({tracker, person, poseAt, ball, lastBallSeenAt, n
 }
 export function repairConfiguration(base,drillKey,revision=REPAIR_REVISION){
  const rank=repairRank(revision),counterRevision=drillKey==='right-hand-pound'?(rank>=2?'COUNT 10':'COUNT 09'):(rank>=9?'CROSS 16':rank>=5?'CROSS 15':rank>=4?'CROSS 14':rank>=3?'CROSS 13':'CROSS 12');
- return Object.freeze({...base,id:base.id.replace(/^(COUNT08|CROSS1[123456])/,counterRevision.replaceAll(' ',''))+'/REPAIR0'+rank,
+ return Object.freeze({...base,id:base.id.replace(/^(COUNT08|CROSS1[123456])/,counterRevision.replaceAll(' ',''))+'/REPAIR'+String(rank).padStart(2,'0'),
   counterRevision,repairRevision:revision,
   ...(rank>=2&&drillKey==='right-hand-pound'&&base.recoveryRevision?{recoveryOptions:Object.freeze({guardFirstReturn:true,...(rank>=4?{backgroundFloorRecovery:true}:{}),...(rank>=5?{cycleAwareDedup:true,recoverFloorRedirect:true}:{}),...(rank>=7?{pixelFloorEvidence:true}:{}),...(rank>=8?{cameraFloorBridge:true,adaptiveRecoveryScale:true}:{})})}:{}),
   counterOptions:Object.freeze(drillKey==='right-hand-pound'?poundCounterOptions(counterRevision):{...base.counterOptions,gapReceiptRecovery:true,...(rank>=3?{carryReceivingHand:true}:{}),...(rank>=4?{independentRelease:true}:{}),...(rank>=5?{observeRejectedFloor:true}:{}),...(rank>=9?{recoverPixelFloor:true,turningReceipt:true}:{})}),
@@ -75,11 +76,15 @@ export function repairPoseNeeded({person,poseAt=-Infinity,lastRequestedAt=-Infin
 export function flightPoseDecision({person, poseAt, lastRequestedAt, now, ball, ballAt, previousBall, poseSeconds, phase, policy, drillKey}) {
  const base = {person, poseAt, lastRequestedAt, now, ball, phase};
  const routine = () => repairPoseNeeded(base) ? 'routine' : null;
- if (!['active', 'review'].includes(phase) || !person || !ball || !Number.isFinite(ballAt)) return routine();
+ if (!['active', 'review'].includes(phase) || !person || !Number.isFinite(ballAt)) return routine();
 
  const age = now - poseAt;
  const sinceRequest = now - (lastRequestedAt ?? -Infinity);
- if (age >= policy.poseMaximumIntervalSeconds) return routine();
+ if(policy.refreshMissingWrists&&(!visible(person,9)||!visible(person,10))&&
+   age>=.07&&sinceRequest>=.08)return 'refresh_wrists';
+ if(policy.refreshMissingWrists&&!ball&&age>=.095&&sinceRequest>=policy.receiptPoseRequestIntervalSeconds)return 'refresh_wrists';
+ if(!ball)return routine();
+ if (age >= policy.poseMaximumIntervalSeconds && !policy.prioritizeBallReadback) return routine();
  if (now - ballAt > .14 || now < ballAt) return routine();
 
  const [x1, y1, x2, y2] = ball.box;
@@ -101,7 +106,8 @@ export function flightPoseDecision({person, poseAt, lastRequestedAt, now, ball, 
  const feet = [15, 16].filter(i => visible(person, i));
  const floor = feet.length === 2 ? Math.max(...feet.map(i => person.xy[i][1])) : null;
  const lead = Math.max(.07, Math.min(.13, (poseSeconds || .07) + .033));
- if (floor !== null && vy >= 0 && y2 + vy * (now - ballAt + lead) >= floor - diameter * 1.05) {
+ if (floor !== null && vy >= 0 && y2 + vy * (now - ballAt + lead) >= floor - diameter * 1.05 &&
+     (!policy.prioritizeBallReadback||age<.25)) {
   return 'protect_floor';
  }
 
@@ -115,6 +121,8 @@ export function flightPoseDecision({person, poseAt, lastRequestedAt, now, ball, 
   });
   if (approaching) return 'anticipate_receipt';
  }
+ if(policy.refreshMissingWrists&&vy<0&&age>=.095&&sinceRequest>=policy.receiptPoseRequestIntervalSeconds&&
+   feet.length===2&&y<floor-diameter*.5)return 'anticipate_receipt';
  return routine();
 }
 
