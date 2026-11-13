@@ -49,7 +49,7 @@ function machine(...args){
  const state=initialMachine(...args);
  if(args[6]){state.safariGpu=true;state.configuration=safariConfiguration(state.configuration,args[1]);resetPoundTrackingIdentity(state);}
  if(args[7]){const setupOptions={handMode:args[1]===CROSSOVER_DRILL_KEY?'either':'right',bridgeBallDropouts:true};state.readiness=new SetupReadinessClock(setupOptions);state.countdownReadiness=new CountdownReadinessClock(setupOptions);state.repairTracking=true;state.configuration=repairConfiguration(state.configuration,args[1]);resetPoundTrackingIdentity(state);resetSessionTrackingCounter(state);
-  if(state.configuration.observationPolicy.pixelFloorRevision)state.floorPixels=new LivePoundFloorPixels({bridge:state.configuration.observationPolicy.cameraFloorBridge});
+  if(state.configuration.observationPolicy.pixelFloorRevision)state.floorPixels=new LivePoundFloorPixels({bridge:state.configuration.observationPolicy.cameraFloorBridge,crossover:state.crossover});
  }
  return state;
 }

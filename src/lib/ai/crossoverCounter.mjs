@@ -20,7 +20,7 @@ function observation(frame,measurement,person,time){
 // This pilot follows possession, a floor turn and the receiving hand. It does
 // not count midline crossings, use knee height, or infer a bounce from a pass.
 export class CrossoverCounter {
- constructor({legacy=false,sizeOutlierRecovery=false,preFloorSizeRecovery=false,releaseSizeRecovery=false,nearFloorRelease=false,reanchorAfterGap=false,stableReleaseSize=false,ignoreOneOversizedSample=false,finishWindowSeconds=0,gapReceiptRecovery=false,carryReceivingHand=false,independentRelease=false}={}){Object.assign(this,{independentRelease,carryReceivingHand,gapReceiptRecovery,legacy,sizeOutlierRecovery,preFloorSizeRecovery,releaseSizeRecovery,nearFloorRelease,reanchorAfterGap,stableReleaseSize,ignoreOneOversizedSample,finishWindowSeconds});this.frame=0;this.count=0;this.points=[];this.context=[];this.confirmed=[];this.rejected=[];this.pending=[];this.held=null;this.flight=null;this.proposalsThisFrame=[];this.lastDecision='waiting_for_hand';}
+ constructor({legacy=false,sizeOutlierRecovery=false,preFloorSizeRecovery=false,releaseSizeRecovery=false,nearFloorRelease=false,reanchorAfterGap=false,stableReleaseSize=false,ignoreOneOversizedSample=false,finishWindowSeconds=0,gapReceiptRecovery=false,carryReceivingHand=false,independentRelease=false,turningReceipt=false}={}){Object.assign(this,{independentRelease,carryReceivingHand,gapReceiptRecovery,legacy,sizeOutlierRecovery,preFloorSizeRecovery,releaseSizeRecovery,nearFloorRelease,reanchorAfterGap,stableReleaseSize,ignoreOneOversizedSample,finishWindowSeconds,turningReceipt});this.frame=0;this.count=0;this.points=[];this.context=[];this.confirmed=[];this.rejected=[];this.pending=[];this.held=null;this.flight=null;this.proposalsThisFrame=[];this.lastDecision='waiting_for_hand';}
  reject(reason,row){
   if(this.flight)this.rejected.push({from_hand:this.flight.source.owner.hand,event_frame:row.frame,event_time_seconds:row.time,control_status:reason,floor_contact_time_seconds:this.flight.floor?.time??null});
   this.flight=null;this.held=null;this.pending=[];this.lastDecision=reason;
@@ -61,10 +61,12 @@ export class CrossoverCounter {
    m[2]/d>=.65&&m[2]/d<=1.5&&m[1]<=f.floor.measurement[1]-d*.25&&Math.abs(m[0]-f.floor.measurement[0])<=d*3;
  }
  snapshot(){return {phase:this.flight?.floor?'awaiting_opposite_hand':this.flight?'following_flight':this.held?'hand_controlled':'waiting_for_hand',sourceHand:this.flight?.source.owner.hand??this.held?.owner.hand??null,floorTime:this.flight?.floor?.time??null,decision:this.lastDecision};}
- update(_proposals,measurement,person,now,deadline=Infinity){
+ update(_proposals,measurement,person,now,deadline=Infinity,observations=null){
   this.proposalsThisFrame=[];
   if(!Number.isFinite(now)||now<=(this.context.at(-1)?.time??-Infinity))return [];
   const row=observation(++this.frame,measurement,person,now);
+  const floorPixels=observations?.floorPixels;
+  if(floorPixels){row.owner=null;row.floorPixels=true;}
   this.points.push({frame:this.frame,timestamp:now,y:measurement?.[1]??null,diameter:measurement?.[2]??null,observed:!!measurement});
   this.context.push(row);this.context=this.context.slice(-96);
   if(now<0){this.held=row.owner?row:null;this.flight=null;this.pending=[];return [];}
@@ -173,7 +175,7 @@ export class CrossoverCounter {
     const relativeBefore=prior.measurement.slice(0,2).map((v,i)=>v-prior.owner.wrist[i]),relativeNow=row.measurement.slice(0,2).map((v,i)=>v-row.owner.wrist[i]);
     return distance(relativeBefore,relativeNow)<=d*.3&&(motion<=d*.5||wristMotion>=d*.2);
    });
-   const redirected=now>best.time&&now-best.time<=.25&&row.measurement[1]-best.measurement[1]>=d*.18;
+   const redirected=!floorPixels&&now>best.time&&now-best.time<=.25&&row.measurement[1]-best.measurement[1]>=d*.18;
    if(controlled)control='observed_hand_control';
    else if(redirected)control='receiving_hand_redirect';
    }
@@ -193,11 +195,25 @@ export class CrossoverCounter {
    }
   }
   const {best,control}=receipt(flight.receiving);
-  if(control){
+  // A quick redirect can change the ball-to-wrist offset before there are two
+  // steady samples. Require an approach into the receiving hand, followed by
+  // measured inward and downward motion, all after an observed bounce.
+  const turningReceipt=this.turningReceipt&&!control&&!floorPixels&&flight.floor&&flight.receiving.find(sample=>{
+   if(sample.time<=flight.floor.time||sample.time>=now||sample.owner.distance>.8)return false;
+   const [x,y]=sample.measurement,[cx,cy]=row.measurement;
+   const direction=Math.sign(x-flight.floor.measurement[0]);
+   return now-sample.time<=.16&&Math.abs(x-flight.floor.measurement[0])>=d*.8&&
+    flight.floor.measurement[1]-y>=d*.65&&cy-y>=d*.18&&(x-cx)*direction>=d*.18&&
+    flight.receiving.some(prior=>prior.time<sample.time&&prior.owner.distance<=1.15&&
+     (x-prior.measurement[0])*direction>=d*.2);
+  });
+  const received=control?{best,control}:turningReceipt?{best:turningReceipt,control:'receiving_hand_redirect'}:null;
+  if(received){
+   const {best,control}=received;
    const afterTime=best.time>=deadline;
    const buzzerFinish=afterTime&&this.finishWindowSeconds>0&&now<=deadline+this.finishWindowSeconds&&flight.source.time<deadline&&flight.floor.time<deadline;
    if(afterTime&&!buzzerFinish){this.reject('rejected_after_deadline',row);this.held=row.owner?row:null;return [];}
-   const event={count:++this.count,event_frame:best.frame,event_timestamp_exact:best.time,event_time_seconds:+best.time.toFixed(3),floor_contact_time_seconds:flight.floor.time,release_time_seconds:flight.source.time,from_hand:sourceHand,to_hand:opposite(sourceHand),validation_path:'controlled_crossover',control_evidence:control,control_status:'confirmed',receiving_hand_distance_ball_diameters:best.owner.distance};
+   const event={count:++this.count,event_frame:best.frame,event_timestamp_exact:best.time,event_time_seconds:+best.time.toFixed(3),floor_contact_time_seconds:flight.floor.time,release_time_seconds:flight.source.time,from_hand:sourceHand,to_hand:opposite(sourceHand),validation_path:'controlled_crossover',control_evidence:turningReceipt?'observed_inward_redirect':control,control_status:'confirmed',receiving_hand_distance_ball_diameters:best.owner.distance,...(flight.floor.floorPixels?{floor_evidence:'observed_floor_pixels'}:{})};
    if(buzzerFinish)event.finished_after_time=true;
    this.confirmed.push(event);this.flight=null;this.pending=[];this.held=best;this.lastDecision='controlled_crossover';
    // A fast receiving hand can already have launched the following crossover.
@@ -233,7 +249,7 @@ export class CrossoverCounter {
 // It may only complete the SAME previously observed floor contact after a short
 // gap, with the original opposite-hand control checks. It cannot invent a floor.
 export class SupplementalCrossoverCounter {
- constructor({carryReceivingHand=false,independentRelease=false,observeRejectedFloor=false}={}){this.observeRejectedFloor=observeRejectedFloor;this.primary=createCrossoverCounter('CROSS 11');this.primary.carryReceivingHand=carryReceivingHand;this.primary.independentRelease=independentRelease;this.shadows=[];this.confirmed=[];this.count=0;this.lastSupplemental=false;}
+ constructor({carryReceivingHand=false,independentRelease=false,observeRejectedFloor=false,recoverPixelFloor=false}={}){this.observeRejectedFloor=observeRejectedFloor;this.primary=createCrossoverCounter('CROSS 11');this.primary.carryReceivingHand=carryReceivingHand;this.primary.independentRelease=independentRelease;this.primary.turningReceipt=recoverPixelFloor;this.pixelFloor=recoverPixelFloor?new CrossoverFloorRecovery():null;this.shadows=[];this.confirmed=[];this.count=0;this.lastSupplemental=false;}
  get frame(){return this.primary.frame;}get points(){return this.primary.points;}get context(){return this.primary.context;}
  get held(){return this.primary.held;}get flight(){return this.primary.flight;}
  get pending(){return this.primary.pending;}get proposalsThisFrame(){return this.primary.proposalsThisFrame;}
@@ -333,14 +349,67 @@ export class SupplementalCrossoverCounter {
     (shadow.rejectedFloor && !flight?.floor && flight?.peak.time === shadow.floorTime));
   });
   if (alternate) this.shadows.push(alternate);
+  if(this.pixelFloor){
+   this.pixelFloor.pending.push(...this.pixelFloor.update(measurement,person,now,deadline,observations));
+   // Give the primary counter time to claim this floor contact first.
+   this.pixelFloor.pending=this.pixelFloor.pending.filter(event=>{
+    if(now-event.floor_contact_time_seconds<.9)return true;
+    const accepted=this.accept(event,'observed_floor_pixels');
+    if(accepted){events.push(accepted);this.lastSupplemental=true;}
+    return false;
+   });
+  }
   return events;
+ }
+}
+
+class CrossoverFloorRecovery {
+ constructor(){
+  this.counter=createCrossoverCounter('CROSS 11');
+  Object.assign(this.counter,{carryReceivingHand:true,independentRelease:true,gapReceiptRecovery:true,turningReceipt:true});
+  this.previous=null;
+  this.pending=[];
+ }
+ shiftPreGo(seconds){
+  for(const row of this.counter.context)row.time-=seconds;
+  for(const point of this.counter.points)point.timestamp-=seconds;
+  if(this.previous)this.previous.time-=seconds;
+ }
+ observeFloor(box,person,time,deadline){
+  const anchor=this.counter.flight?.source??this.counter.held;
+  if(box?.length!==4||!box.every(Number.isFinite)||!anchor||time<0||time>=deadline||!visible(person,15)||!visible(person,16))return false;
+  const [left,top,right,bottom]=box, width=right-left,height=bottom-top;
+  const m=[(left+right)/2,(top+bottom)/2,Math.sqrt(width*height)];
+  const d=anchor.measurement[2], feet=Math.max(person.xy[15][1],person.xy[16][1]);
+  const [startX,startY]=anchor.measurement;
+  const wrist=anchor.owner.hand==='left'?10:9;
+  const target=visible(person,wrist)?person.xy[wrist][0]:(person.xy[15][0]+person.xy[16][0])/2;
+  if(time-anchor.time>.48||m[2]/d<.65||m[2]/d>1.5||width/height<.65||width/height>1.65||
+    bottom<feet-d*.4||bottom>feet+d*1.35||m[1]-startY<d*.65||
+    (m[0]-startX)*Math.sign(target-startX)<d*.6)return false;
+  this.counter.update([],m,person,time,deadline,{floorPixels:true});
+  return true;
+ }
+ update(measurement,person,now,deadline,observations){
+  const {floorPixelBridge:bridge,floorPixelEvidence}=observations??{};
+  for(const sample of bridge?.intermediate??[]){
+   const time=now+sample.offset;
+   if(this.previous&&time>this.previous.time&&time<now&&time-this.previous.time<=.2)
+    this.observeFloor(sample.box,this.previous.person,time,deadline);
+  }
+  const box=(bridge?.evidence??floorPixelEvidence)?.box;
+  const replacesMeasurement=box&&(!measurement||(box[1]+box[3])/2-measurement[1]>=measurement[2]*.35)&&
+   this.observeFloor(box,person,now,deadline);
+  const result=replacesMeasurement?[]:this.counter.update([],measurement,person,now,deadline);
+  this.previous={time:now,person};
+  return result.filter(event=>event.floor_evidence==='observed_floor_pixels');
  }
 }
 
 export function createCrossoverCounter(revision=CROSSOVER_COUNTER_REVISION){
  const rank=Number(/^CROSS (\d{2})$/.exec(revision)?.[1]);
- if(!(rank>=1&&rank<=15))throw new Error(`Unsupported crossover counter revision: ${revision}`);
- if(rank>=12)return new SupplementalCrossoverCounter({carryReceivingHand:rank>=13,independentRelease:rank>=14,observeRejectedFloor:rank>=15});
+ if(!(rank>=1&&rank<=16))throw new Error(`Unsupported crossover counter revision: ${revision}`);
+ if(rank>=12)return new SupplementalCrossoverCounter({carryReceivingHand:rank>=13,independentRelease:rank>=14,observeRejectedFloor:rank>=15,recoverPixelFloor:rank>=16});
  return new CrossoverCounter({legacy:rank===1,sizeOutlierRecovery:rank>=3,preFloorSizeRecovery:rank>=4,releaseSizeRecovery:rank>=5,nearFloorRelease:rank>=6,reanchorAfterGap:rank>=7,stableReleaseSize:rank>=8,ignoreOneOversizedSample:rank>=9,finishWindowSeconds:rank>=10?CROSSOVER_FINISH_WINDOW_SECONDS:0});
 }
 

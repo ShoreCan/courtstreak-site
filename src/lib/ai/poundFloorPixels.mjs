@@ -55,7 +55,8 @@ function components(mask, changed, width, height, minimumArea) {
 }
 
 export class PoundFloorPixels {
- constructor() {
+ constructor({crossover=false}={}) {
+  this.crossover=crossover;
   this.appearance = [];
   this.history = [];
   this.anchor = null;
@@ -94,9 +95,12 @@ export class PoundFloorPixels {
    const [l, t, r, b] = selected.box, x = (l + r) * sx / 2, y = (t + b) * sy / 2;
    const size = Math.sqrt((r - l) * sx * (b - t) * sy);
    measured = {x, y, size, time};
-   if (selected.score >= .22 && person?.confidence?.[10] >= .55) {
-    const [wx, wy] = person.xy[10];
-    if (Math.hypot(wx * sx - x, wy * sy - y) < size * 1.35) this.learn(image, x, y, size);
+   if (selected.score >= .22 && (this.crossover?[9,10]:[10]).some(index=>{
+    if(!(person?.confidence?.[index]>=.55))return false;
+    const [wx,wy]=person.xy[index];
+    return Math.hypot(wx*sx-x,wy*sy-y)<size*1.35;
+   })) {
+    this.learn(image,x,y,size);
    }
   }
   let hit = null;
@@ -115,8 +119,9 @@ export class PoundFloorPixels {
   const size = median(this.appearance.map(p => p.size)), magnitude = Math.hypot(a, b);
   const u = a / magnitude, v = b / magnitude, anchor = this.anchor;
   const prior = this.lastVisual && time - this.lastVisual.time < .16 ? this.lastVisual : anchor;
-  const left = Math.max(0, Math.floor(Math.min(prior.x, anchor.x) - size * 1.55));
-  const right = Math.min(image.width, Math.floor(Math.max(prior.x, anchor.x) + size * 1.55) + 1);
+  const lateral=this.crossover?Math.min(4,1.55+18*(time-prior.time)):1.55;
+  const left = Math.max(0, Math.floor(Math.min(prior.x, anchor.x) - size * lateral));
+  const right = Math.min(image.width, Math.floor(Math.max(prior.x, anchor.x) + size * lateral) + 1);
   const top = Math.max(0, Math.floor(Math.min(prior.y, anchor.y) - size * 2.8));
   const bottom = Math.min(image.height, Math.floor(feet + size * 1.3) + 1);
   const width = right - left, height = bottom - top;
@@ -139,8 +144,8 @@ export class PoundFloorPixels {
    const x = left + (piece.left + piece.right) / 2, y = top + (piece.top + piece.bottom) / 2;
    const dy = Math.abs(y - prior.y) / size;
    if (diameter < size * .58 || diameter > size * 1.72 || w / h < .47 || w / h > 2 ||
-       piece.area / (w * h) <= .43 || piece.motion <= .17 || Math.abs(x - prior.x) > size * 1.4 ||
-       Math.abs(x - anchor.x) > size * 1.75 || dy > 1.1 + 32 * (time - prior.time)) continue;
+       piece.area / (w * h) <= .43 || piece.motion <= .17 || Math.abs(x - prior.x) > size * (lateral-.15) ||
+       Math.abs(x - anchor.x) > size * (this.crossover?Math.min(4,1.75+18*(time-anchor.time)):1.75) || dy > 1.1 + 32 * (time - prior.time)) continue;
    if (measured && score > .05 && Math.hypot(x - measured.x, y - measured.y) > size * .8) continue;
    const cost = Math.abs(x - prior.x) / size + dy * .28 + Math.abs(Math.log(diameter / size)) * .65 + (1 - piece.motion) * .3;
    choices.push({left: left + piece.left, top: top + piece.top, right: left + piece.right, bottom: top + piece.bottom, cost});
@@ -151,9 +156,9 @@ export class PoundFloorPixels {
 }
 
 export class LivePoundFloorPixels {
- constructor({bridge=false,now=()=>performance.now()}={}) {
-  this.pixels = new PoundFloorPixels();
-  this.densePixels = bridge ? new PoundFloorPixels() : null;
+ constructor({bridge=false,crossover=false,now=()=>performance.now()}={}) {
+  this.pixels = new PoundFloorPixels({crossover});
+  this.densePixels = bridge ? new PoundFloorPixels({crossover}) : null;
   this.presented = [];
   this.previous = null;
   this.now = now;

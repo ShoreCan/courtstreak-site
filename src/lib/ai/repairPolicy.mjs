@@ -1,8 +1,8 @@
 import {poundCounterOptions} from './poundCore.mjs';
 import {POUND_PIXEL_FLOOR_REVISION} from './poundFloorPixels.mjs';
-export const REPAIR_REVISION='TRACKING REPAIR 08';
+export const REPAIR_REVISION='TRACKING REPAIR 09';
 export const POUND_SEARCH_REVISION='POUND SEARCH 01';
-const REPAIR_REVISIONS=['TRACKING REPAIR 01','TRACKING REPAIR 02','TRACKING REPAIR 03','TRACKING REPAIR 04','TRACKING REPAIR 05','TRACKING REPAIR 06','TRACKING REPAIR 07',REPAIR_REVISION];
+const REPAIR_REVISIONS=['TRACKING REPAIR 01','TRACKING REPAIR 02','TRACKING REPAIR 03','TRACKING REPAIR 04','TRACKING REPAIR 05','TRACKING REPAIR 06','TRACKING REPAIR 07','TRACKING REPAIR 08',REPAIR_REVISION];
 const repairRank=revision=>{
  const rank=REPAIR_REVISIONS.indexOf(revision)+1;
  if(!rank)throw new Error('Unsupported saved repair revision.');
@@ -11,14 +11,16 @@ const repairRank=revision=>{
 const visible=(p,i)=>p?.confidence?.[i]>=.5&&p.xy?.[i]?.every(Number.isFinite);
 export function repairObservationPolicy(drillKey,revision=REPAIR_REVISION){
  const rank=repairRank(revision);
+ const crossoverPixels=rank>=9&&drillKey==='stationary-crossover';
+ const pound=drillKey==='right-hand-pound';
  return Object.freeze({revision,asyncPose:true,poseEveryPass:false,
   refreshBallFrame:true,freshAtAdmission:true,nativeCapture:true,floorView:false,cropRevision:'SESSION ROI 01',
   maxPoseAge:.3,maxActivePoseSkew:.3,maxWristSkew:.12,
   poseRequestIntervalSeconds:.12,poseMaximumIntervalSeconds:.22,setupPoseRequestIntervalSeconds:.08,
   ...(rank>=3?{flightAwarePose:true,receiptPoseRequestIntervalSeconds:.09}: {}),
   ...(rank>=6&&drillKey==='right-hand-pound'?{cropRevision:POUND_SEARCH_REVISION}:{}),
-  ...(rank>=7&&drillKey==='right-hand-pound'?{pixelFloorRevision:POUND_PIXEL_FLOOR_REVISION}:{}),
-  ...(rank>=8&&drillKey==='right-hand-pound'?{cameraFloorBridge:true}:{})});
+  ...(crossoverPixels||(pound&&rank>=7)?{pixelFloorRevision:POUND_PIXEL_FLOOR_REVISION}:{}),
+  ...(crossoverPixels||(pound&&rank>=8)?{cameraFloorBridge:true}:{})});
 }
 
 // Keep the crop stable through a bounce. Expand only when current evidence is
@@ -43,11 +45,11 @@ export function poundSearchROI({tracker, person, poseAt, ball, lastBallSeenAt, n
  return [Math.max(0, Math.floor(x1)), Math.max(0, Math.floor(y1)), Math.min(width, Math.ceil(x2)), height];
 }
 export function repairConfiguration(base,drillKey,revision=REPAIR_REVISION){
- const rank=repairRank(revision),counterRevision=drillKey==='right-hand-pound'?(rank>=2?'COUNT 10':'COUNT 09'):(rank>=5?'CROSS 15':rank>=4?'CROSS 14':rank>=3?'CROSS 13':'CROSS 12');
- return Object.freeze({...base,id:base.id.replace(/^(COUNT08|CROSS1[12345])/,counterRevision.replaceAll(' ',''))+'/REPAIR0'+rank,
+ const rank=repairRank(revision),counterRevision=drillKey==='right-hand-pound'?(rank>=2?'COUNT 10':'COUNT 09'):(rank>=9?'CROSS 16':rank>=5?'CROSS 15':rank>=4?'CROSS 14':rank>=3?'CROSS 13':'CROSS 12');
+ return Object.freeze({...base,id:base.id.replace(/^(COUNT08|CROSS1[123456])/,counterRevision.replaceAll(' ',''))+'/REPAIR0'+rank,
   counterRevision,repairRevision:revision,
   ...(rank>=2&&drillKey==='right-hand-pound'&&base.recoveryRevision?{recoveryOptions:Object.freeze({guardFirstReturn:true,...(rank>=4?{backgroundFloorRecovery:true}:{}),...(rank>=5?{cycleAwareDedup:true,recoverFloorRedirect:true}:{}),...(rank>=7?{pixelFloorEvidence:true}:{}),...(rank>=8?{cameraFloorBridge:true,adaptiveRecoveryScale:true}:{})})}:{}),
-  counterOptions:Object.freeze(drillKey==='right-hand-pound'?poundCounterOptions(counterRevision):{...base.counterOptions,gapReceiptRecovery:true,...(rank>=3?{carryReceivingHand:true}:{}),...(rank>=4?{independentRelease:true}:{}),...(rank>=5?{observeRejectedFloor:true}:{})}),
+  counterOptions:Object.freeze(drillKey==='right-hand-pound'?poundCounterOptions(counterRevision):{...base.counterOptions,gapReceiptRecovery:true,...(rank>=3?{carryReceivingHand:true}:{}),...(rank>=4?{independentRelease:true}:{}),...(rank>=5?{observeRejectedFloor:true}:{}),...(rank>=9?{recoverPixelFloor:true,turningReceipt:true}:{})}),
   observationPolicy:repairObservationPolicy(drillKey,revision)});
 }
 // A recent floor/body anchor can remain useful while a wrist is too old to

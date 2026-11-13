@@ -114,3 +114,60 @@ test('a rejected floor box without an independent return stays uncounted', () =>
   assert.deepEqual(rejectedFloorTransfer('background_memory', options), [], JSON.stringify(options));
  }
 });
+
+function pixelCrossover({intermediate=true, sameHand=false, airborne=false, missingWrist=false, includeModelFloor=false}={}){
+ const counter=createCrossoverCounter('CROSS 16');
+ const samples=[
+  [-.05,840,350],[.02,830,365],[.10,780,505],
+  [.22,590,550],[.28,530,500],[.35,440,390],[.41,440,350],[.48,440,350],[1.12,440,350]
+ ];
+ if(includeModelFloor)samples.splice(3,0,[.17,640,630]);
+ for(const [time,x,y] of samples){
+  const pose=person();
+  if(missingWrist)pose.confidence[9]=0;
+  const bounce=ball(640,airborne?450:630).box;
+  const receives=time>=.22;
+  const measurement=[receives&&sameHand?1280-x:x,y,60];
+  const observations=time===.22&&!includeModelFloor?{
+   floorPixelBridge:intermediate?{intermediate:[{offset:-.05,box:bounce}]}:{evidence:{box:bounce}}
+  }:undefined;
+  counter.update([],measurement,pose,time,20,observations);
+ }
+ return counter.confirmed;
+}
+
+test('crossover recovery can use a camera frame between detector passes for the floor turn',()=>{
+ const events=pixelCrossover();
+ assert.equal(events.length,1);
+ assert.equal(events[0].from_hand,'right');
+ assert.equal(events[0].to_hand,'left');
+ assert.ok(Math.abs(events[0].floor_contact_time_seconds-.17)<1e-9);
+ assert.deepEqual(events[0].evidence_sources,['observed_floor_pixels']);
+ assert.equal(pixelCrossover({intermediate:false}).length,1);
+});
+
+test('crossover floor pixels cannot award an airborne or same-hand return, replace a wrist, or count twice',()=>{
+ for(const options of [{sameHand:true},{airborne:true},{missingWrist:true}]){
+  assert.deepEqual(pixelCrossover(options),[],JSON.stringify(options));
+ }
+ assert.equal(pixelCrossover({includeModelFloor:true}).length,1);
+});
+
+test('an observed inward redirect can confirm a quick opposite-hand receipt',()=>{
+ const samples=[
+  [-.05,840,350],[.02,830,365],[.10,780,505],[.17,640,630],
+  [.25,475,420],[.29,418,368],[.35,460,400]
+ ];
+ const run=(revision,redirectX)=>{
+  const counter=createCrossoverCounter(revision);
+  for(const [time,x,y] of samples){
+   const pose=person();
+   if(time===.25)pose.xy[9]=[475,420];
+   counter.update([],[time===.35?redirectX:x,y,60],pose,time,20);
+  }
+  return counter.confirmed;
+ };
+ assert.deepEqual(run('CROSS 15',460),[]);
+ assert.equal(run('CROSS 16',460)[0]?.control_evidence,'observed_inward_redirect');
+ assert.deepEqual(run('CROSS 16',392),[]);
+});
