@@ -2,6 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {safeAccountReturn,accountContext,contextQuery,accountRole,resolveAccountDestination,signInAndResolve,authErrorMessage,loadAccountUser,accountLoginPath} from '../src/lib/accountFlow.mjs';
 
+test('a private shooting link returns from sign-in to the same page',()=>{
+ const path='/tracker-tests/shooting';
+ assert.equal(safeAccountReturn(path+'/'),path);
+ assert.equal(accountLoginPath(path),'/login?next=%2Ftracker-tests%2Fshooting');
+ assert.equal(accountContext(new URLSearchParams({next:path}),null).next,path);
+ assert.equal(safeAccountReturn(path+'/other'),null);
+});
+
 test('login preserves protected destinations including billing, Circle, assignment and tracker routes',()=>{
  for(const path of ['/membership','/settings#privacy-settings','/training-circles/crew-123','/assigned-training/a-b/c-d','/lab/drill/right-hand-pound/session?mode=iphone-fresh-frame-test','/family-hub?view=parent'])assert.equal(safeAccountReturn(path),path);
 });

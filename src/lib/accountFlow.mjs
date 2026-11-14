@@ -1,11 +1,11 @@
 import {safeTrackerReturn} from './trackerReturn.mjs';
 
 const origin='https://courtstreak.invalid';
-const fixed=new Set(['/dashboard','/train','/lab','/workout','/progress','/profile','/settings','/membership','/trophies','/trophies/collection','/training-circles','/hub','/team-hub','/family-hub','/assigned-work','/connections','/account/restore-player','/welcome']);
+const fixed=new Set(['/dashboard','/train','/lab','/workout','/progress','/profile','/settings','/membership','/trophies','/trophies/collection','/training-circles','/hub','/team-hub','/family-hub','/assigned-work','/connections','/account/restore-player','/welcome','/tracker-tests/shooting']);
 export function safeAccountReturn(value){
  if(typeof value!=='string'||!value.startsWith('/')||value.startsWith('//')||/[\\\u0000-\u0020]/.test(value))return null;
  try{
-  const url=new URL(value,origin),path=url.pathname;
+  const url=new URL(value,origin),path=url.pathname==='/tracker-tests/shooting/'?'/tracker-tests/shooting':url.pathname;
   if(url.origin!==origin)return null;
   const dynamic=/^\/(?:lab\/drill\/[a-z0-9-]+(?:\/session)?|training-circles\/(?:join\/)?[a-zA-Z0-9_-]+|hub\/invite\/[a-f0-9]{64}|(?:team|family)-hub\/[a-zA-Z0-9/-]+|assigned-work\/[a-zA-Z0-9/-]+|assigned-training\/[a-zA-Z0-9-]+\/[a-zA-Z0-9-]+)$/.test(path);
   if(!fixed.has(path)&&!dynamic)return null;
