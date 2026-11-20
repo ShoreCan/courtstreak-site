@@ -1,6 +1,8 @@
 import { createCrossoverCounter } from './crossoverCounter.mjs';
+import { geometry } from './poundCore.mjs';
 
 export const BETWEEN_LEGS_DRILL_KEY = 'stationary-between-legs';
+export const BETWEEN_LEGS_RECOVERY_REVISION = 'BETWEEN LEGS 02';
 const EVIDENCE_WINDOW_SECONDS = 2.2;
 const FRONT_BOUNCE_MARGIN_DIAMETERS = .28;
 const BORDERLINE_BOUNCE_MARGIN_DIAMETERS = .15;
@@ -51,7 +53,8 @@ function evidenceAt(row, person) {
 }
 
 export class BetweenLegsCounter {
-  constructor(revision) {
+  constructor(revision, { recoverReceipt = false } = {}) {
+    this.recoverReceipt = recoverReceipt;
     this.transfer = createCrossoverCounter(revision);
     this.observations = new Map();
     this.count = 0;
@@ -77,9 +80,48 @@ export class BetweenLegsCounter {
     return { ...snapshot, decision: this.lastDecision ?? snapshot.decision };
   }
 
+  receivingBall(person, now, observations) {
+    const flight = this.transfer.flight;
+    const floor = flight?.floor;
+    if (!floor || now - floor.time > .46 || now - flight.lastSeen > .25 ||
+        this.observations.get(floor.time)?.inLegGap !== true) return null;
+
+    const fromLeft = flight.source.owner.hand === 'left';
+    const target = landmark(person, fromLeft ? 10 : 9);
+    const source = landmark(person, fromLeft ? 9 : 10);
+    if (!target) return null;
+
+    const [floorX, floorY, floorSize] = floor.measurement;
+    const direction = Math.sign(target[0] - floorX);
+    if (Math.abs(target[0] - floorX) < floorSize * .4) return null;
+    let receipt = null;
+    for (const { candidateIndex, reason } of observations?.decisions ?? []) {
+      if (reason !== 'size_ratio') continue;
+      const candidate = observations.balls?.[candidateIndex];
+      if (!(candidate?.score >= .08)) continue;
+      const { center, diameter } = geometry(candidate);
+      const [x, y] = center;
+      const [left, top, right, bottom] = candidate.box;
+      const aspect = (right - left) / (bottom - top);
+      if (aspect < .72 || aspect > 1.4 || diameter < Math.max(floorSize * .72, flight.diameter * .65) ||
+          diameter > Math.min(floorSize * 1.2, flight.diameter * 1.5) ||
+          (x - floorX) * direction < floorSize * .35 || floorY - y < floorSize * .5) continue;
+
+      const wristDistance = Math.hypot(x - target[0], y - target[1]);
+      if (wristDistance > diameter * 1.05 ||
+          source && Math.hypot(x - source[0], y - source[1]) - wristDistance < diameter * .25) continue;
+      if (receipt && Math.hypot(x - receipt[0], y - receipt[1]) > floorSize * .45) return null;
+      receipt ??= [x, y, diameter];
+    }
+    return receipt;
+  }
+
   update(proposals, measurement, person, now, deadline, observations) {
     const previousFrame = this.transfer.frame;
-    const transfers = this.transfer.update(proposals, measurement, person, now, deadline, observations);
+    // Use a detector proposal only as receipt evidence for this bounce.
+    // The shared identity track and the observed-floor requirement stay intact.
+    const receipt = this.recoverReceipt && !measurement ? this.receivingBall(person, now, observations) : null;
+    const transfers = this.transfer.update(proposals, measurement ?? receipt, person, now, deadline, observations);
     if (this.transfer.frame === previousFrame) return [];
     this.lastDecision = null;
 

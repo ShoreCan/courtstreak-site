@@ -2,10 +2,10 @@ import { readFileSync } from 'node:fs';
 import { replayCrossovers } from '../src/lib/ai/crossoverReplay.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { BETWEEN_LEGS_DRILL_KEY } from '../src/lib/ai/betweenLegsCounter.mjs';
+import { BETWEEN_LEGS_DRILL_KEY, BETWEEN_LEGS_RECOVERY_REVISION } from '../src/lib/ai/betweenLegsCounter.mjs';
 import { createSessionTrackingState, resetSessionTrackingCounter, updateSessionCounter } from '../src/lib/ai/sessionTracking.mjs';
 import { shiftPreGoTimeline } from '../src/lib/ai/setupGuidance.mjs';
-import { person, trial } from './helpers/crossover-scenarios.mjs';
+import { ball, person, trial } from './helpers/crossover-scenarios.mjs';
 
 function replay({ pose = person(), adjust = frame => frame, drillKey = BETWEEN_LEGS_DRILL_KEY,
   shift = 0, ...options } = {}) {
@@ -113,4 +113,34 @@ test('a borderline front turn requires ball scale corroboration', () => {
   });
   assert.equal(state.counter.count, 0);
   assert.equal(state.counter.pathRejections[0].control_status, 'projected_bounce_in_front_of_feet');
+});
+
+test('recover an undersized receiving-ball detection after a visible bounce in either direction', () => {
+  function replayReceipt({ start, noBounce = false, distractor = false, recoverReceipt = true }) {
+    const pose = person();
+    pose.xy[13] = [550, 530];
+    pose.xy[14] = [730, 530];
+    const state = createSessionTrackingState(true, BETWEEN_LEGS_DRILL_KEY, 'CROSS 14');
+    if (recoverReceipt) {
+      state.configuration = { ...state.configuration, betweenLegsRevision: BETWEEN_LEGS_RECOVERY_REVISION };
+      resetSessionTrackingCounter(state);
+    }
+    const { frames } = trial({ pose, start, reps: 1, noBounce });
+    for (const { time, measurement, person } of frames) {
+      const receiving = time >= .54;
+      const [x, y] = measurement;
+      const balls = receiving ? [ball(x, y, 49)] : [];
+      if (receiving && distractor) balls.push(ball(x, y - 32, 49));
+      const decisions = balls.map((_, candidateIndex) => ({ candidateIndex, reason: 'size_ratio' }));
+      updateSessionCounter(state, time, receiving ? null : measurement, person, 720, 20, balls, { balls, decisions });
+    }
+    return state.counter.count;
+  }
+
+  for (const start of ['left', 'right']) {
+    assert.equal(replayReceipt({ start }), 1);
+    assert.equal(replayReceipt({ start, recoverReceipt: false }), 0);
+    assert.equal(replayReceipt({ start, noBounce: true }), 0);
+    assert.equal(replayReceipt({ start, distractor: true }), 0);
+  }
 });

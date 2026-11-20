@@ -1,4 +1,4 @@
-import {BetweenLegsCounter,BETWEEN_LEGS_DRILL_KEY} from './betweenLegsCounter.mjs';
+import {BetweenLegsCounter,BETWEEN_LEGS_DRILL_KEY,BETWEEN_LEGS_RECOVERY_REVISION} from './betweenLegsCounter.mjs';
 import {STREAM_POUND_CONFIGURATION} from './trackerConfiguration.mjs';
 import {createPoundTrackingState,resetPoundTrackingCounter,resetPoundTrackingIdentity} from './poundTrackingState.mjs';
 import {createCrossoverCounter,CROSSOVER_COUNTER_REVISION,crossoverROI} from './crossoverCounter.mjs';
@@ -28,7 +28,7 @@ export function createSessionTrackingState(freshFrames,drillKey,counterRevision=
 }
 export function resetSessionTrackingCounter(state){
  if(!state.crossover){resetPoundTrackingCounter(state);if(state.configuration.recoveryRevision)state.recovery=createPoundRecoverySession(state.configuration.recoveryOptions);return;}
- state.counter=state.betweenLegs?new BetweenLegsCounter(state.configuration.counterRevision):createCrossoverCounter(state.configuration.counterRevision);state.validator=state.counter;
+ state.counter=state.betweenLegs?new BetweenLegsCounter(state.configuration.counterRevision,{recoverReceipt:state.configuration.betweenLegsRevision===BETWEEN_LEGS_RECOVERY_REVISION}):createCrossoverCounter(state.configuration.counterRevision);state.validator=state.counter;
 }
 export function updateSessionCounter(state,time,measurement,person,height,deadline,candidates=[],observations=null){
  if(state.crossover){const confirmed=state.validator.update([],measurement,person,time,deadline,observations);return {confirmed,proposals:state.counter.proposalsThisFrame,count:state.validator.count};}

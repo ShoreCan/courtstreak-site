@@ -1,3 +1,5 @@
+import { trackingCadence } from './liveTrackingBudget.mjs';
+
 export const REP_REVIEW_REVISION = 'REPLAY 03';
 
 export function replayStart(time, duration = Infinity, reviewFrom) {
@@ -47,6 +49,23 @@ export class RoundEvidence {
       time: event.event_timestamp_exact ?? event.event_time_seconds,
       confirmedOnFrame: frameId, confirmedAt: Number.isFinite(decisionCompletedAt)?decisionCompletedAt:capturedAt, counterFrame: event.event_frame,
       path: event.validation_path,...(event.floor_evidence?{floorEvidence:event.floor_evidence}:{}),...(event.evidence_sources?{evidenceSources:[...event.evidence_sources]}:{}),...(event.between_passes?{betweenPasses:true}:{}),...(event.rescaled?{ballScalePixels:event.ball_scale_pixels}:{}),...(event.finished_after_time?{finishedAfterTime:true}:{}),...(event.from_hand?{fromHand:event.from_hand,toHand:event.to_hand,floorTime:event.floor_contact_time_seconds,reviewFrom:Math.max(0,event.release_time_seconds),controlEvidence:event.control_evidence}:{}) });
+  }
+  activeCameraCadence(startedAt, duration) {
+    if (!Number.isFinite(startedAt) || !(duration > 0) || this.droppedFrames) return null;
+    const seen = new Set();
+    const captures = [];
+    for (const frame of this.frames) {
+      const { capturedAt, sourceVideoFrameNumber } = frame;
+      if (frame.inputPhase !== 'active' || frame.phase !== 'active' ||
+          !Number.isFinite(capturedAt) || capturedAt < startedAt || capturedAt >= startedAt + duration ||
+          !Number.isFinite(sourceVideoFrameNumber) || seen.has(sourceVideoFrameNumber)) continue;
+      seen.add(sourceVideoFrameNumber);
+      captures.push(capturedAt);
+    }
+    if (captures.length < 2) return null;
+    const { samples, span, hz, p90GapSeconds, maxGapSeconds } =
+      trackingCadence(captures, { windowSeconds: Infinity });
+    return { samples, span, hz, p90GapSeconds, maxGapSeconds };
   }
   export({ startedAt = null, ...metadata }) {
     return { schema: 'courtstreak-round-evidence-v1', reviewRevision: REP_REVIEW_REVISION, ...metadata,

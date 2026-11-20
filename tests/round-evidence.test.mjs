@@ -49,3 +49,21 @@ test('separate ball and pose timing records retain their values after the caller
   assert.equal(result.frames[0].detectorTimings.pose.inferenceMs,180);
   assert.equal(result.frames[0].detectorTimings.ball.preprocessMs,2);
 });
+
+test('active cadence counts distinct camera frames within the clocked round', () => {
+  const evidence = new RoundEvidence();
+  const samples = [
+    { capturedAt: 10, inputPhase: 'countdown', sourceVideoFrameNumber: 1 },
+    { capturedAt: 10.03, sourceVideoFrameNumber: 2 },
+    { capturedAt: 10.05, sourceVideoFrameNumber: 2 },
+    { capturedAt: 10.11, sourceVideoFrameNumber: 4 },
+    { capturedAt: 10.19 },
+    { capturedAt: 10.28, phase: 'review', sourceVideoFrameNumber: 6 },
+    { capturedAt: 10.29, sourceVideoFrameNumber: 7 },
+  ];
+  for (const sample of samples) evidence.record(frame(sample));
+  const cadence = evidence.activeCameraCadence(10, .29);
+  assert.equal(cadence.samples, 2);
+  assert.ok(Math.abs(cadence.hz - 12.5) < 1e-9);
+  assert.ok(Math.abs(cadence.maxGapSeconds - .08) < 1e-9);
+});
