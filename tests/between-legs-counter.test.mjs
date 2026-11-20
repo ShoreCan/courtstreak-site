@@ -2,16 +2,20 @@ import { readFileSync } from 'node:fs';
 import { replayCrossovers } from '../src/lib/ai/crossoverReplay.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { BETWEEN_LEGS_DRILL_KEY, BETWEEN_LEGS_RECOVERY_REVISION } from '../src/lib/ai/betweenLegsCounter.mjs';
+import { BETWEEN_LEGS_DRILL_KEY, BETWEEN_LEGS_PROPORTIONS_REVISION, BETWEEN_LEGS_RECOVERY_REVISION } from '../src/lib/ai/betweenLegsCounter.mjs';
 import { createSessionTrackingState, resetSessionTrackingCounter, updateSessionCounter } from '../src/lib/ai/sessionTracking.mjs';
 import { shiftPreGoTimeline } from '../src/lib/ai/setupGuidance.mjs';
 import { ball, person, trial } from './helpers/crossover-scenarios.mjs';
 
 function replay({ pose = person(), adjust = frame => frame, drillKey = BETWEEN_LEGS_DRILL_KEY,
-  shift = 0, ...options } = {}) {
+  shift = 0, proportions = false, ...options } = {}) {
   pose.xy[13] = [550, 530];
   pose.xy[14] = [730, 530];
   const state = createSessionTrackingState(true, drillKey, 'CROSS 14');
+  if (proportions) {
+    state.configuration = {...state.configuration, betweenLegsRevision: BETWEEN_LEGS_PROPORTIONS_REVISION};
+    resetSessionTrackingCounter(state);
+  }
   const { frames } = trial({ reps: 4, ...options, pose });
   let shifted = false;
   for (const input of frames) {
@@ -142,5 +146,26 @@ test('recover an undersized receiving-ball detection after a visible bounce in e
     assert.equal(replayReceipt({ start, recoverReceipt: false }), 0);
     assert.equal(replayReceipt({ start, noBounce: true }), 0);
     assert.equal(replayReceipt({ start, distractor: true }), 0);
+  }
+});
+
+test('track through the measured opening with a narrow stance and low or wide hand positions', () => {
+  for (const [handY, reach] of [[350, .7], [535, 1.4]]) {
+    const pose = person(handY);
+    for (const i of [9, 10]) pose.xy[i][0] = 640 + (pose.xy[i][0] - 640) * reach;
+    pose.xy[15] = [620, 660];
+    pose.xy[16] = [660, 660];
+    const adjust = frame => {
+      if (frame.measurement) {
+        const [x, y, diameter] = frame.measurement;
+        frame = {...frame, measurement: [640 + (x - 640) * reach, y, diameter]};
+      }
+      return frame;
+    };
+    const options = {pose, adjust, handY, proportions: true};
+    assert.equal(replay(options).counter.count, 4);
+    assert.equal(replay({...options, proportions: false}).counter.count, 0);
+    assert.equal(replay({...options, noBounce: true}).counter.count, 0);
+    assert.equal(replay({...options, sameHand: true}).counter.count, 0);
   }
 });

@@ -12,10 +12,10 @@ const drill=(key,name,hand,section,kind,benefit,steps,repeat,actions,repeatMode=
 });
 export const LAUNCH_DRILLS=[
  drill('right-hand-pound','Right-Hand Pound','right','foundations','bounce','Build a strong, repeatable right-hand bounce.',
- ['Start with the ball in your right hand beside your right foot.','Drive the ball into the floor and receive it below your waist with the same hand.'],
+ ['Start with the ball in your right hand beside your right foot.','Drive the ball into the floor and receive it under control with the same hand.'],
  'Keep the ball in your right hand for the entire interval. Controlled low bounces count; there is no minimum height.',[{move:'pound',from:'right',to:'right'}]),
  drill('left-hand-pound','Left-Hand Pound','left','foundations','bounce','Build the same dependable control on your left side.',
- ['Start with the ball in your left hand beside your left foot.','Drive the ball into the floor and receive it below your waist with the same hand.'],
+ ['Start with the ball in your left hand beside your left foot.','Drive the ball into the floor and receive it under control with the same hand.'],
  'Keep the ball in your left hand for the entire interval.',[{move:'pound',from:'left',to:'left'}]),
  ...['right','left'].map(hand=>drill(`front-v-${hand}`,`${hand==='right'?'Right':'Left'}-Hand Front V`,hand,'control-rhythm','bounce','Control side-to-side ball movement without changing hands.',
  [`Start with the ball in your ${hand} hand in front of that foot.`,`Push a low bounce diagonally toward your middle and receive it with your ${hand} hand.`,`Guide the next bounce back outside the same foot, still using your ${hand} hand.`],
@@ -24,7 +24,7 @@ export const LAUNCH_DRILLS=[
  [`Start with the ball in your ${hand} hand outside that foot.`,`Guide the ball toward the middle of your body, then back outside before sending it to the floor.`,`Receive that bounce in your ${hand} hand; keep your palm on top or the side without carrying the ball.`],
  `Repeat the fake and bounce using only your ${hand} hand. One in-and-out with one controlled floor bounce is one rep.`,[{move:'in-out',from:hand,to:hand}],'same','Developing')),
  drill('stationary-crossover','Alternating Crossovers','both','crossovers','transfer','Transfer the ball across your stance while staying balanced.',
- ['Start with the ball in your right hand and your feet comfortably wider than your hips.','Send one low floor bounce across the front of your stance into your left hand.','Reverse the direction on the next floor bounce and receive in your right hand.'],
+ ['Start with the ball in your right hand and a comfortable stance.','Send one low floor bounce across the front of your stance into your left hand.','Reverse the direction on the next floor bounce and receive in your right hand.'],
  'Alternate right-to-left and left-to-right. Each completed transfer counts once; going there and back counts twice.',[{move:'cross',from:'right',to:'left'}],'alternate'),
  drill('stationary-between-legs','Alternating Between-the-Legs','both','between-legs','transfer','Use your stance to protect a controlled hand-to-hand transfer.',
  ['Start with the ball in your right hand and enough space between your legs for the bounce.','Bounce through the opening between your legs and receive in your left hand.','Adjust your feet if needed, then bounce through your legs from left to right.'],

@@ -81,13 +81,14 @@ export function replayProfileCounter(data) {
   if(data.droppedFrameRecords)return {available:false,reason:'The old log discarded early counter inputs.'};
   try{
     const revision=data.trackerRevision;
-    let counter=createPoundCounter(revision),validator=createPoundValidator(revision),previous=0,updates=0;
+    const validatorOptions={bodyNeutral:data.trackerConfiguration?.bodyNeutralPound===true};
+    let counter=createPoundCounter(revision),validator=createPoundValidator(revision,validatorOptions),previous=0,updates=0;
     if(data.recoveryRevision&&data.recoveryRevision!==POUND_RECOVERY_REVISION)throw new Error('The saved recovery revision is unsupported.');
     const enhanced=!!data.recoveryRevision;
     if(enhanced&&!(data.calibratedBallDiameter>0))throw new Error('The saved recovery calibration is missing.');
     let recovery=enhanced?createPoundRecoverySession(data.trackerConfiguration?.recoveryOptions):null;
     const confirmationDelays=[];
-    for(const f of data.frames){const cf=f.counterFrame;if(cf==null||cf===previous)continue;if(cf<previous){counter=createPoundCounter(revision);validator=createPoundValidator(revision);recovery=enhanced?createPoundRecoverySession(data.trackerConfiguration?.recoveryOptions):null;previous=0;}
+    for(const f of data.frames){const cf=f.counterFrame;if(cf==null||cf===previous)continue;if(cf<previous){counter=createPoundCounter(revision);validator=createPoundValidator(revision,validatorOptions);recovery=enhanced?createPoundRecoverySession(data.trackerConfiguration?.recoveryOptions):null;previous=0;}
       if(cf!==previous+1)throw new Error('The saved counter inputs are incomplete.');
       const g=f.selected?geometry(f.selected):null,m=g?[...g.center,g.diameter]:null;
       const events=counter.update(f.elapsed,m?[m[1],m[2]]:null,data.frameSize[1]);

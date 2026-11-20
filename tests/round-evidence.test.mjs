@@ -67,3 +67,15 @@ test('active cadence counts distinct camera frames within the clocked round', ()
   assert.ok(Math.abs(cadence.hz - 12.5) < 1e-9);
   assert.ok(Math.abs(cadence.maxGapSeconds - .08) < 1e-9);
 });
+
+test('live-work timings are snapshotted independently of the historical decision clock', () => {
+  const evidence = new RoundEvidence();
+  const passWorkMs = {capture: 2, identity: 1, counter: 3, detectorToPublish: 4, publish: .1};
+  evidence.record(frame({decisionCompletedAt: 10.02, passWorkMs}));
+  passWorkMs.counter = 999;
+  const [saved] = evidence.export({startedAt: 10}).frames;
+  assert.equal(saved.decisionCompletedAt, 10.02);
+  assert.equal(saved.passWorkMs.counter, 3);
+  assert.ok(Number.isFinite(saved.passWorkMs.evidence));
+  assert.doesNotThrow(() => new RoundEvidence(0).record(frame({passWorkMs})));
+});

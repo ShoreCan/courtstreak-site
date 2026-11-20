@@ -21,7 +21,7 @@ export function poundCounterOptions(revision) {
  throw new Error(`Unsupported counter revision: ${String(revision)}. Exact replay is unavailable.`);
 }
 export function createPoundCounter(revision){return new GapAwareBounceCounter(poundCounterOptions(revision));}
-export function createPoundValidator(revision){const options=poundCounterOptions(revision);return new PoundControlValidator({lowControlledPounds:!!options.lowControlledPounds,adaptiveLowPounds:!!options.adaptiveLowPounds,fullPoundFloorEvidence:!!options.fullPoundFloorEvidence,cycleHandEvidence:!!options.cycleHandEvidence});}
+export function createPoundValidator(revision,{bodyNeutral=false}={}){const options=poundCounterOptions(revision);return new PoundControlValidator({lowControlledPounds:!!options.lowControlledPounds,adaptiveLowPounds:!!options.adaptiveLowPounds,bodyNeutral,fullPoundFloorEvidence:!!options.fullPoundFloorEvidence,cycleHandEvidence:!!options.cycleHandEvidence});}
 export const median = a => percentile(a, .5);
 export function percentile(a, q) { const s = [...a].sort((a,b)=>a-b); if (!s.length) return 0; const p=(s.length-1)*q, i=Math.floor(p); return s[i]+(s[Math.ceil(p)]-s[i])*(p-i); }
 const distance=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
@@ -61,15 +61,16 @@ export class BallIdentityTracker {
    if(selected!==null&&hands.length){const g=geometry(candidates[selected]);owned=Math.min(...hands.map(p=>distance(g.center,p)))<=Math.max(110,g.diameter*2.3);}
   }else{
    const predicted=this.last.map((v,i)=>v+this.velocity[i]*Math.min(this.missed+1,3));const typical=this.typical(),lane=this.lane(); const scored=[],reacquired=[];
-   const reconnect=this.crossoverReconnect&&phase==='drill'&&this.ready()&&this.missed>=2?crossoverFloorReconnect(candidates,this.samples,person,now,typical):null;
+   const calibrated=phase==='drill'&&this.ready();
+   const reconnect=this.crossoverReconnect&&calibrated&&this.missed>=2?crossoverFloorReconnect(candidates,this.samples,person,now,typical):null;
    let rejectedReconnect=null;
    const timed=this.timedContinuity&&phase==='drill'?timedBallContinuation(candidates,this.samples,now,typical):null;
-   const floor=this.floorContinuity&&phase==='drill'&&this.ready()?floorBallContinuation(candidates,this.samples,now,typical,person,{allowApexReturn:this.turnContinuity,allowRegularCadence:this.regularFloorContinuity&&this.missed===0}):null;
+   const floor=this.floorContinuity&&calibrated?floorBallContinuation(candidates,this.samples,now,typical,person,{allowApexReturn:this.turnContinuity,allowRegularCadence:this.regularFloorContinuity&&this.missed===0}):null;
    const strong=this.strongContinuity&&phase==='drill'?strongBallContinuation(candidates,this.samples,now,typical,this.velocity,this.missed):null;
-   corroboratedRecovery=this.corroboratedContinuity&&phase==='drill'&&this.ready()?corroboratedBallContinuation(candidates,this.samples,now,typical,this.provisionalBall,{movingRecovery:this.turnContinuity,person}):null;
+   corroboratedRecovery=this.corroboratedContinuity&&calibrated?corroboratedBallContinuation(candidates,this.samples,now,typical,this.provisionalBall,{movingRecovery:this.turnContinuity,person}):null;
    this.provisionalBall=corroboratedRecovery?.pending??null;
    candidates.forEach((c,i)=>{const g=geometry(c),p=g.center,d=g.diameter;
-    if(this.weakContinuity&&c.score<ORDINARY_BALL_SCORE&&(!this.ready()||phase!=='drill'||d/typical<.58||d/typical>1.68||Math.abs(p[0]-(this.twoHandedMotion?predicted[0]:lane))>Math.max(28,typical*.75)))return void this.decision(i,'rejected','weak_geometry');
+    if(this.weakContinuity&&c.score<ORDINARY_BALL_SCORE&&(!calibrated||d/typical<.58||d/typical>1.68||Math.abs(p[0]-(this.twoHandedMotion?predicted[0]:lane))>Math.max(28,typical*.75)))return void this.decision(i,'rejected','weak_geometry');
     const floorCandidate=floor?.index===i,regularFloorCandidate=floorCandidate&&floor.regularCadence===true,timedCandidate=timed?.index===i||(floorCandidate&&!regularFloorCandidate),corroboratedCandidate=corroboratedRecovery?.index===i;
     // Preserve a nearby hand-owned continuation as well as the existing reacquisition.
     // Background memory must not alternate between rejecting and recovering a held ball.
@@ -116,7 +117,7 @@ export class BallIdentityTracker {
    const best=pool.sort((a,b)=>a[0]-b[0])[0];
    if(best&&(viaHand||best[0]<=2.35)){selected=best[1];owned=true;}else if(best)this.decision(best[1],'rejected','ranking_score_limit');
    if(selected===null&&rejectedReconnect!==null){selected=rejectedReconnect;owned=true;selectionReason='crossover_floor_reconnect';}
-   if(selected===null&&this.motionLock&&phase==='drill'&&this.ready()){
+   if(selected===null&&this.motionLock&&calibrated){
     const index=observedMotionContinuation(candidates,this.samples,person,now,typical);
     if(index!==null&&candidates[index].score<ORDINARY_BALL_SCORE){
      const p=geometry(candidates[index]).center;
@@ -259,7 +260,7 @@ export class GapAwareBounceCounter {
  }
 }
 export class PoundControlValidator {
- constructor({lowControlledPounds=false,adaptiveLowPounds=false,fullPoundFloorEvidence=false,cycleHandEvidence=false}={}){this.cycleHandEvidence=cycleHandEvidence;this.fullPoundFloorEvidence=fullPoundFloorEvidence;this.adaptiveLowPounds=adaptiveLowPounds;this.lowControlledPounds=lowControlledPounds;this.frame=0;this.count=0;this.pending=[];this.confirmed=[];this.rejected=[];this.context=[];}
+ constructor({lowControlledPounds=false,adaptiveLowPounds=false,fullPoundFloorEvidence=false,cycleHandEvidence=false,bodyNeutral=false}={}){this.bodyNeutral=bodyNeutral;this.cycleHandEvidence=cycleHandEvidence;this.fullPoundFloorEvidence=bodyNeutral||fullPoundFloorEvidence;this.adaptiveLowPounds=adaptiveLowPounds;this.lowControlledPounds=lowControlledPounds;this.frame=0;this.count=0;this.pending=[];this.confirmed=[];this.rejected=[];this.context=[];}
  update(proposals,measurement,person,now,deadline=Infinity){
   this.frame++;
   const kneeY=person&&[13,14].every(i=>person.confidence[i]>=.5&&person.xy[i][0]>0&&person.xy[i][1]>0)?Math.min(person.xy[13][1],person.xy[14][1]):null;
@@ -284,13 +285,14 @@ export class PoundControlValidator {
   }
   const events=[],remaining=[];
   for(const p of this.pending){const hd=p.best_hand_distance_ball_diameters,bo=p.best_body_offset_units,down=p.down_ball_diameters,rise=p.rise_ball_diameters;
-   // An entire ball above both visible knees cannot be this player's floor bounce.
-   if(!(this.adaptiveLowPounds&&p.low_control_window?.adaptive)&&p.event_knee_y!==null&&p.bottom_center_y!=null&&p.ball_scale_pixels>0&&p.bottom_center_y+p.ball_scale_pixels*.5<p.event_knee_y){p.control_status='rejected_above_knee';this.rejected.push(p);continue;}
+   // Historical evidence used a knee proxy. The current rule requires floor evidence directly.
+   if(!this.bodyNeutral&&!(this.adaptiveLowPounds&&p.low_control_window?.adaptive)&&p.event_knee_y!==null&&p.bottom_center_y!=null&&p.ball_scale_pixels>0&&p.bottom_center_y+p.ball_scale_pixels*.5<p.event_knee_y){p.control_status='rejected_above_knee';this.rejected.push(p);continue;}
    const handConflict=this.cycleHandEvidence?poundHandConflict(p,this.context):null;
    if(handConflict){p.control_status=handConflict.startsWith('observed_')?'observed_wrong_hand':'unverified_rep';p.failed_checks=[handConflict];this.rejected.push(p);continue;}
-   const clean=p.validation_path==='clean_full_pound'&&rise>=1.5&&rise>=down*.42&&hd!==null&&hd<=2.6&&bo!==null&&bo<=2.2;
-   const recovered=p.validation_path==='gap_recovered_pound'&&down>=1.25&&rise>=1.25&&hd!==null&&hd<=1.8&&bo!==null&&bo<=1.65;
-   const floor=p.validation_path==='floor_anchored_pound'&&p.floor_reference&&down>=1&&rise>=1&&rise>=down*.42&&hd!==null&&hd<=1.8&&bo!==null&&bo<=1.65;
+   const withinReach=limit=>this.bodyNeutral||(bo!==null&&bo<=limit);
+   const clean=p.validation_path==='clean_full_pound'&&rise>=1.5&&rise>=down*.42&&hd!==null&&hd<=2.6&&withinReach(2.2);
+   const recovered=p.validation_path==='gap_recovered_pound'&&down>=1.25&&rise>=1.25&&hd!==null&&hd<=1.8&&withinReach(1.65);
+   const floor=p.validation_path==='floor_anchored_pound'&&p.floor_reference&&down>=1&&rise>=1&&rise>=down*.42&&hd!==null&&hd<=1.8&&withinReach(1.65);
    // Large motion alone cannot prove a bounce. Apply contact evidence to the
    // full and gap paths too, before any accepted peak can teach a floor.
    const contact=this.context.find(c=>c.frame===p.event_frame),diameter=p.ball_scale_pixels,reference=p.floor_reference;
@@ -309,7 +311,7 @@ export class PoundControlValidator {
     const floorPosition=p.bottom_center_y+(adaptive?d*.5:0);
     const feet=contact?.feetY!=null&&(adaptive?Math.abs(floorPosition-contact.feetY)<=floorTolerance:floorPosition>=contact.feetY-d*.25&&floorPosition<=contact.feetY+d*.9);
     const motion=adaptive?w.minimumObservedMotionPixels:d*.6;
-    const owned=c=>c.measurement&&c.handDistance!==null&&c.handDistance<=1.1&&(adaptive?(c.otherHandDistance===null||c.otherHandDistance-c.handDistance>=.15):(c.bodyOffset!==null&&c.bodyOffset<=2.2))&&c.measurement[1]<=p.bottom_center_y-motion;
+    const owned=c=>c.measurement&&c.handDistance!==null&&c.handDistance<=1.1&&(adaptive?(c.otherHandDistance===null||c.otherHandDistance-c.handDistance>=.15):(this.bodyNeutral||(c.bodyOffset!==null&&c.bodyOffset<=2.2)))&&c.measurement[1]<=p.bottom_center_y-motion;
     const time=p.event_timestamp_exact??p.event_time_seconds;
     const handBefore=this.context.some(c=>c.time>=w.start-.04&&c.time<time&&owned(c));
     const handAfter=this.context.some(c=>c.time>time&&c.time<=w.end+.04&&owned(c));
@@ -325,7 +327,7 @@ export class PoundControlValidator {
       p.validation_path==='gap_recovered_pound'?{down:1.25,rise:1.25,ratio:0,hand:1.8,body:1.65}:{down:1,rise:1,ratio:.42,hand:1.8,body:1.65};
      p.failed_checks=lowFailures??[
       down<limits.down&&'insufficient_observed_descent',rise<limits.rise&&'insufficient_observed_return',rise<down*limits.ratio&&'insufficient_return_ratio',
-      (hd===null||hd>limits.hand)&&'unverified_receiving_hand',(bo===null||bo>limits.body)&&'unverified_control_region',
+      (hd===null||hd>limits.hand)&&'unverified_receiving_hand',!withinReach(limits.body)&&'unverified_control_region',
       p.validation_path==='floor_anchored_pound'&&!p.floor_reference&&'unverified_floor',
       this.fullPoundFloorEvidence&&!fullFloorVerified&&'unverified_floor',
      ].filter(Boolean);

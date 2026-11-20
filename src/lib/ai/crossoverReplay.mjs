@@ -1,13 +1,13 @@
-import {BetweenLegsCounter,BETWEEN_LEGS_DRILL_KEY,BETWEEN_LEGS_RECOVERY_REVISION} from './betweenLegsCounter.mjs';
+import {BetweenLegsCounter,BETWEEN_LEGS_DRILL_KEY,betweenLegsOptions} from './betweenLegsCounter.mjs';
 import {createCrossoverCounter} from './crossoverCounter.mjs';
 import {CROSSOVER_DRILL_KEY} from './sessionTracking.mjs';
 import {geometry} from './poundCore.mjs';
 
 // Re-run only the observed ball/wrist inputs. Video pixels are never inferred.
-export function replayCrossovers(evidence,{recoverReceipt=evidence.trackerConfiguration?.betweenLegsRevision===BETWEEN_LEGS_RECOVERY_REVISION}={}){
+export function replayCrossovers(evidence,options={}){
  const betweenLegs=evidence.drillKey===BETWEEN_LEGS_DRILL_KEY;
  if(!betweenLegs&&evidence.drillKey!==CROSSOVER_DRILL_KEY)throw new Error('Expected crossover test details.');
- const createCounter=()=>betweenLegs?new BetweenLegsCounter(evidence.trackerRevision,{recoverReceipt}):createCrossoverCounter(evidence.trackerRevision);
+ const createCounter=()=>betweenLegs?new BetweenLegsCounter(evidence.trackerRevision,{...betweenLegsOptions(evidence.trackerConfiguration?.betweenLegsRevision),...options}):createCrossoverCounter(evidence.trackerRevision);
  let counter=createCounter(),previousFrame=0;
  for(const row of evidence.frames??[]){
   if(!['countdown','active','review'].includes(row.phase)&&!['active','review'].includes(row.inputPhase))continue;

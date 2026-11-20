@@ -10,7 +10,7 @@ export function createPoundTrackingState(freshFrames=true) {
 
 export function resetPoundTrackingCounter(state) {
   state.counter=createPoundCounter(state.configuration.counterRevision);
-  state.validator=createPoundValidator(state.configuration.counterRevision);
+  state.validator=createPoundValidator(state.configuration.counterRevision,{bodyNeutral:state.configuration.bodyNeutralPound});
 }
 
 export function resetPoundTrackingIdentity(state) {

@@ -4,7 +4,7 @@ import { createDetectorExecution } from './detectorExecution.mjs';
 export {iou,decodeOutput} from './detectorOutput.mjs';
 import {decodeOutput} from './detectorOutput.mjs';
 import {createPoseWorker} from './poseWorkerClient.mjs';
-export async function loadDetector(base,onProgress,{inputMode='reuse',asyncPose=false,executionMode='standard',providerOverride}={}){
+export async function loadDetector(base,onProgress,{inputMode='reuse',asyncPose=false,executionMode='standard',providerOverride,orderedGpuSubmission=false}={}){
  const ort=await import('onnxruntime-web/webgpu');
  ort.env.wasm.numThreads=1; // GitHub Pages does not provide cross-origin isolation.
  ort.env.wasm.wasmPaths=new URL(`${base}ai/runtime/`,location.href).href;
@@ -15,7 +15,7 @@ export async function loadDetector(base,onProgress,{inputMode='reuse',asyncPose=
  if (['gpu-stream', 'gpu-repair', 'gpu-ball-speed', 'gpu-ball-compact'].includes(executionMode)) {
   const compactBallReadback = executionMode === 'gpu-ball-compact';
   return loadGpuCandidate({ort, base, manifest, onProgress, asyncPose, freshAtAdmission: executionMode !== 'gpu-stream',
-   singleBallReadback: compactBallReadback || executionMode === 'gpu-ball-speed', compactBallReadback});
+   singleBallReadback: compactBallReadback || executionMode === 'gpu-ball-speed', compactBallReadback,orderedGpuSubmission});
  }
  if(executionMode!=='standard')throw new Error('Unknown detector execution mode.');
  if(providerOverride!==undefined&&!['wasm','webgpu'].includes(providerOverride))throw new Error('Unknown diagnostic execution provider.');
@@ -42,7 +42,7 @@ export async function loadDetector(base,onProgress,{inputMode='reuse',asyncPose=
  return Object.assign(execution,{provider,modelManifest:manifest,poseWorker,poseMode:poseWorker?'independent-wasm-worker':'sequential'});
 }
 
-async function loadGpuCandidate({ort,base,manifest,onProgress,asyncPose,freshAtAdmission=false,singleBallReadback=false,compactBallReadback=false}){
+async function loadGpuCandidate({ort,base,manifest,onProgress,asyncPose,freshAtAdmission=false,singleBallReadback=false,compactBallReadback=false,orderedGpuSubmission=false}){
  if(!navigator.gpu||!await navigator.gpu.requestAdapter())throw new Error('GPU acceleration is unavailable on this device. The standard Camera Test 20 is still available.');
  const sessions={};let execution;
  const models=singleBallReadback?{...manifest,ball:manifest.ball_single_readback}:manifest;
@@ -52,7 +52,7 @@ async function loadGpuCandidate({ort,base,manifest,onProgress,asyncPose,freshAtA
    onProgress(kind==='ball'?'Loading ball tracking…':'Preparing body and wrist tracking…');
    sessions[kind]=await ort.InferenceSession.create(`${base}ai/models/${models[kind].file}`,{executionProviders:['webgpu'],graphOptimizationLevel:'all',preferredOutputLocation:'gpu-buffer'});
   }
-  execution=createGpuDetectorExecution({ort,manifest:models,sessions,freshAtAdmission,singleBallReadback,compactBallReadback});
+  execution=createGpuDetectorExecution({ort,manifest:models,sessions,freshAtAdmission,singleBallReadback,compactBallReadback,orderedGpuSubmission});
   const warm=document.createElement('canvas');warm.width=warm.height=640;
   warm.getContext('2d').fillRect(0,0,640,640);
   await execution.detect(warm,[0,0,640,640],true);

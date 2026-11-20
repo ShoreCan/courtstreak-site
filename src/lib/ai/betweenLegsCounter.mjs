@@ -3,6 +3,13 @@ import { geometry } from './poundCore.mjs';
 
 export const BETWEEN_LEGS_DRILL_KEY = 'stationary-between-legs';
 export const BETWEEN_LEGS_RECOVERY_REVISION = 'BETWEEN LEGS 02';
+export const BETWEEN_LEGS_PROPORTIONS_REVISION = 'BETWEEN LEGS 03';
+export function betweenLegsOptions(revision) {
+  return {
+    recoverReceipt: [BETWEEN_LEGS_RECOVERY_REVISION, BETWEEN_LEGS_PROPORTIONS_REVISION].includes(revision),
+    adaptiveStance: revision === BETWEEN_LEGS_PROPORTIONS_REVISION,
+  };
+}
 const EVIDENCE_WINDOW_SECONDS = 2.2;
 const FRONT_BOUNCE_MARGIN_DIAMETERS = .28;
 const BORDERLINE_BOUNCE_MARGIN_DIAMETERS = .15;
@@ -14,7 +21,7 @@ function landmark(person, index) {
     point.every(value => Number.isFinite(value) && value > 0) ? point : null;
 }
 
-function evidenceAt(row, person) {
+function evidenceAt(row, person, adaptiveStance) {
   const [x, y, diameter] = row.measurement;
   const hips = [landmark(person, 11), landmark(person, 12)];
   const knees = [landmark(person, 13), landmark(person, 14)];
@@ -33,14 +40,16 @@ function evidenceAt(row, person) {
       const fraction = Math.max(0, Math.min(1, (y - ky) / (ay - ky)));
       return kx + (ax - kx) * fraction;
     }).sort((a, b) => a - b);
-    if (right - left >= diameter * .8) {
-      inLegGap = y >= Math.max(knees[0][1], knees[1][1]) - diameter * .25 &&
-        x >= left + diameter * .2 && x <= right - diameter * .2;
+    const opening = right - left;
+    const inset = adaptiveStance ? Math.min(diameter * .2, opening * .2) : diameter * .2;
+    if (adaptiveStance ? opening > 0 : opening >= diameter * .8) {
+      inLegGap = (adaptiveStance || y >= Math.max(knees[0][1], knees[1][1]) - diameter * .25) &&
+        x >= left + inset && x <= right - inset;
       // A front crossover can overlap the gap horizontally. Compare the
       // ball center at the turn with the projected ankle line at that x.
       // Allow some margin for pose jitter and camera pitch.
       const [nearLeft, nearRight] = [...ankles].sort((a, b) => a[0] - b[0]);
-      if (nearRight[0] - nearLeft[0] >= diameter * .8) {
+      if (nearRight[0] - nearLeft[0] >= (adaptiveStance ? Number.EPSILON : diameter * .8)) {
         const fraction = Math.max(0, Math.min(1, (x - nearLeft[0]) / (nearRight[0] - nearLeft[0])));
         const ankleY = nearLeft[1] + (nearRight[1] - nearLeft[1]) * fraction;
         ankleOffset = (y - ankleY) / diameter;
@@ -53,8 +62,9 @@ function evidenceAt(row, person) {
 }
 
 export class BetweenLegsCounter {
-  constructor(revision, { recoverReceipt = false } = {}) {
+  constructor(revision, { recoverReceipt = false, adaptiveStance = false } = {}) {
     this.recoverReceipt = recoverReceipt;
+    this.adaptiveStance = adaptiveStance;
     this.transfer = createCrossoverCounter(revision);
     this.observations = new Map();
     this.count = 0;
@@ -128,7 +138,7 @@ export class BetweenLegsCounter {
     const row = this.transfer.context.at(-1);
     // Floor-only observations may support the underlying turn, but the
     // projected gap still needs a ball location and paired pose at that time.
-    if (row.measurement) this.observations.set(row.time, evidenceAt(row, person));
+    if (row.measurement) this.observations.set(row.time, evidenceAt(row, person, this.adaptiveStance));
     for (const time of this.observations.keys()) {
       if (time >= now - EVIDENCE_WINDOW_SECONDS) break;
       this.observations.delete(time);
@@ -141,7 +151,7 @@ export class BetweenLegsCounter {
       const startSide = release?.side;
       const endSide = receipt?.side;
       const changedSides = Number.isFinite(startSide) && Number.isFinite(endSide) &&
-        Math.abs(startSide) >= .25 && Math.abs(endSide) >= .25 && startSide * endSide < 0;
+        (this.adaptiveStance || (Math.abs(startSide) >= .25 && Math.abs(endSide) >= .25)) && startSide * endSide < 0;
 
       // A sparse frame can catch the ball just before or after the lowest
       // point. For borderline ankle geometry, size growth toward the receipt

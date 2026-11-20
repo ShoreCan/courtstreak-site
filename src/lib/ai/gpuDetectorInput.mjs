@@ -28,7 +28,7 @@ export class GpuDetectorInput {
     this.bind = device.createBindGroup({layout: this.pipeline.getBindGroupLayout(0),
       entries: [{binding: 0, resource: this.texture.createView()}, {binding: 1, resource: {buffer}}]});
   }
-  prepare(source, roi) {
+  stage(source, roi) {
     const [x, y, x2, y2] = roi, size = this.size;
     const scale = Math.min(size / (x2 - x), size / (y2 - y));
     const dw = Math.round((x2 - x) * scale), dh = Math.round((y2 - y) * scale);
@@ -36,14 +36,21 @@ export class GpuDetectorInput {
     const c = this.context;
     c.fillStyle = 'rgb(114,114,114)'; c.fillRect(0, 0, size, size);
     c.drawImage(...detectorSourceCrop(source, roi), px, py, dw, dh);
-    // The copy is enqueued before returning: a caller may now reuse its camera canvas.
+    return {transform: {x, y, scale, px, py}};
+  }
+  upload() {
+    const {size} = this;
     this.device.queue.copyExternalImageToTexture({source: this.canvas, flipY: false},
       {texture: this.texture}, [size, size]);
     const encoder = this.device.createCommandEncoder(), pass = encoder.beginComputePass();
     pass.setPipeline(this.pipeline); pass.setBindGroup(0, this.bind);
     pass.dispatchWorkgroups(Math.ceil(size / 8), Math.ceil(size / 8)); pass.end();
     this.device.queue.submit([encoder.finish()]);
-    return {transform: {x, y, scale, px, py}};
+  }
+  prepare(source, roi) {
+    const prepared = this.stage(source, roi);
+    this.upload();
+    return prepared;
   }
   release() { this.texture.destroy(); this.canvas.width = this.canvas.height = 0; this.context = null; }
 }

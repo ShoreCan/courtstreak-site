@@ -20,10 +20,12 @@ export class RoundEvidence {
     this.limit = limit; this.nextFrame = 1; this.droppedFrames = 0;
   }
   record({ capturedAt, sourceVideoTime, inputPhase, phase, roi, balls, person, selected, ms, timings, fps, poseUpdated, poseAge, poseCapturedAt, poseInferenceMs, positionChecks,
-    passStartedAt, ballFrameRefreshed, setupReadiness, counterFrame, proposedCount, count, selectionDecisions, ballProposalMinimumScore, handoffState, poseSourceVideoTime, poseFrameSkewSeconds, sourceVideoFrameNumber, decisionCompletedAt, floorView,liveBudget,recoveryMeasurement,poseTimings,poseScheduling,floorPixelEvidence,floorPixelTiming,floorPixelBridge,proposals = [], confirmed = [] }) {
+    passStartedAt, ballFrameRefreshed, setupReadiness, counterFrame, proposedCount, count, selectionDecisions, ballProposalMinimumScore, handoffState, poseSourceVideoTime, poseFrameSkewSeconds, sourceVideoFrameNumber, decisionCompletedAt, passWorkMs, floorView,liveBudget,recoveryMeasurement,poseTimings,poseScheduling,floorPixelEvidence,floorPixelTiming,floorPixelBridge,proposals = [], confirmed = [] }) {
+    const workStarted = passWorkMs ? performance.now() : null;
     const frameId = this.nextFrame++;
     this.frames.push({ frameId, capturedAt, sourceVideoTime, inputPhase, phase, roi: [...roi],
       ...(Number.isFinite(decisionCompletedAt)?{decisionCompletedAt}:{}),
+      ...(passWorkMs?{passWorkMs:{...passWorkMs}}:{}),
       ...(floorView?{floorView:{...floorView,roi:floorView.roi?[...floorView.roi]:null,balls:floorView.balls.map(copyDetection),...(floorView.timings?{timings:{...floorView.timings}}:{})}}:{}),
       ...(floorPixelEvidence?{floorPixelEvidence:{box:[...floorPixelEvidence.box]}}:{}),
       ...(floorPixelBridge?{floorPixelBridge:{
@@ -49,6 +51,7 @@ export class RoundEvidence {
       time: event.event_timestamp_exact ?? event.event_time_seconds,
       confirmedOnFrame: frameId, confirmedAt: Number.isFinite(decisionCompletedAt)?decisionCompletedAt:capturedAt, counterFrame: event.event_frame,
       path: event.validation_path,...(event.floor_evidence?{floorEvidence:event.floor_evidence}:{}),...(event.evidence_sources?{evidenceSources:[...event.evidence_sources]}:{}),...(event.between_passes?{betweenPasses:true}:{}),...(event.rescaled?{ballScalePixels:event.ball_scale_pixels}:{}),...(event.finished_after_time?{finishedAfterTime:true}:{}),...(event.from_hand?{fromHand:event.from_hand,toHand:event.to_hand,floorTime:event.floor_contact_time_seconds,reviewFrom:Math.max(0,event.release_time_seconds),controlEvidence:event.control_evidence}:{}) });
+    if (passWorkMs && this.frames.length) this.frames.at(-1).passWorkMs.evidence = performance.now() - workStarted;
   }
   activeCameraCadence(startedAt, duration) {
     if (!Number.isFinite(startedAt) || !(duration > 0) || this.droppedFrames) return null;

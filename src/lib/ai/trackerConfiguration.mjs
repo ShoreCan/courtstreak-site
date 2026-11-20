@@ -6,6 +6,10 @@ import {POUND_RECOVERY_REVISION} from './poundRecoverySession.mjs';
 import {sessionObservationPolicy} from './sessionObservationPolicy.mjs';
 
 export const TRACKER_CHECK_REVISION = 'CHECK 11';
+export function bodyNeutralPoundConfiguration(config) {
+  return Object.freeze({...config,id:config.id+'/POUNDFLOORHAND01',bodyNeutralPound:true});
+}
+
 export const CURRENT_POUND_MODE = 'iphone-fresh-frame-test';
 export const CURRENT_POUND_SESSION_PATH = `/lab/drill/right-hand-pound/session?mode=${CURRENT_POUND_MODE}`;
 export const isPoundCameraMode = mode => [CURRENT_POUND_MODE, 'iphone-vision-test'].includes(mode);
@@ -49,6 +53,7 @@ export function configurationForEvidence(data) {
   }
   if(data.trackerConfiguration){
     const saved=data.trackerConfiguration;
+    if(saved.bodyNeutralPound===true)result=bodyNeutralPoundConfiguration(result);
     const sameOptions=(a,b)=>a&&b&&Object.keys(a).length===Object.keys(b).length&&Object.keys(b).every(key=>a[key]===b[key]);
     if(saved.id!==result.id||saved.counterRevision!==result.counterRevision||saved.identityRevision!==result.identityRevision
       ||saved.liveFrameRevision!==result.liveFrameRevision

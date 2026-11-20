@@ -14,3 +14,20 @@ test('a floor-level bounce retains the existing hand-return acceptance',()=>{ass
 test('knee evidence comes from the bounce frame rather than the later confirmation pose',()=>{const first=person(),later=person();later.xy[13][1]=800;later.xy[14][1]=800;assert.equal(submit(first,proposal(620),later).count,1);});
 test('uncertain knees do not invent a floor rejection',()=>{const p=person();p.confidence[13]=.1;assert.equal(submit(p).count,1);});
 test('missing bounce-frame context does not use a later knee position',()=>{const p=person(),v=new PoundControlValidator();v.update([proposal()],[760,280,60],p,.2,20);assert.equal(v.count,0);assert.equal(v.rejected[0].control_status,'rejected_above_knee');const later=new PoundControlValidator();later.update([{...proposal(),event_frame:999}],[760,280,60],p,.2,20);assert.equal(later.count,1);});
+
+test('pound floor and wrist evidence works without a knee or torso-reach requirement', () => {
+ const p=person();
+ p.box=[500,80,800,690];
+ p.xy[5]=[600,200];p.xy[6]=[650,200];
+ p.xy[10]=[950,350];
+ p.xy[15]=[600,650];p.xy[16]=[675,650];
+ p.xy[13]=[610,672];p.xy[14]=[665,672];
+ const run=(bounce, floorY)=>{
+  const validator=new PoundControlValidator({bodyNeutral:true});
+  validator.update([],[940,floorY,60],p,.1,20);
+  validator.update([bounce],[950,353,60],p,.2,20);
+  return validator.count;
+ };
+ assert.equal(run(proposal(620),620),1);
+ assert.equal(run(proposal(440),440),0);
+});
