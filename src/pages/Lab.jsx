@@ -331,7 +331,7 @@ export default function Lab({ previewOnly = false }) {
                             <div className="cs-lab-row-preview cs-lab-row-preview-placeholder" aria-hidden="true"><FiPlay /></div>
                             <div className="cs-lab-row-copy">
                               <div className="cs-lab-row-title-line"><h4>Between the Legs Drill</h4></div>
-                              <div className="cs-lab-row-meta"><span>Timed practice</span><span>20 sec</span></div>
+                              <div className="cs-lab-row-meta"><span>Camera tracking</span><span>20 sec</span></div>
                             </div>
                             <div className="cs-lab-row-open"><span>Open Drill</span><FiArrowRight aria-hidden="true" /></div>
                           </Link>

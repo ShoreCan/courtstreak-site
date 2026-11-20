@@ -89,5 +89,6 @@ export function shiftPreGoTimeline(state, seconds) {
     for(const row of recovery.ownedScales)row.time-=seconds;
   }
   if(state.recovery?.previousPose)state.recovery.previousPose.time-=seconds;
-  if(state.crossover)state.counter.pixelFloor?.shiftPreGo(seconds);
+  if(state.betweenLegs)state.counter.shiftPreGo(seconds);
+  else if(state.crossover)state.counter.pixelFloor?.shiftPreGo(seconds);
 }
