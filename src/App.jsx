@@ -20,6 +20,7 @@ const ForgotPassword = lazy(() => import('./pages/ForgotPassword.jsx'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword.jsx'));
 const Dashboard = lazy(() => import('./pages/Dashboard.jsx'));
 const CrossoverCameraTest = lazy(() => import('./components/ai/IPhonePoundTest.jsx'));
+const BetweenLegsPracticeTimer = lazy(() => import('./components/ai/StandaloneDrillTimer.jsx'));
 const CameraTest20 = lazy(() => import('./components/ai/CameraTest20.jsx'));
 const ShootingPilot = lazy(() => import('./pages/ShootingPilot.jsx'));
 const Welcome = lazy(() => import('./pages/Welcome.jsx'));
@@ -88,6 +89,7 @@ export default function App() {
         <Route path="/experience-lab" element={<CourtStreakExperience />} />
       <Route path="/" element={miniPreview?<Navigate to="/preview/phone" replace/>:<Home />} />
       <Route path="/preview/phone" element={<div className="cs-phone-app-sample"><Dashboard previewOnly /></div>} />
+      <Route path="/lab/between-the-legs" element={<BetweenLegsPracticeTimer drillName="Between the Legs" backLabel="Back to The Lab" backTo="/lab#between-legs" />} />
       <Route path="/tracker-tests/crossovers" element={<CrossoverCameraTest key="crossover-baseline" drillKey="stationary-crossover" standalone />} />
       <Route path="/tracker-tests/crossovers-test12" element={<CrossoverCameraTest key="crossover-test12" drillKey="stationary-crossover" standalone counterRevision="CROSS 05" />} />
       <Route path="/tracker-tests/crossovers-test13" element={<CrossoverCameraTest key="crossover-test13" drillKey="stationary-crossover" standalone counterRevision="CROSS 05" independentCrossoverPose />} />

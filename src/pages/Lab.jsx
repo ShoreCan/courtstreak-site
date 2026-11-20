@@ -195,6 +195,10 @@ export default function Lab({ previewOnly = false }) {
   );
 
   const hasCatalogFilters = searchTerm.trim().length > 0 || difficultyFilter !== 'all';
+  const showBetweenLegsPractice = !previewOnly && activeView === 'all' && !hasCatalogFilters;
+  const browseSections = showBetweenLegsPractice && !sections.some(section => section.section_key === 'between-legs')
+    ? [...sections, { id: 'between-legs-practice', section_key: 'between-legs' }]
+    : sections;
   const activeCollectionKeys = activeView === 'favorites' ? favoriteKeys : recentKeys;
   const hasEmptyCollection = activeView !== 'all' && activeCollectionKeys.length === 0;
 
@@ -303,11 +307,13 @@ export default function Lab({ previewOnly = false }) {
             </div>
 
             <nav className="cs-lab-section-jump" aria-label="Lab skill sections">
-              {sections.filter((section) => (visibleDrillsBySection[section.id] ?? []).length > 0).map((section) => <a key={section.id} href={`#${section.section_key}`}>{sectionLabel(section)}</a>)}
+              {browseSections.filter(section => (visibleDrillsBySection[section.id] ?? []).length > 0 ||
+                (showBetweenLegsPractice && section.section_key === 'between-legs')).map((section) => <a key={section.id} href={`#${section.section_key}`}>{sectionLabel(section)}</a>)}
             </nav>
 
             <div className="cs-lab-skill-list">
-              {sections.map((section, sectionIndex) => {
+              {browseSections.map((section, sectionIndex) => {
+                const hasBetweenLegsPractice = showBetweenLegsPractice && section.section_key === 'between-legs';
                 const sectionDrills = visibleDrillsBySection[section.id] ?? [];
                 if ((activeView !== 'all' || hasCatalogFilters) && sectionDrills.length === 0) return null;
                 return (
@@ -315,11 +321,21 @@ export default function Lab({ previewOnly = false }) {
                     <div className="cs-lab-list-section-head">
                       <div className="cs-lab-section-number">{String(sectionIndex + 1).padStart(2, '0')}</div>
                       <div className="cs-lab-section-title"><h3>{sectionLabel(section)}</h3>{section.description ? <p>{section.description}</p> : null}</div>
-                      <span className="cs-lab-section-count">{sectionDrills.length} {sectionDrills.length === 1 ? 'drill' : 'drills'}</span>
+                      {sectionDrills.length > 0 && <span className="cs-lab-section-count">{sectionDrills.length} {sectionDrills.length === 1 ? 'drill' : 'drills'}</span>}
                     </div>
 
-                    {sectionDrills.length > 0 ? (
+                    {sectionDrills.length > 0 || hasBetweenLegsPractice ? (
                       <div className="cs-lab-rows">
+                        {hasBetweenLegsPractice && (
+                          <Link className="cs-lab-row" to="/lab/between-the-legs">
+                            <div className="cs-lab-row-preview cs-lab-row-preview-placeholder" aria-hidden="true"><FiPlay /></div>
+                            <div className="cs-lab-row-copy">
+                              <div className="cs-lab-row-title-line"><h4>Between the Legs Drill</h4></div>
+                              <div className="cs-lab-row-meta"><span>Timed practice</span><span>20 sec</span></div>
+                            </div>
+                            <div className="cs-lab-row-open"><span>Open Drill</span><FiArrowRight aria-hidden="true" /></div>
+                          </Link>
+                        )}
                         {sectionDrills.map((drill) => (
                           <article
                             className="cs-lab-row"
