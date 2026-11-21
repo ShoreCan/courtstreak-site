@@ -3,7 +3,7 @@ import { geometry } from '../src/lib/ai/poundCore.mjs';
 import { replayCrossovers } from '../src/lib/ai/crossoverReplay.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { BETWEEN_LEGS_DRILL_KEY, BETWEEN_LEGS_CONTINUITY_REVISION, BETWEEN_LEGS_OCCLUSION_REVISION, BETWEEN_LEGS_PROPORTIONS_REVISION, BETWEEN_LEGS_RECOVERY_REVISION } from '../src/lib/ai/betweenLegsCounter.mjs';
+import { BETWEEN_LEGS_DRILL_KEY, BETWEEN_LEGS_CONTINUITY_REVISION, BETWEEN_LEGS_OCCLUSION_REVISION, BETWEEN_LEGS_PROPORTIONS_REVISION, BETWEEN_LEGS_RECOVERY_REVISION, BETWEEN_LEGS_REDIRECT_REVISION } from '../src/lib/ai/betweenLegsCounter.mjs';
 import { createSessionTrackingState, resetSessionTrackingCounter, updateSessionCounter } from '../src/lib/ai/sessionTracking.mjs';
 import { shiftPreGoTimeline } from '../src/lib/ai/setupGuidance.mjs';
 import { ball, person, trial } from './helpers/crossover-scenarios.mjs';
@@ -128,7 +128,7 @@ test('recover an undersized receiving-ball detection after a visible bounce in e
     const state = createSessionTrackingState(true, BETWEEN_LEGS_DRILL_KEY, 'CROSS 14');
     if (recoverReceipt) {
       state.configuration = { ...state.configuration, betweenLegsRevision: reason === 'background_memory'
-        ? BETWEEN_LEGS_CONTINUITY_REVISION : BETWEEN_LEGS_RECOVERY_REVISION };
+        ? BETWEEN_LEGS_CONTINUITY_REVISION : BETWEEN_LEGS_RECOVERY_REVISION, BETWEEN_LEGS_REDIRECT_REVISION };
       resetSessionTrackingCounter(state);
     }
     const { frames } = trial({ pose, start, reps: 1, noBounce });
@@ -283,4 +283,46 @@ test('a verified floor box supplies scale only for an observed, correctly direct
   assert.equal(replay(BETWEEN_LEGS_CONTINUITY_REVISION, {wrongDirection: true}).length, 0);
   assert.equal(replay(BETWEEN_LEGS_CONTINUITY_REVISION, {tiny: true}).length, 0);
   assert.equal(replay(BETWEEN_LEGS_CONTINUITY_REVISION, {noControl: true}).length, 0);
+});
+
+test('a strong inward redirect can recover two separate transfers after the identity tracker loses the ball', () => {
+  function run({revision = BETWEEN_LEGS_REDIRECT_REVISION, startRight = false,
+    weak = false, outside = false, noWrist = false, ambiguous = false} = {}) {
+    const state = createSessionTrackingState(true, BETWEEN_LEGS_DRILL_KEY, 'CROSS 14');
+    state.configuration = {...state.configuration, betweenLegsRevision: revision};
+    resetSessionTrackingCounter(state);
+    const rows = [
+      [-.05, 440, 350], [.04, 507, 475], [.10, 560, 555], [.16, 620, 630],
+      [.21, 687, 547], [.26, 785, 457], [.34, 837, 352], [.40],
+      [.49, outside ? 785 : 635, 633], [.61, 449, 420],
+      [.67, 437, 357], [.74, 439, 354],
+    ];
+    const xAt = x => startRight ? 1280 - x : x;
+    for (const [time, x, y] of rows) {
+      const pose = person();
+      pose.xy[13] = [550, 530];
+      pose.xy[14] = [730, 530];
+      const receivingWrist = startRight ? 9 : 10;
+      if (noWrist && time === .34) pose.confidence[receivingWrist] = 0;
+      if (time === .26) pose.xy[receivingWrist] = [xAt(791), 501];
+      const redirect = time === .49;
+      const selected = !redirect && x != null ? ball(xAt(x), y, 60) : null;
+      const proposal = redirect ? {...ball(xAt(x), y, 60), score: weak ? .05 : .4} : null;
+      const balls = proposal ? [proposal] : selected ? [selected] : [];
+      if (redirect && ambiguous) balls.push(ball(xAt(625), y, 60));
+      const decisions = redirect ? balls.map((_, candidateIndex) => ({candidateIndex, reason: 'jump_from_last'})) : [];
+      updateSessionCounter(state, time, selected ? [xAt(x), y, 60] : null, pose, 720, 20,
+        balls, {balls, decisions, selected});
+    }
+    return state.counter.confirmed;
+  }
+  for (const startRight of [false, true]) {
+    const reps = run({startRight});
+    assert.deepEqual(reps.map(rep => rep.floor_contact_time_seconds), [.16, .49]);
+    assert.equal(reps[0].control_evidence, 'observed_inward_redirect');
+  }
+  assert.equal(run({revision: BETWEEN_LEGS_CONTINUITY_REVISION}).length, 0);
+  for (const options of [{weak: true}, {outside: true}, {noWrist: true}, {ambiguous: true}]) {
+    assert.equal(run(options).length, 0);
+  }
 });

@@ -209,13 +209,14 @@ export class CrossoverCounter {
     flight.receiving.some(prior=>prior.time<sample.time&&prior.owner.distance<=1.15&&
      (x-prior.measurement[0])*direction>=d*.2);
   });
-  const received=control?{best,control}:turningReceipt?{best:turningReceipt,control:'receiving_hand_redirect'}:null;
+  const redirectedSample=turningReceipt||observations?.verifiedRedirect;
+  const received=redirectedSample?{best:redirectedSample,control:'receiving_hand_redirect',inwardRedirect:true}:control?{best,control}:null;
   if(received){
    const {best,control}=received;
    const afterTime=best.time>=deadline;
    const buzzerFinish=afterTime&&this.finishWindowSeconds>0&&now<=deadline+this.finishWindowSeconds&&flight.source.time<deadline&&flight.floor.time<deadline;
    if(afterTime&&!buzzerFinish){this.reject('rejected_after_deadline',row);this.held=row.owner?row:null;return [];}
-   const event={count:++this.count,event_frame:best.frame,event_timestamp_exact:best.time,event_time_seconds:+best.time.toFixed(3),floor_contact_time_seconds:flight.floor.time,release_time_seconds:flight.source.time,from_hand:sourceHand,to_hand:opposite(sourceHand),validation_path:'controlled_crossover',control_evidence:turningReceipt?'observed_inward_redirect':control,control_status:'confirmed',receiving_hand_distance_ball_diameters:best.owner.distance,...(flight.floor.floorPixels?{floor_evidence:'observed_floor_pixels'}:{})};
+   const event={count:++this.count,event_frame:best.frame,event_timestamp_exact:best.time,event_time_seconds:+best.time.toFixed(3),floor_contact_time_seconds:flight.floor.time,release_time_seconds:flight.source.time,from_hand:sourceHand,to_hand:opposite(sourceHand),validation_path:'controlled_crossover',control_evidence:received.inwardRedirect?'observed_inward_redirect':control,control_status:'confirmed',receiving_hand_distance_ball_diameters:best.owner.distance,...(flight.floor.floorPixels?{floor_evidence:'observed_floor_pixels'}:{})};
    if(buzzerFinish)event.finished_after_time=true;
    this.confirmed.push(event);this.flight=null;this.pending=[];this.held=best;this.lastDecision='controlled_crossover';
    // A fast receiving hand can already have launched the following crossover.
@@ -332,7 +333,8 @@ export class SupplementalCrossoverCounter {
    this.shadows.push({counter,floorTime:f.floor.time,sourceHand:f.source.owner.hand});this.shadows=this.shadows.slice(-2);
   }
   const events=[],primary=p.update(proposals,measurement,person,now,deadline,
-   observations?.observedAscentFloorScale ? {observedAscentFloorScale: observations.observedAscentFloorScale} : undefined);this.lastSupplemental=false;
+   observations?.observedAscentFloorScale || observations?.verifiedRedirect ?
+    {observedAscentFloorScale: observations.observedAscentFloorScale, verifiedRedirect: observations.verifiedRedirect} : undefined);this.lastSupplemental=false;
   for(const e of primary){const accepted=this.accept(e,'primary');if(accepted)events.push(accepted);}
   this.shadows=this.shadows.filter(shadow=>{
    const age = now - shadow.floorTime;

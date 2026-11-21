@@ -6,8 +6,10 @@ export const BETWEEN_LEGS_RECOVERY_REVISION = 'BETWEEN LEGS 02';
 export const BETWEEN_LEGS_PROPORTIONS_REVISION = 'BETWEEN LEGS 03';
 export const BETWEEN_LEGS_OCCLUSION_REVISION = 'BETWEEN LEGS 04';
 export const BETWEEN_LEGS_CONTINUITY_REVISION = 'BETWEEN LEGS 05';
+export const BETWEEN_LEGS_REDIRECT_REVISION = 'BETWEEN LEGS 06';
 export function betweenLegsOptions(revision) {
-  const recoverContinuity = revision === BETWEEN_LEGS_CONTINUITY_REVISION;
+  const recoverRedirect = revision === BETWEEN_LEGS_REDIRECT_REVISION;
+  const recoverContinuity = recoverRedirect || revision === BETWEEN_LEGS_CONTINUITY_REVISION;
   const recoverOcclusions = revision === BETWEEN_LEGS_OCCLUSION_REVISION || recoverContinuity;
   return {
     recoverReceipt: recoverOcclusions || [BETWEEN_LEGS_RECOVERY_REVISION, BETWEEN_LEGS_PROPORTIONS_REVISION].includes(revision),
@@ -15,6 +17,7 @@ export function betweenLegsOptions(revision) {
     recoverFloor: recoverOcclusions,
     recoverFastRedirect: recoverOcclusions,
     recoverContinuity,
+    recoverRedirect,
   };
 }
 const EVIDENCE_WINDOW_SECONDS = 2.2;
@@ -69,11 +72,12 @@ function evidenceAt(row, person, adaptiveStance) {
 }
 
 export class BetweenLegsCounter {
-  constructor(revision, { recoverReceipt = false, adaptiveStance = false, recoverFloor = false, recoverFastRedirect = false, recoverContinuity = false } = {}) {
+  constructor(revision, { recoverReceipt = false, adaptiveStance = false, recoverFloor = false, recoverFastRedirect = false, recoverContinuity = false, recoverRedirect = false } = {}) {
     this.recoverReceipt = recoverReceipt;
     this.adaptiveStance = adaptiveStance;
     this.recoverFloor = recoverFloor;
     this.recoverContinuity = recoverContinuity;
+    this.recoverRedirect = recoverRedirect;
     this.floorCandidate = null;
     this.transfer = createCrossoverCounter(revision, { fastRedirect: recoverFastRedirect });
     this.observations = new Map();
@@ -219,6 +223,46 @@ export class BetweenLegsCounter {
     return floorDiameter;
   }
 
+  redirectBall(person, now, observations) {
+    const flight = this.transfer.flight;
+    const floor = flight?.floor;
+    const catchRow = flight?.receiving.at(-1);
+    if (!floor || !catchRow || catchRow.owner.distance > .45 || now - catchRow.time > .22 ||
+        now - floor.time > .58 || !this.observations.get(floor.time)?.inLegGap ||
+        !(this.observations.get(catchRow.time)?.detectorScore >= .12)) return null;
+
+    const [fx, fy, diameter] = floor.measurement;
+    const [x, y] = catchRow.measurement;
+    const direction = Math.sign(x - fx);
+    if (Math.abs(x - fx) < diameter || fy - y < diameter ||
+        !flight.receiving.slice(0, -1).some(row => row.owner.distance <= 1.15 &&
+          row.time >= catchRow.time - .20 &&
+          (x - row.measurement[0]) * direction >= diameter * .2 &&
+          row.measurement[1] > y + diameter * .2)) return null;
+
+    // A real proposal at the floor can be rejected by the identity tracker
+    // when the ball moves inward quickly after the catch. Use it only for
+    // this verified bounce-to-wrist-to-redirect sequence.
+    let redirect = null;
+    for (const {candidateIndex, reason} of observations?.decisions ?? []) {
+      const ball = observations.balls?.[candidateIndex];
+      if (reason !== 'jump_from_last' || !(ball?.score >= .10)) continue;
+      const {center: [bx, by], diameter: size} = geometry(ball);
+      const [left, top, right, bottom] = ball.box;
+      const aspect = (right - left) / (bottom - top);
+      if (aspect < .72 || aspect > 1.4 || size < diameter * .75 || size > diameter * 1.4 ||
+          (x - bx) * direction < diameter * 1.3 || (fx - bx) * direction < -diameter * .5 ||
+          by - y < diameter * 1.5) continue;
+      const measurement = [bx, by, size];
+      const {inLegGap, ankleOffset} = evidenceAt({measurement}, person, this.adaptiveStance);
+      if (!inLegGap || !Number.isFinite(ankleOffset) || ankleOffset < -.5 ||
+          ankleOffset > BORDERLINE_BOUNCE_MARGIN_DIAMETERS) continue;
+      if (redirect) return null;
+      redirect = {measurement, catchRow};
+    }
+    return redirect;
+  }
+
   update(proposals, measurement, person, now, deadline, observations) {
     const previousFrame = this.transfer.frame;
     // Use a detector proposal only as receipt evidence for this bounce.
@@ -226,7 +270,9 @@ export class BetweenLegsCounter {
     const receipt = this.recoverReceipt && !measurement ? this.receivingBall(person, now, observations) : null;
     // A rejected floor proposal is provisional until a second observation
     // shows upward motion on the same path. Neither box enters ball identity.
-    let input = measurement ?? receipt;
+    const redirect = this.recoverRedirect && !measurement && !receipt && now < deadline
+      ? this.redirectBall(person, now, observations) : null;
+    let input = measurement ?? receipt ?? redirect?.measurement ?? null;
     if (this.floorCandidate) {
       const pending = this.floorCandidate;
       if (this.transfer.flight?.peak.time === pending.time) {
@@ -249,7 +295,8 @@ export class BetweenLegsCounter {
       this.ascentFloorScale(input, floor, flight, now, observations);
     const recoveredFloor = this.floorCandidate?.time === now;
     const transfers = this.transfer.update(proposals, input, person, now, deadline,
-      floorScale ? {...observations, observedAscentFloorScale: floorScale} : observations);
+      floorScale || redirect ? {...observations, observedAscentFloorScale: floorScale || undefined,
+        verifiedRedirect: redirect?.catchRow} : observations);
     if (this.floorCandidate &&
         (this.transfer.flight?.floor || this.transfer.flight?.peak.time !== this.floorCandidate.time)) {
       this.floorCandidate = null;
@@ -263,6 +310,7 @@ export class BetweenLegsCounter {
     if (row.measurement) {
       const evidence = evidenceAt(row, person, this.adaptiveStance);
       if (recoveredFloor) evidence.recoveredFloor = true;
+      if (this.recoverRedirect && input === measurement) evidence.detectorScore = observations?.selected?.score;
       this.observations.set(row.time, evidence);
     }
     for (const time of this.observations.keys()) {
