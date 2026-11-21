@@ -7,8 +7,14 @@ export const BETWEEN_LEGS_PROPORTIONS_REVISION = 'BETWEEN LEGS 03';
 export const BETWEEN_LEGS_OCCLUSION_REVISION = 'BETWEEN LEGS 04';
 export const BETWEEN_LEGS_CONTINUITY_REVISION = 'BETWEEN LEGS 05';
 export const BETWEEN_LEGS_REDIRECT_REVISION = 'BETWEEN LEGS 06';
+export const BETWEEN_LEGS_CATCH_REVISION = 'BETWEEN LEGS 07';
+export const BETWEEN_LEGS_FLOOR_POSE_REVISION = 'BETWEEN LEGS 08';
+export const BETWEEN_LEGS_FAST_TURN_REVISION = 'BETWEEN LEGS 09';
 export function betweenLegsOptions(revision) {
-  const recoverRedirect = revision === BETWEEN_LEGS_REDIRECT_REVISION;
+  const recoverFastTurns = revision === BETWEEN_LEGS_FAST_TURN_REVISION;
+  const bridgeFloor = recoverFastTurns || revision === BETWEEN_LEGS_FLOOR_POSE_REVISION;
+  const protectCatch = bridgeFloor || revision === BETWEEN_LEGS_CATCH_REVISION;
+  const recoverRedirect = protectCatch || revision === BETWEEN_LEGS_REDIRECT_REVISION;
   const recoverContinuity = recoverRedirect || revision === BETWEEN_LEGS_CONTINUITY_REVISION;
   const recoverOcclusions = revision === BETWEEN_LEGS_OCCLUSION_REVISION || recoverContinuity;
   return {
@@ -18,6 +24,9 @@ export function betweenLegsOptions(revision) {
     recoverFastRedirect: recoverOcclusions,
     recoverContinuity,
     recoverRedirect,
+    protectCatch,
+    bridgeFloor,
+    recoverFastTurns,
   };
 }
 const EVIDENCE_WINDOW_SECONDS = 2.2;
@@ -72,12 +81,16 @@ function evidenceAt(row, person, adaptiveStance) {
 }
 
 export class BetweenLegsCounter {
-  constructor(revision, { recoverReceipt = false, adaptiveStance = false, recoverFloor = false, recoverFastRedirect = false, recoverContinuity = false, recoverRedirect = false } = {}) {
+  constructor(revision, { recoverReceipt = false, adaptiveStance = false, recoverFloor = false, recoverFastRedirect = false, recoverContinuity = false, recoverRedirect = false, protectCatch = false, bridgeFloor = false, recoverFastTurns = false } = {}) {
     this.recoverReceipt = recoverReceipt;
     this.adaptiveStance = adaptiveStance;
     this.recoverFloor = recoverFloor;
     this.recoverContinuity = recoverContinuity;
     this.recoverRedirect = recoverRedirect;
+    this.protectCatch = protectCatch;
+    this.bridgeFloor = bridgeFloor;
+    this.recoverFastTurns = recoverFastTurns;
+    this.lastFloorPose = null;
     this.floorCandidate = null;
     this.transfer = createCrossoverCounter(revision, { fastRedirect: recoverFastRedirect });
     this.observations = new Map();
@@ -94,6 +107,7 @@ export class BetweenLegsCounter {
   shiftPreGo(seconds) {
     this.observations = new Map([...this.observations].map(([time, sample]) => [time - seconds, sample]));
     this.transfer.pixelFloor?.shiftPreGo(seconds);
+    if (this.lastFloorPose) this.lastFloorPose.time -= seconds;
   }
 
   get points() { return this.transfer.points; }
@@ -263,6 +277,73 @@ export class BetweenLegsCounter {
     return redirect;
   }
 
+  weakFloorJump(measurement, person, now, selected) {
+    const flight = this.transfer.flight;
+    const floor = flight?.floor;
+    const last = flight?.last;
+    if (!measurement || !floor || !last?.measurement || !(selected?.score < .02) ||
+        last.time <= floor.time || now - last.time > .19 || now - floor.time > .42) return false;
+    const [x, y, size] = measurement;
+    const [floorX, floorY, diameter] = floor.measurement;
+    const [lastX, lastY] = last.measurement;
+    const direction = Math.sign(floorX - flight.source.measurement[0]);
+    const ankleY = Math.max(landmark(person, 15)?.[1] ?? Infinity, landmark(person, 16)?.[1] ?? Infinity);
+    const receivingWrist = landmark(person, flight.source.owner.hand === 'left' ? 10 : 9);
+    const reversesAcrossFloor = (lastX - x) * direction > diameter * 1.5 &&
+      (floorX - x) * direction > diameter * .6;
+    const jumpsBelowWrist = receivingWrist && y - lastY > diameter * .65 &&
+      Math.hypot(x - lastX, y - lastY) > diameter * 1.45 &&
+      y - receivingWrist[1] > diameter * 1.25;
+    // Immediately after a verified turn, a strong rising observation can
+    // precede a very weak jump below the original turn and far to the side.
+    // Treat that isolated box as missing and still wait for a real receipt.
+    if (this.recoverFastTurns && selected.score <= .005 &&
+        this.observations.get(floor.time)?.inLegGap &&
+        this.observations.get(last.time)?.detectorScore >= .2 &&
+        now - last.time <= .075 && now - floor.time <= .095 &&
+        floorY - lastY >= diameter * .35 && (lastX - floorX) * direction > 0 &&
+        y >= floorY + diameter * .25 && y - lastY >= diameter * .75 &&
+        Math.hypot(x - lastX, y - lastY) >= diameter * 1.35 &&
+        y + size * .5 >= ankleY - diameter * .65) return true;
+
+    // The prior observations must show a rise toward the receiving side.
+    // A weak far-side jump near the floor adds no evidence of a new bounce.
+    return (lastX - floorX) * direction > diameter * .3 && floorY - lastY > diameter * .45 &&
+      (reversesAcrossFloor || jumpsBelowWrist) &&
+      y - lastY > diameter * .4 && y + size * .5 >= ankleY - diameter * .65;
+  }
+
+  bridgeFloorPose(input, person, now, selected) {
+    const before = this.lastFloorPose;
+    const flight = this.transfer.flight;
+    const peak = flight?.peak;
+    if (!input || !peak || peak.feetY !== null || flight.floor || !before ||
+        peak.time <= flight.source.time || peak.time < before.time ||
+        peak.time - before.time > .10 || now - peak.time > .10 || !(selected?.score >= .12)) return;
+
+    const diameter = peak.measurement[2];
+    if (peak.measurement[1] - input[1] < diameter * .25) return;
+
+    const legIndices = [13, 14, 15, 16];
+    if (!legIndices.every(index => {
+      const a = landmark(before.person, index), b = landmark(person, index);
+      const limit = this.recoverFastTurns && index < 15 &&
+        this.observations.get(peak.time)?.detectorScore >= .5 ? .5 : .35;
+      return a && b && Math.hypot(a[0] - b[0], a[1] - b[1]) <= diameter * limit;
+    })) return;
+
+    // Both real poses must agree on the leg gap and floor for the observed
+    // ball turn. Never fill in wrist observations or missing ball positions.
+    const prior = evidenceAt(peak, before.person, this.adaptiveStance);
+    const after = evidenceAt(peak, person, this.adaptiveStance);
+    if (![prior, after].every(evidence => evidence.inLegGap &&
+        Number.isFinite(evidence.ankleOffset) && evidence.ankleOffset >= -.5 &&
+        evidence.ankleOffset <= BORDERLINE_BOUNCE_MARGIN_DIAMETERS)) return;
+
+    peak.feetY = Math.max(person.xy[15][1], person.xy[16][1]);
+    this.observations.set(peak.time, {...after, bridgedFloorPose: true});
+  }
+
   update(proposals, measurement, person, now, deadline, observations) {
     const previousFrame = this.transfer.frame;
     // Use a detector proposal only as receipt evidence for this bounce.
@@ -273,6 +354,7 @@ export class BetweenLegsCounter {
     const redirect = this.recoverRedirect && !measurement && !receipt && now < deadline
       ? this.redirectBall(person, now, observations) : null;
     let input = measurement ?? receipt ?? redirect?.measurement ?? null;
+    if (this.protectCatch && this.weakFloorJump(input, person, now, observations?.selected)) input = null;
     if (this.floorCandidate) {
       const pending = this.floorCandidate;
       if (this.transfer.flight?.peak.time === pending.time) {
@@ -294,6 +376,10 @@ export class BetweenLegsCounter {
     const floorScale = this.recoverContinuity && input === measurement &&
       this.ascentFloorScale(input, floor, flight, now, observations);
     const recoveredFloor = this.floorCandidate?.time === now;
+    if (this.bridgeFloor) {
+      if (input === measurement) this.bridgeFloorPose(input, person, now, observations?.selected);
+      if (now >= 0 && landmark(person, 15) && landmark(person, 16)) this.lastFloorPose = {time: now, person};
+    }
     const transfers = this.transfer.update(proposals, input, person, now, deadline,
       floorScale || redirect ? {...observations, observedAscentFloorScale: floorScale || undefined,
         verifiedRedirect: redirect?.catchRow} : observations);
@@ -347,6 +433,7 @@ export class BetweenLegsCounter {
         count: ++this.count,
         validation_path: 'between_legs',
         ...(floor.recoveredFloor ? {floor_evidence: 'motion_verified_background_candidate'} : {}),
+        ...(floor.bridgedFloorPose ? {floor_evidence: 'observed_turn_with_bracketing_leg_pose'} : {}),
         leg_path_evidence: 'observed_floor_turn_aligned_with_projected_leg_gap',
       };
       this.lastDecision = 'controlled_between_legs';

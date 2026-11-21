@@ -70,3 +70,34 @@ observed motion confirms the rise along the same path. Opposite-hand control
 and between-the-legs geometry remain required. High-confidence rejects at the
 receiving wrist can be reconsidered after an observed floor turn. Replay alone
 cannot recover contact or control missing from the saved observations.
+
+## Between the Legs Test 11 iPhone validation
+
+Use the regular Between the Legs lab route with recording and the outline
+enabled first. Film the low angle that previously produced 14 counts and a
+fast round from the angle that previously produced 25. Keep both wrists, the
+ball and the bounce area in view. Save each original video and its matching
+JSON. Mark every controlled transfer on the footage so misses, false counts,
+and late counts can be identified individually.
+
+Test 11 only bridges a short gap in leg observations when a real ball turn
+and the leg geometry on both sides of the gap support it. An isolated,
+very low confidence jump immediately after a verified turn may be ignored.
+A rep still requires observed opposite-hand control. Test setup continues
+to check fresh camera evidence. The active loop stops recomputing setup
+readiness once the round starts.
+
+If long gaps persist, compare matched runs on the same phone with and
+without recording. Open the same route with `?tracking-recording=off` for
+the second condition. Keep the outline on. The score and JSON remain
+available in either condition. A recording-off round has no in-app review
+clip. The JSON records whether recording was requested and whether it
+started. For a separate comparison, `?tracking-overlay=off` disables the
+outline during the active round only. Change one setting at a time.
+
+Compare processed tracking rate and camera presentation cadence, the
+90th-percentile and longest gaps between tracking samples, the ball GPU
+map wait with and without a pose request already outstanding, and wrist
+freshness at the catch. The GPU map wait includes queued work and execution.
+Confirm gains on additional live rounds. A 30 FPS result can still miss
+reps if an individual gap spans a bounce or catch.

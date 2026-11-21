@@ -3,7 +3,7 @@ import { geometry } from '../src/lib/ai/poundCore.mjs';
 import { replayCrossovers } from '../src/lib/ai/crossoverReplay.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { BETWEEN_LEGS_DRILL_KEY, BETWEEN_LEGS_CONTINUITY_REVISION, BETWEEN_LEGS_OCCLUSION_REVISION, BETWEEN_LEGS_PROPORTIONS_REVISION, BETWEEN_LEGS_RECOVERY_REVISION, BETWEEN_LEGS_REDIRECT_REVISION } from '../src/lib/ai/betweenLegsCounter.mjs';
+import { BETWEEN_LEGS_DRILL_KEY, BETWEEN_LEGS_FAST_TURN_REVISION, BETWEEN_LEGS_FLOOR_POSE_REVISION, BETWEEN_LEGS_CATCH_REVISION, BETWEEN_LEGS_CONTINUITY_REVISION, BETWEEN_LEGS_OCCLUSION_REVISION, BETWEEN_LEGS_PROPORTIONS_REVISION, BETWEEN_LEGS_RECOVERY_REVISION, BETWEEN_LEGS_REDIRECT_REVISION } from '../src/lib/ai/betweenLegsCounter.mjs';
 import { createSessionTrackingState, resetSessionTrackingCounter, updateSessionCounter } from '../src/lib/ai/sessionTracking.mjs';
 import { shiftPreGoTimeline } from '../src/lib/ai/setupGuidance.mjs';
 import { ball, person, trial } from './helpers/crossover-scenarios.mjs';
@@ -128,7 +128,7 @@ test('recover an undersized receiving-ball detection after a visible bounce in e
     const state = createSessionTrackingState(true, BETWEEN_LEGS_DRILL_KEY, 'CROSS 14');
     if (recoverReceipt) {
       state.configuration = { ...state.configuration, betweenLegsRevision: reason === 'background_memory'
-        ? BETWEEN_LEGS_CONTINUITY_REVISION : BETWEEN_LEGS_RECOVERY_REVISION, BETWEEN_LEGS_REDIRECT_REVISION };
+        ? BETWEEN_LEGS_CONTINUITY_REVISION : BETWEEN_LEGS_RECOVERY_REVISION };
       resetSessionTrackingCounter(state);
     }
     const { frames } = trial({ pose, start, reps: 1, noBounce });
@@ -325,4 +325,100 @@ test('a strong inward redirect can recover two separate transfers after the iden
   for (const options of [{weak: true}, {outside: true}, {noWrist: true}, {ambiguous: true}]) {
     assert.equal(run(options).length, 0);
   }
+});
+
+test('a weak far-side floor jump cannot erase the verified bounce before the catch', () => {
+  function run({revision = BETWEEN_LEGS_CATCH_REVISION, score = .01, held = true, side = 1} = {}) {
+    const state = createSessionTrackingState(true, BETWEEN_LEGS_DRILL_KEY, 'CROSS 14');
+    state.configuration = {...state.configuration, betweenLegsRevision: revision};
+    resetSessionTrackingCounter(state);
+    const rows = [
+      [-.05, 840, 350], [.05, 790, 440], [.11, 725, 540], [.17, 640, 630],
+      [.23, 590, 563], [.27, 548, 511], [.32, 787, 633, score],
+      [.39, 450, 355], [.45, 448, 353],
+    ];
+    for (const [time, x, y, confidence = .9] of rows) {
+      const pose = person();
+      pose.xy[13] = [550, 530];
+      pose.xy[14] = [730, 530];
+      if (!held && time >= .39) pose.confidence[side === 1 ? 9 : 10] = 0;
+      const p = 640 + side * (x - 640);
+      const selected = {...ball(p, y), score: confidence};
+      updateSessionCounter(state, time, [p, y, 60], pose, 720, 20, [selected],
+        {balls: [selected], selected, decisions: []});
+    }
+    return state.counter.confirmed;
+  }
+  for (const side of [1, -1]) {
+    assert.deepEqual(run({side}).map(rep => rep.floor_contact_time_seconds), [.17]);
+    assert.equal(run({side, revision: BETWEEN_LEGS_REDIRECT_REVISION}).length, 0);
+    assert.equal(run({side, score: .9}).length, 0);
+    assert.equal(run({side, held: false}).length, 0);
+  }
+});
+
+test('an observed floor turn survives one missing pose only when the surrounding poses agree', () => {
+  function run({revision = BETWEEN_LEGS_FLOOR_POSE_REVISION, moved = false, kneeShift = 0, peakScore = .95, held = true, airborne = false} = {}) {
+    const state = createSessionTrackingState(true, BETWEEN_LEGS_DRILL_KEY, 'CROSS 14');
+    state.configuration = {...state.configuration, betweenLegsRevision: revision};
+    resetSessionTrackingCounter(state);
+    const rows = [
+      [-.05, 840, 350], [.06, 785, 455], [.11, 720, 545],
+      [.17, 640, airborne ? 555 : 630], [.23, 575, 540],
+      [.30, 515, 455], [.39, 448, 355], [.46, 445, 353],
+    ];
+    for (const [time, x, y] of rows) {
+      const pose = person();
+      pose.xy[13] = [550, 530];
+      pose.xy[14] = [730, 530];
+      if (time >= .23) pose.xy[14][0] += kneeShift;
+      if (moved && time >= .23) pose.xy[16] = [780, 660];
+      if (!held && time >= .30) pose.confidence[9] = 0;
+      const selected = {...ball(x, y), score: time === .17 ? peakScore : .95};
+      updateSessionCounter(state, time, [x, y, 60], time === .17 ? null : pose, 720, 20,
+        [selected], {balls: [selected], selected});
+    }
+    return state.counter.confirmed;
+  }
+  assert.equal(run({kneeShift: 24}).length, 0);
+  const revision = BETWEEN_LEGS_FAST_TURN_REVISION;
+  assert.equal(run({revision, kneeShift: 24}).length, 1);
+  assert.equal(run({revision, kneeShift: 24, peakScore: .45}).length, 0);
+  assert.equal(run({revision, kneeShift: 24, moved: true}).length, 0);
+  assert.equal(run({revision, kneeShift: 24, held: false}).length, 0);
+  const [rep] = run();
+  assert.equal(rep?.floor_contact_time_seconds, .17);
+  assert.equal(rep?.floor_evidence, 'observed_turn_with_bracketing_leg_pose');
+  for (const options of [{revision: BETWEEN_LEGS_CATCH_REVISION}, {moved: true},
+    {held: false}, {airborne: true}]) {
+    assert.equal(run(options).length, 0);
+  }
+});
+
+test('a very weak jump immediately after a turn cannot cancel an observed catch', () => {
+  function run({revision = BETWEEN_LEGS_FAST_TURN_REVISION, score = .001, controlled = true} = {}) {
+    const state = createSessionTrackingState(true, BETWEEN_LEGS_DRILL_KEY, 'CROSS 14');
+    state.configuration = {...state.configuration, betweenLegsRevision: revision};
+    resetSessionTrackingCounter(state);
+    const rows = [
+      [-.05, 840, 350], [.04, 790, 445], [.10, 720, 550], [.17, 640, 630],
+      [.20, 627, 605], [.24, 715, 652, score], [.28], [.32, 505, 415],
+      [.38, 447, 355], [.43, 443, 352],
+    ];
+    for (const [time, x, y, confidence = .95] of rows) {
+      const pose = person();
+      pose.xy[13] = [550, 530];
+      pose.xy[14] = [730, 530];
+      if (!controlled && time >= .32) pose.confidence[9] = 0;
+      const selected = x == null ? null : {...ball(x, y), score: confidence};
+      updateSessionCounter(state, time, selected ? [x, y, 60] : null, pose, 720, 20,
+        selected ? [selected] : [], {selected});
+    }
+    return state.counter.confirmed;
+  }
+
+  assert.deepEqual(run().map(rep => rep.floor_contact_time_seconds), [.17]);
+  assert.equal(run({revision: BETWEEN_LEGS_FLOOR_POSE_REVISION}).length, 0);
+  assert.equal(run({score: .95}).length, 0);
+  assert.equal(run({controlled: false}).length, 0);
 });

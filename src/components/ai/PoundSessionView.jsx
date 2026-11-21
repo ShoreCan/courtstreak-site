@@ -18,7 +18,7 @@ export function CourtStreakMark() {
 const checks = [['body', 'Body', FiMaximize], ['hand', 'Wrist', FiTarget], ['ball', 'Ball', CourtStreakMark], ['floor', 'Floor', FiSmartphone]];
 const titles = { idle: 'Ready when you are.', loading: 'Preparing your session.', placing:'Start when you’re ready.',setup: 'Checking your view.', countdown: 'Hold for Go.', active: 'Stay in your rhythm.', review: 'Checking the last rep.', 'recording-only': 'Count paused. Video rolling.', error: 'Let’s try again.' };
 
-export default function PoundSessionView({ drillKey='right-hand-pound', pairedFallbackNotice, ui, ratio, live, ended, ballLocked, videoRef, overlayRef, resultPanelRef, clip, countedClip, replayChanges, preparing, canSave, savedClip, sharing, shareMessage, filename, originalFilename, versions, onBack, onOpen, onStart, onCloseCamera, onRetrySetup, onManual, onStop, onSaveEvidence, onPrepareVideo, onUseOriginal, onShareVideo }) {
+export default function PoundSessionView({ drillKey='right-hand-pound', pairedFallbackNotice, recordingOff, ui, ratio, live, ended, ballLocked, videoRef, overlayRef, resultPanelRef, clip, countedClip, replayChanges, preparing, canSave, savedClip, sharing, shareMessage, filename, originalFilename, versions, onBack, onOpen, onStart, onCloseCamera, onRetrySetup, onManual, onStop, onSaveEvidence, onPrepareVideo, onUseOriginal, onShareVideo }) {
   const betweenLegs=drillKey===BETWEEN_LEGS_DRILL_KEY;
   const crossover=betweenLegs||drillKey==='stationary-crossover',drillName=betweenLegs?'Between the Legs':crossover?'Crossovers':'Right-hand pound';
   const [guide, setGuide] = useState('landscape');
@@ -46,6 +46,7 @@ export default function PoundSessionView({ drillKey='right-hand-pound', pairedFa
       </div>
       {ui.enhancedTracking&&!betweenLegs&&!training&&!ended&&<nav className="cs-test-drills" aria-label={`${versions.check} drills`}><Link to={versions.poundPath||"/tracker-tests/right-hand-pound-test20"} aria-current={!crossover?'page':undefined}>Right-hand pound</Link><Link to={versions.crossPath||"/tracker-tests/crossovers-test20"} aria-current={crossover?'page':undefined}>Crossovers</Link></nav>}
       {phase==='error'&&['CAMERA TEST 22','CAMERA TEST 23'].includes(versions.check)&&<p><Link to={crossover?'/tracker-tests/crossovers-test20':'/tracker-tests/right-hand-pound-test20'}>Open the standard camera</Link></p>}
+      {recordingOff&&<p role="status">Performance test with video recording off. You can still save test details.</p>}
       {pairedFallbackNotice && !training && !ended && <p role="status">Switched to Camera Test 12. Independent body tracking was too slow for live scoring.</p>}
       <ol className="cs-iphone-steps" aria-label="Session progress">{['Set up', 'Train', 'Replay'].map((label, index) => <li key={label} className={index === step ? 'current' : index < step ? 'complete' : ''} aria-current={index === step ? 'step' : undefined}><b>{index < step ? <FiCheck/> : index + 1}</b><span>{label}</span>{index < 2 && <i aria-hidden="true"/>}</li>)}</ol>
 
@@ -110,7 +111,7 @@ export default function PoundSessionView({ drillKey='right-hand-pound', pairedFa
         <div className="cs-studio-result-grid">
           <div className="cs-iphone-replay">
             <div className="cs-studio-section-heading"><h3>Your replay</h3><span>Your original camera recording.</span></div>
-            {clip.status === 'ready' ? <CountedReplay src={clip.url} changes={replayChanges} events={ui.evidence.repEvents} finalCount={ui.count} completed={phase === 'finished'}/> : <div className="cs-studio-no-replay" role="status"><FiCamera/><h3>{clip.status === 'finishing' ? 'Finishing your replay…' : 'Your count is saved here.'}</h3><p>{clip.status === 'finishing' ? 'The camera recording is finishing.' : 'No video is available for this round.'}</p></div>}
+            {clip.status === 'ready' ? <CountedReplay src={clip.url} changes={replayChanges} events={ui.evidence.repEvents} finalCount={ui.count} completed={phase === 'finished'}/> : <div className="cs-studio-no-replay" role="status"><FiCamera/><h3>{clip.status === 'finishing' ? 'Finishing your replay…' : 'Your count is saved here.'}</h3><p>{clip.status === 'finishing' ? 'The camera recording is finishing.' : recordingOff ? 'Video recording was off for this performance test.' : 'No video is available for this round.'}</p></div>}
           </div>
           <aside className="cs-studio-share-panel" aria-label="Save and share your round">
             <h3>Keep the work.</h3>
