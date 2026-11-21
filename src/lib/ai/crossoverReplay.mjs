@@ -16,7 +16,7 @@ export function replayCrossovers(evidence,options={}){
   if(row.counterFrame===previousFrame)continue;
   previousFrame=row.counterFrame;
   const g=row.selected?geometry(row.selected):null,measurement=g?[...g.center,g.diameter]:null;
-  counter.update([],measurement,row.person,row.elapsed,evidence.timerSeconds??20,{balls:row.balls,decisions:row.selectionDecisions});
+  counter.update([],measurement,row.person,row.elapsed,evidence.timerSeconds??20,{balls:row.balls,selected:row.selected,decisions:row.selectionDecisions});
  }
  return {revision:evidence.trackerRevision,count:counter.count,countedReps:counter.confirmed,rejectedEvents:counter.rejected,droppedFrameRecords:evidence.droppedFrameRecords??0};
 }

@@ -1,6 +1,6 @@
 import {BALL_HEAD_ANCHORS, BALL_HEAD_ROW_SIZE, BALL_COMPACT_READBACK_REVISION, BALL_SINGLE_READBACK_REVISION,
   rankBallHead, rankCompactBallHead} from './ballHeadRanking.mjs';
-import {BALL_COMPACT_BYTES, BALL_HEAD_TILES, BALL_HEAD_TILE_BYTES, BALL_HEAD_COMPACT_SHADER} from './ballHeadCompact.mjs';
+import {BALL_COMPACT_BYTES, BALL_HEAD_TILES, BALL_HEAD_TILE_BYTES, BALL_HEAD_COMPACT_SHADER, BALL_HEAD_PAIRED_COMPACT_SHADER, BALL_COMPACT_PAIR_REVISION} from './ballHeadCompact.mjs';
 import {GpuDetectorInput} from './gpuDetectorInput.mjs';
 import {decodeOutput} from './detectorOutput.mjs';
 import {runDetectionPass} from './detectionPass.mjs';
@@ -8,7 +8,10 @@ import {ORDINARY_BALL_SCORE} from './ballProposalPolicy.mjs';
 
 export const GPU_EXECUTION_REVISION = 'SAFARI GPU 01';
 export const POSE_CAPACITY = 256;
-export const POSE_COMPACT_BYTES = Math.ceil((4 + POSE_CAPACITY * 57 * 4) / 16) * 16;
+const compactPoseBytes = capacity => Math.ceil((4 + capacity * 57 * 4) / 16) * 16;
+export const POSE_COMPACT_BYTES = compactPoseBytes(POSE_CAPACITY);
+export const POSE_REDUCED_COPY_BYTES = compactPoseBytes(32);
+export const POSE_READBACK_REVISION = 'POSE READBACK 02';
 export const POSE_COMPACT_SHADER = `
 struct Compact { count: atomic<u32>, words: array<u32> }
 @group(0) @binding(0) var<storage, read> input: array<f32>;
@@ -31,7 +34,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
 // If more than capacity anchors pass, the caller must read the full tensor.
 export function unpackPoseCompact(bytes) {
   const words = new Uint32Array(bytes), count = words[0];
-  if (count > POSE_CAPACITY) return null;
+  if (count > POSE_CAPACITY || 1 + count * 57 > words.length) return null;
   const floats = new Float32Array(bytes), order = Array.from({length: count}, (_, i) => i)
     .sort((a, b) => words[1 + a * 57] - words[1 + b * 57]);
   const data = new Float32Array(56 * count);
@@ -43,7 +46,7 @@ export function unpackPoseCompact(bytes) {
 // submission is serialized (ORT's shared dispatch state); GPU readback can overlap.
 export function createGpuDetectorExecution({ort, manifest, sessions, device = ort.env.webgpu.device,
   usage = globalThis.GPUBufferUsage, mapMode = globalThis.GPUMapMode,
-  createInput = options => new GpuDetectorInput(options), clock = () => performance.now(), freshAtAdmission = false, singleBallReadback = false, compactBallReadback = false, orderedGpuSubmission = false}) {
+  createInput = options => new GpuDetectorInput(options), clock = () => performance.now(), freshAtAdmission = false, singleBallReadback = false, compactBallReadback = false, orderedGpuSubmission = false, reducedPoseReadback = false}) {
   if (!device || !usage || !mapMode) throw new Error('GPU acceleration is unavailable on this device.');
   if (compactBallReadback && !singleBallReadback) throw new Error('Compact readback requires the ball head output.');
   const resources = {}, buffers = [], pending = new Set();
@@ -64,6 +67,7 @@ export function createGpuDetectorExecution({ort, manifest, sessions, device = or
       r.outputTensor = ort.Tensor.fromGpuBuffer(outputBuffer, {dataType: 'float32', dims});
       r.input = createInput({device, size, buffer: inputBuffer});
       if (kind === 'pose') {
+        r.poseCopyBytes = reducedPoseReadback ? POSE_REDUCED_COPY_BYTES : POSE_COMPACT_BYTES;
         r.compact = buffer(POSE_COMPACT_BYTES, usage.STORAGE | usage.COPY_SRC | usage.COPY_DST);
         r.staging = buffer(POSE_COMPACT_BYTES, usage.MAP_READ | usage.COPY_DST);
         r.fullStaging = buffer(bytes, usage.MAP_READ | usage.COPY_DST);
@@ -72,44 +76,152 @@ export function createGpuDetectorExecution({ort, manifest, sessions, device = or
         r.bind = device.createBindGroup({layout: r.pipeline.getBindGroupLayout(0), entries: [
           {binding: 0, resource: {buffer: outputBuffer}}, {binding: 1, resource: {buffer: r.compact}}]});
       } else if (compactBallReadback) {
-        const tiles = buffer(BALL_HEAD_TILE_BYTES, usage.STORAGE);
-        r.compact = buffer(BALL_COMPACT_BYTES, usage.STORAGE | usage.COPY_SRC);
+        r.tiles = buffer(BALL_HEAD_TILE_BYTES, usage.STORAGE | usage.COPY_DST);
+        r.compact = buffer(BALL_COMPACT_BYTES, usage.STORAGE | usage.COPY_SRC | usage.COPY_DST);
         r.staging = buffer(BALL_COMPACT_BYTES, usage.MAP_READ | usage.COPY_DST);
-        const module = device.createShaderModule({code: BALL_HEAD_COMPACT_SHADER});
-        r.compaction = [
-          ['sortTiles', [outputBuffer, tiles]],
-          ['copyTopRows', [outputBuffer, tiles, r.compact]],
-        ].map(([entryPoint, inputs]) => {
-          const pipeline = device.createComputePipeline({layout: 'auto', compute: {module, entryPoint}});
-          const bind = device.createBindGroup({layout: pipeline.getBindGroupLayout(0), entries:
-            inputs.map((buffer, binding) => ({binding, resource: {buffer}}))});
-          return {pipeline, bind};
-        });
+        r.compaction = buildCompaction(r, BALL_HEAD_COMPACT_SHADER);
       } else r.staging = buffer(bytes, usage.MAP_READ | usage.COPY_DST);
     }
   } catch (e) {
     for (const r of Object.values(resources)) { r.input?.release(); r.inputTensor?.dispose?.(); r.outputTensor?.dispose?.(); }
     for (const b of buffers) b.destroy(); throw e;
   }
+  function buildCompaction(r, shader) {
+    const module = device.createShaderModule({code: shader});
+    return [
+      ['sortTiles', [r.outputBuffer, r.tiles]],
+      ['copyTopRows', [r.outputBuffer, r.tiles, r.compact]],
+    ].map(([entryPoint, inputs]) => {
+      const pipeline = device.createComputePipeline({layout: 'auto', compute: {module, entryPoint}});
+      const bind = device.createBindGroup({layout: pipeline.getBindGroupLayout(0), entries:
+        inputs.map((buffer, binding) => ({binding, resource: {buffer}}))});
+      return {pipeline, bind};
+    });
+  }
+  function encodeCompaction(encoder, r, compaction) {
+    for (const {pipeline, bind} of compaction) {
+      const pass = encoder.beginComputePass();
+      pass.setPipeline(pipeline);
+      pass.setBindGroup(0, bind);
+      pass.dispatchWorkgroups(BALL_HEAD_TILES);
+      pass.end();
+    }
+    encoder.copyBufferToBuffer(r.compact, 0, r.staging, 0, BALL_COMPACT_BYTES);
+  }
+  async function compactSnapshot(r, compaction) {
+    const encoder = device.createCommandEncoder();
+    // A broken pipeline must not appear to match by leaving the old bytes.
+    encoder.clearBuffer(r.tiles);
+    encoder.clearBuffer(r.compact);
+    encodeCompaction(encoder, r, compaction);
+    device.queue.submit([encoder.finish()]);
+    return new Uint32Array(await read(r.staging, BALL_COMPACT_BYTES));
+  }
+  // Compare the same output tensor from warm-up on the active WebGPU
+  // device. Preserve the baseline if either validation or parity fails.
+  async function verifyCompaction(r) {
+    if (typeof device.pushErrorScope !== 'function' || typeof device.popErrorScope !== 'function') return 'validation-unavailable';
+    try {
+      device.pushErrorScope('validation');
+      let candidate;
+      try {
+        candidate = buildCompaction(r, BALL_HEAD_PAIRED_COMPACT_SHADER);
+      } finally {
+        const validationError = await device.popErrorScope();
+        if (validationError) candidate = null;
+      }
+      if (!candidate) return 'validation-failed';
+
+      const baseline = await compactSnapshot(r, r.compaction);
+      device.pushErrorScope('validation');
+      let actual, validationError;
+      try {
+        actual = await compactSnapshot(r, candidate);
+      } finally {
+        validationError = await device.popErrorScope();
+      }
+      if (validationError) return 'validation-failed';
+      if (actual.some((word, i) => word !== baseline[i])) return 'output-mismatch';
+      r.compaction = candidate;
+      execution.ballProcessingRevision = BALL_COMPACT_PAIR_REVISION;
+      return 'verified';
+    } catch {
+      return 'validation-failed';
+    }
+  }
   async function read(buffer, size, transform) {
-    await buffer.mapAsync(mapMode.READ);
+    await buffer.mapAsync(mapMode.READ, 0, size);
     try {
       const mapped = buffer.getMappedRange(0, size);
       return transform ? transform(mapped) : mapped.slice(0);
     } finally { buffer.unmap(); }
+  }
+  async function readPose(r) {
+    let copiedBytes = 0, gpuMapWaitMs = 0, poseOutputProcessingMs = 0, poseCandidates;
+    const measuredRead = (staging, bytes, transform) => {
+      copiedBytes += bytes;
+      const mapStart = clock();
+      return read(staging, bytes, mapped => {
+        const readyAt = clock();
+        gpuMapWaitMs += readyAt - mapStart;
+        const value = transform(mapped);
+        poseOutputProcessingMs += clock() - readyAt;
+        return value;
+      });
+    };
+    const copyTo = (from, to, bytes) => {
+      const encoder = device.createCommandEncoder();
+      encoder.copyBufferToBuffer(from, 0, to, 0, bytes);
+      device.queue.submit([encoder.finish()]);
+    };
+
+    let output = await measuredRead(r.staging, r.poseCopyBytes, mapped => {
+      poseCandidates = new Uint32Array(mapped, 0, 1)[0];
+      return unpackPoseCompact(mapped);
+    });
+    const compactOverflow = !output;
+    if (!output && r.poseCopyBytes !== POSE_COMPACT_BYTES) {
+      // The shader already wrote up to 256 anchors. Take the remaining data
+      // from the same model output, and avoid a retry on subsequent passes.
+      r.poseCopyBytes = POSE_COMPACT_BYTES;
+      copyTo(r.compact, r.staging, POSE_COMPACT_BYTES);
+      output = await measuredRead(r.staging, POSE_COMPACT_BYTES, unpackPoseCompact);
+    }
+    if (!output) {
+      copyTo(r.outputBuffer, r.fullStaging, r.bytes);
+      output = await measuredRead(r.fullStaging, r.bytes, mapped => ({
+        data: new Float32Array(mapped).slice(), dims: manifest.pose.output_shape,
+      }));
+    }
+    return {output, timings: {poseReadbackBytes: copiedBytes, gpuMapWaitMs, poseOutputProcessingMs, poseCandidates, poseCompactOverflow: compactOverflow}};
   }
   function run(kind, source, roi, minimumBallScore = ORDINARY_BALL_SCORE, captureAtAdmission) {
     if (closing) throw new Error('The GPU detector has been closed.');
     const r = resources[kind], session = sessions[kind], began = clock();
     if (!r || r.busy) throw new Error('A GPU model pass is already in progress.');
     r.busy = true;
-    let prepared,preparedAt,admittedAt,runtimeAt,capture=null,cancelled=false, uploadMs=0;
+    let prepared,preparedAt,admittedAt,runtimeAt,capture=null,cancelled=false, uploadMs=0, frameStageMs=0;
     const deferUpload = orderedGpuSubmission && kind === 'pose';
     let outputQueued;
     const submissionGate = orderedGpuSubmission ? new Promise(resolve => { outputQueued = resolve; }) : null;
     const queuedAt=clock();
+    const posePendingWhenQueued = orderedGpuSubmission && kind === 'ball' ? !!resources.pose?.busy : undefined;
+    function stage() {
+      const started = clock();
+      prepared = r.input.stage(source, roi);
+      frameStageMs = clock() - started;
+    }
+    function upload() {
+      const started = clock();
+      r.input.upload();
+      uploadMs = clock() - started;
+    }
     if(!captureAtAdmission){
-      try { prepared=deferUpload?r.input.stage(source,roi):r.input.prepare(source,roi);preparedAt=clock(); } catch(e){r.busy=false;throw e;}
+      try {
+        stage();
+        if(!deferUpload)upload();
+        preparedAt=clock();
+      } catch(e){r.busy=false;throw e;}
     }
     const submitted = dispatch.then(async()=>{
       admittedAt=clock();
@@ -122,13 +234,11 @@ export function createGpuDetectorExecution({ort, manifest, sessions, device = or
           source=next.frame;roi=next.roi??roi;
           capture={capturedAt:next.capturedAt,sourceVideoTime:next.sourceVideoTime,roi:[...roi]};
         }
-        prepared=r.input.prepare(source,roi);preparedAt=clock();
+        stage();
+        upload();
+        preparedAt=clock();
       }
-      if(deferUpload){
-        const uploadStarted=clock();
-        r.input.upload();
-        uploadMs=clock()-uploadStarted;
-      }
+      if(deferUpload)upload();
       runtimeAt=clock();
       return session.run({[session.inputNames[0]]:r.inputTensor},{[session.outputNames[0]]:r.outputTensor});
     });
@@ -143,32 +253,20 @@ export function createGpuDetectorExecution({ort, manifest, sessions, device = or
         inferredAt=clock();
         const encoder=device.createCommandEncoder();
         if(kind==='pose'){
-          device.queue.writeBuffer(r.compact,0,new Uint32Array([0]));
+          encoder.clearBuffer(r.compact, 0, 4);
           const pass=encoder.beginComputePass();pass.setPipeline(r.pipeline);pass.setBindGroup(0,r.bind);
           pass.dispatchWorkgroups(Math.ceil(8400/64));pass.end();
-          encoder.copyBufferToBuffer(r.compact,0,r.staging,0,POSE_COMPACT_BYTES);
+          encoder.copyBufferToBuffer(r.compact,0,r.staging,0,r.poseCopyBytes);
         } else if (r.compaction) {
-          for (const {pipeline, bind} of r.compaction) {
-            const pass = encoder.beginComputePass();
-            pass.setPipeline(pipeline);
-            pass.setBindGroup(0, bind);
-            pass.dispatchWorkgroups(BALL_HEAD_TILES);
-            pass.end();
-          }
-          encoder.copyBufferToBuffer(r.compact, 0, r.staging, 0, BALL_COMPACT_BYTES);
+          encodeCompaction(encoder, r, r.compaction);
         } else encoder.copyBufferToBuffer(r.outputBuffer,0,r.staging,0,r.bytes);
         device.queue.submit([encoder.finish()]);
       } finally {
         outputQueued?.();
       }
-      let output, ballReadbackTimings;
+      let output, readbackTimings;
       if(kind==='pose'){
-        output=unpackPoseCompact(await read(r.staging,POSE_COMPACT_BYTES));
-        if(!output){
-          const full=device.createCommandEncoder();full.copyBufferToBuffer(r.outputBuffer,0,r.fullStaging,0,r.bytes);
-          device.queue.submit([full.finish()]);
-          output={data:new Float32Array(await read(r.fullStaging,r.bytes)),dims:manifest.pose.output_shape};
-        }
+        ({output, timings: readbackTimings} = await readPose(r));
       } else {
         const ballReadbackBytes = r.compaction ? BALL_COMPACT_BYTES : r.bytes;
         const mapStartedAt = clock();
@@ -178,23 +276,38 @@ export function createGpuDetectorExecution({ort, manifest, sessions, device = or
           const ranked = r.compaction ? rankCompactBallHead(data, minimumBallScore)
             : singleBallReadback ? rankBallHead(data, minimumBallScore)
             : {data: data.slice(), dims: manifest.ball.output_shape};
-          ballReadbackTimings = {ballReadbackBytes, gpuMapWaitMs: rankStartedAt - mapStartedAt,
+          readbackTimings = {ballReadbackBytes, gpuMapWaitMs: rankStartedAt - mapStartedAt,
             ballOutputProcessingMs: clock() - rankStartedAt};
           return ranked;
         });
       }
       const value=decodeOutput(output,kind,prepared.transform,{minimumBallScore}),done=clock();
-      const preprocessMs=(captureAtAdmission?preparedAt-admittedAt:preparedAt-began)+uploadMs;
+      const preprocessMs=(captureAtAdmission?preparedAt-admittedAt:preparedAt-began)+(deferUpload?uploadMs:0);
       const queueWaitMs=admittedAt-(captureAtAdmission?queuedAt:preparedAt),runtimeCallMs=inferredAt-runtimeAt;
       return {value,timings:{preprocessMs,inferenceMs:queueWaitMs+runtimeCallMs,decodeMs:done-inferredAt,
-        queueWaitMs,runtimeCallMs,readbackDecodeMs:done-inferredAt,...ballReadbackTimings},...(capture?{capture}:{} )};
+        queueWaitMs,runtimeCallMs,frameStageMs,inputUploadSubmitMs:uploadMs,readbackDecodeMs:done-inferredAt,...readbackTimings,
+        ...(posePendingWhenQueued === undefined ? {} : {posePendingWhenQueued})},...(capture?{capture}:{} )};
     })();
     pending.add(job);
     job.then(()=>{r.busy=false;pending.delete(job);},()=>{r.busy=false;pending.delete(job);});
     return job;
   }
   const execution = {
+    poseReadbackRevision: reducedPoseReadback ? POSE_READBACK_REVISION : null,
     liveInputMode: 'gpu-stream', ballProcessingRevision:compactBallReadback?BALL_COMPACT_READBACK_REVISION:singleBallReadback?BALL_SINGLE_READBACK_REVISION:null, inputRevision: freshAtAdmission?'SAFARI GPU 02':GPU_EXECUTION_REVISION,
+    async verifyPairedBallCompaction() {
+      const r = resources.ball;
+      if (!r?.compaction || pending.size || r.busy || ballPending || closing) throw new Error('Ball compaction check requires an idle, warmed detector.');
+      ballPending = true;
+      const job = verifyCompaction(r);
+      pending.add(job);
+      try {
+        return await job;
+      } finally {
+        pending.delete(job);
+        ballPending = false;
+      }
+    },
     // This call copies the source into GPU input synchronously before returning.
     runPose(source) { return run('pose', source, [0, 0, source.width, source.height]); },
     async detect(frame, roi, withPose, {minimumBallScore = ORDINARY_BALL_SCORE, refreshBallFrame} = {}) {

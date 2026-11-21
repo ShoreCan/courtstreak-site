@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createGpuDetectorExecution,POSE_COMPACT_BYTES} from '../src/lib/ai/gpuDetectorExecution.mjs';
+import {createGpuDetectorExecution,POSE_COMPACT_BYTES,POSE_REDUCED_COPY_BYTES} from '../src/lib/ai/gpuDetectorExecution.mjs';
 import {BALL_COMPACT_BYTES, BALL_HEAD_TILES} from '../src/lib/ai/ballHeadCompact.mjs';
 import {GpuDetectorInput} from '../src/lib/ai/gpuDetectorInput.mjs';
 import {DetectorInput} from '../src/lib/ai/detectorInput.mjs';
@@ -20,7 +20,7 @@ test('GPU input preserves native-coordinate crop and letterbox while avoiding CP
   assert.equal(copies,1);assert.equal(submits,1);gpu.release();
 });
 
-function fixture({overflow=false,block=false,fail=false,freshAtAdmission=false,singleBallReadback=false,compactBallReadback=false,orderedGpuSubmission=false,holdBallMap=false,clock}={}){
+function fixture({poseCandidates=0,reducedPoseReadback=false,block=false,fail=false,freshAtAdmission=false,singleBallReadback=false,compactBallReadback=false,orderedGpuSubmission=false,holdBallMap=false,pairedCompaction='match',clock}={}){
   const buffers=[],tensors=[],copies=[],releases=[],prepares=[],preparedSources=[],compactions=[],gpuOrder=[];
   let releaseBallMap;
   const ballMap=holdBallMap?new Promise(resolve=>{releaseBallMap=resolve;}):null;
@@ -29,21 +29,32 @@ function fixture({overflow=false,block=false,fail=false,freshAtAdmission=false,s
   const device={
     createBuffer({size}){const b={size,bytes:new ArrayBuffer(size),destroyed:false,mapped:false,
       destroy(){this.destroyed=true;},async mapAsync(){if(holdBallMap&&size===7200)await ballMap;this.mapped=true;},getMappedRange(offset=0,size=this.size){return this.bytes.slice(offset,offset+size);},unmap(){this.mapped=false;}};buffers.push(b);return b;},
-    createComputePipeline({compute}){return {entryPoint:compute.entryPoint,getBindGroupLayout(){return {};}};},
-    createShaderModule(){return {};},createBindGroup({entries}){return entries;},
+    createComputePipeline({compute}){return {entryPoint:compute.entryPoint,paired:compute.module.code.includes('fn loadAnchor'),getBindGroupLayout(){return {};}};},
+    createShaderModule({code}){return {code};},pushErrorScope(){},async popErrorScope(){return null;},createBindGroup({entries}){return entries;},
     createCommandEncoder(){const tasks=[];return {beginComputePass(){
       let pipeline, entries;
       return {setPipeline(value){pipeline=value;},setBindGroup(_, value){entries=value;},dispatchWorkgroups(groups){
+        if (pipeline.entryPoint === 'main') tasks.push(() => {
+          const bytes = entries[1].resource.buffer.bytes;
+          new Uint32Array(bytes)[0] = poseCandidates;
+          if (poseCandidates) {
+            // One valid person and other deliberately below-threshold rows.
+            new Float32Array(bytes).set([300, 350, 100, 150, .8], 2);
+          }
+        });
         if (pipeline.entryPoint !== 'main') compactions.push([pipeline.entryPoint, groups]);
         if (pipeline.entryPoint === 'copyTopRows') tasks.push(() => {
           const output = new Uint8Array(entries[2].resource.buffer.bytes);
           // The fixture's head is already ordered, with the ball in row zero.
-          output.set(new Uint8Array(entries[0].resource.buffer.bytes, 0, output.length));
+          if (!pipeline.paired || pairedCompaction === 'match') {
+            output.set(new Uint8Array(entries[0].resource.buffer.bytes, 0, output.length));
+          }
         });
       },end(){}};
     },
-      copyBufferToBuffer(a,ai,b,bi,size){copies.push(size);tasks.push(()=>{gpuOrder.push('copy-'+size);new Uint8Array(b.bytes,bi,size).set(new Uint8Array(a.bytes,ai,size));});},finish(){return tasks;}};},
-    queue:{writeBuffer(buffer,offset,data){new Uint8Array(buffer.bytes,offset,data.byteLength).set(new Uint8Array(data.buffer,data.byteOffset,data.byteLength));if(overflow&&buffer.size===POSE_COMPACT_BYTES)new Uint32Array(buffer.bytes)[0]=257;},submit(commands){for(const tasks of commands)for(const task of tasks)task();}},
+      clearBuffer(buffer,offset=0,size=buffer.size-offset){tasks.push(()=>new Uint8Array(buffer.bytes,offset,size).fill(0));},
+    copyBufferToBuffer(a,ai,b,bi,size){copies.push(size);tasks.push(()=>{gpuOrder.push('copy-'+size);new Uint8Array(b.bytes,bi,size).set(new Uint8Array(a.bytes,ai,size));});},finish(){return tasks;}};},
+    queue:{submit(commands){for(const tasks of commands)for(const task of tasks)task();}},
   };
   const ort={env:{webgpu:{device}},Tensor:{fromGpuBuffer(buffer,options){const t={buffer,...options,disposed:false,dispose(){this.disposed=true;}};tensors.push(t);return t;}}};
   const manifest={ball:{size:512,output_shape:singleBallReadback?[1,5376,84]:[1,300,6]},pose:{size:640,output_shape:[1,56,8400]}};
@@ -58,7 +69,7 @@ function fixture({overflow=false,block=false,fail=false,freshAtAdmission=false,s
     }finally{active--;}
   },async release(){releases.push(kind);}}]));
   const usage={STORAGE:1,COPY_DST:2,COPY_SRC:4,MAP_READ:8},mapMode={READ:1};
-  const execution=createGpuDetectorExecution({ort,manifest,sessions,device,usage,mapMode,freshAtAdmission,singleBallReadback,compactBallReadback,orderedGpuSubmission,...(clock?{clock}:{}),
+  const execution=createGpuDetectorExecution({ort,manifest,sessions,device,usage,mapMode,freshAtAdmission,singleBallReadback,compactBallReadback,orderedGpuSubmission,reducedPoseReadback,...(clock?{clock}:{}),
     createInput:({size})=>({stage(source){prepares.push(size);preparedSources.push(source);return {transform:{x:0,y:0,scale:1,px:0,py:0}};},
       upload(){gpuOrder.push('upload-'+size);},prepare(source){const prepared=this.stage(source);this.upload();return prepared;},release(){}})});
   return {execution,buffers,tensors,copies,releases,prepares,preparedSources,compactions,gpuOrder,release,releaseBallMap,get maxActive(){return maxActive;}};
@@ -80,7 +91,7 @@ test('GPU model submission is serialized and concurrent ball admission is reject
   await Promise.all([pose,ball,closing]);assert.equal(f.maxActive,1);assert.equal(f.releases.length,2);
 });
 test('pose compaction overflow reads every anchor instead of silently truncating',async()=>{
-  const f=fixture({overflow:true});await f.execution.runPose({width:640,height:640});
+  const f=fixture({poseCandidates:257});await f.execution.runPose({width:640,height:640});
   assert.ok(f.copies.includes(56*8400*4));await f.execution.close();
 });
 test('failed predictions clear admission and resources still close',async()=>{
@@ -169,4 +180,97 @@ test('cancelled ball admission releases the following pose submission', async ()
   await pose;
   assert.deepEqual(f.gpuOrder,['upload-640','pose-run','copy-'+POSE_COMPACT_BYTES]);
   await f.execution.close();
+});
+
+test('paired compaction activates only when it reads identical output on the same warm head', async () => {
+  const source = {width: 640, height: 640};
+  const roi = [0, 0, 640, 640];
+  for (const [fixtureMode, result, revision] of [
+    ['match', 'verified', 'BALL READBACK 03'],
+    ['no-write', 'output-mismatch', 'BALL READBACK 02'],
+  ]) {
+    const {execution} = fixture({singleBallReadback: true, compactBallReadback: true, pairedCompaction: fixtureMode});
+    try {
+      const warm = await execution.detect(source, roi, false);
+      assert.equal(await execution.verifyPairedBallCompaction(), result);
+      assert.equal(execution.ballProcessingRevision, revision);
+      assert.deepEqual((await execution.detect(source, roi, false)).balls, warm.balls);
+    } finally {
+      await execution.close();
+    }
+  }
+});
+
+test('ball timings identify a pose already pending before the ball is queued', async () => {
+  const {execution} = fixture({orderedGpuSubmission: true, freshAtAdmission: true});
+  const frame = {width: 640, height: 640};
+  const roi = [0, 0, 640, 640];
+  try {
+    const pose = execution.runPose(frame);
+    const afterPose = await execution.detect(frame, roi, false, {refreshBallFrame: () => undefined});
+    await pose;
+    assert.equal(afterPose.timings.ball.posePendingWhenQueued, true);
+    const ballFirst = execution.detect(frame, roi, false, {refreshBallFrame: () => undefined});
+    const laterPose = execution.runPose(frame);
+    assert.equal((await ballFirst).timings.ball.posePendingWhenQueued, false);
+    await laterPose;
+  } finally {
+    await execution.close();
+  }
+});
+
+test('paired sort stages cover every lane once and retain the descending score and ascending index order', () => {
+  for (let group = 0; group < BALL_HEAD_TILES; group++) {
+    const size = 128;
+    const rows = Array.from({length: size}, (_, i) => ({
+      index: group * size + i,
+      score: (i * 11 + (i % 7) * group) % 19,
+    }));
+    const order = (a, b) => b.score - a.score || a.index - b.index;
+    const expected = [...rows].sort(order);
+    for (let width = 2; width <= size; width *= 2) {
+      for (let stride = width / 2; stride >= 1; stride /= 2) {
+        const covered = new Set();
+        for (let lane = 0; lane < size / 2; lane++) {
+          const lo = Math.floor(lane / stride) * (stride * 2) + lane % stride;
+          const hi = lo + stride;
+          assert.equal(covered.has(lo) || covered.has(hi), false);
+          covered.add(lo);
+          covered.add(hi);
+          if ((order(rows[lo], rows[hi]) < 0) !== ((lo & width) === 0)) {
+            [rows[lo], rows[hi]] = [rows[hi], rows[lo]];
+          }
+        }
+        assert.equal(covered.size, size);
+      }
+    }
+    assert.deepEqual(rows, expected);
+  }
+});
+
+test('the reduced pose copy preserves body and wrist output and promotes capacity after overflow', async () => {
+  const baseline = fixture({poseCandidates: 10});
+  const reduced = fixture({poseCandidates: 10, reducedPoseReadback: true});
+  const overflow = fixture({poseCandidates: 35, reducedPoseReadback: true});
+  const frame = {width: 640, height: 640};
+  try {
+    const before = await baseline.execution.runPose(frame);
+    const after = await reduced.execution.runPose(frame);
+    assert.ok(before.value);
+    assert.deepEqual(after.value, before.value);
+    assert.equal(after.timings.poseCandidates, 10);
+    assert.equal(after.timings.poseReadbackBytes, POSE_REDUCED_COPY_BYTES);
+    assert.equal(after.timings.poseCompactOverflow, false);
+    assert.deepEqual(reduced.copies, [POSE_REDUCED_COPY_BYTES]);
+
+    const restored = await overflow.execution.runPose(frame);
+    assert.deepEqual(restored.value, before.value);
+    assert.equal(restored.timings.poseCompactOverflow, true);
+    assert.equal(restored.timings.poseCandidates, 35);
+    assert.deepEqual(overflow.copies, [POSE_REDUCED_COPY_BYTES, POSE_COMPACT_BYTES]);
+    assert.equal((await overflow.execution.runPose(frame)).timings.poseReadbackBytes, POSE_COMPACT_BYTES);
+    assert.deepEqual(overflow.copies, [POSE_REDUCED_COPY_BYTES, POSE_COMPACT_BYTES, POSE_COMPACT_BYTES]);
+  } finally {
+    await Promise.all([baseline, reduced, overflow].map(f => f.execution.close()));
+  }
 });

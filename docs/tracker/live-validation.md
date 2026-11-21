@@ -15,3 +15,58 @@ Test 05 starts with ball-first submission on the normal Between the Legs lab rou
 On the same iPhone, alternate control and trial rounds in the same placement, with recording enabled in both. Start each pair at similar device conditions. Compare unique tracking FPS, p90 and longest frame gaps, ball GPU map wait, and wrist age at the receive. Match confirmed reps to the videos and check misses, false positives, and capture-to-confirmation delay. Use `passWorkMs` to check camera copying, ball selection, counting, evidence capture, and UI submission separately. The count commit timeline records when React applies the count to the screen, before browser paint.
 
 If readback stalls persist in both modes, use the recording-load diagnostic to measure recording contention. Compare early and late rounds on the same device and note temperature and other active apps. The tracker already uses a compact GPU readback. Measure the cost of the compacting shader and the map separately before considering a smaller output or a different model. A smaller payload, cooler device, or higher camera capture rate needs its own live validation against the same scoring checks.
+
+## Between the Legs Test 06 GPU compaction
+
+The default Test 06 route requests the paired ball-output compaction shader. The
+existing ball and pose models, pose schedule, camera crop, thresholds, and Test 06
+counting rules are shared by the two modes. At startup, the tracker runs both
+shaders on the same warm detector output and compares the result word for word.
+The new shader is selected only if the device reports no validation error and
+the outputs match. The saved details report the active `ballProcessingRevision`
+and the result of the startup comparison in `ballCompactionTrial`.
+
+Add `?gpu-compact=baseline` to the same route and reload to use the previous
+shader with the same scoring rules. Alternate baseline and candidate on the same
+iPhone with the same camera placement and recording settings. Compare active
+frame cadence, p90 and maximum gap, GPU map wait, wrist age at the receive, and
+verified reps. Group ball timing by `posePendingWhenQueued` to see whether a pose
+job was already outstanding when a ball pass was requested. Map wait can include
+GPU execution, output preparation and queue contention.
+
+Safari reported advancing presentation IDs with media time fixed at zero in
+both original Test 05 logs. `activeDetectorRepeats` records adjacent identical
+nonempty proposal lists from different presentation IDs within 30 ms at the same
+crop. Use this along with presentation cadence. It is a repeat indicator rather
+than a pixel-level camera measurement and has no effect on counting or scheduling.
+
+## Between the Legs Test 07 body and wrist readback
+
+Body landmarks and both wrists are outputs of the same pose inference. Test 07
+keeps the existing model, confidence threshold, and pose refresh schedule. Its
+normal pose copy and mapping range holds 32 detected anchors (7,312 bytes). If it
+contains more anchors, the current inference is recovered from the existing
+larger compact buffer. The detector keeps the larger range for the rest of the
+camera session. If the compact buffer also overflows, the full head is available.
+The order of anchors and pose decoding are shared by both paths.
+
+To isolate one GPU change at a time, use the same Test 07 route and camera
+placement. Keep recording enabled and alternate the two modes on the same
+iPhone. Use `?gpu-pose-readback=baseline` for the old pose range, or
+`?gpu-compact=baseline` for the old ball-output shader. The modes can be
+combined with the two query parameters. The scoring rules are shared.
+
+The evidence records camera capture and canvas staging separately from input
+upload submission, model request time, output map wait, output processing and
+count publication. `inputUploadSubmitMs` and `runtimeCallMs` measure the host
+calls. Asynchronous GPU completion can show up later in `gpuMapWaitMs`. The pose
+timings also report copied bytes, candidate count and any overflow. Evaluate
+readback waits and gaps around the individual floor and catch events before
+using average FPS as the comparison. If long waits remain in both modes, use
+the recording-load diagnostic to check encoder contention on that iPhone.
+
+A background-rejected floor candidate can provide a scale reference after
+observed motion confirms the rise along the same path. Opposite-hand control
+and between-the-legs geometry remain required. High-confidence rejects at the
+receiving wrist can be reconsidered after an observed floor turn. Replay alone
+cannot recover contact or control missing from the saved observations.

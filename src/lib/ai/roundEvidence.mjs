@@ -70,6 +70,23 @@ export class RoundEvidence {
       trackingCadence(captures, { windowSeconds: Infinity });
     return { samples, span, hz, p90GapSeconds, maxGapSeconds };
   }
+  activeDetectorRepeats(startedAt, duration) {
+    if (!Number.isFinite(startedAt) || !(duration > 0) || this.droppedFrames) return null;
+    const active = this.frames.filter(f => f.inputPhase === 'active' && f.phase === 'active' &&
+      f.capturedAt >= startedAt && f.capturedAt < startedAt + duration);
+    let adjacentMatches = 0;
+    for (let i = 1; i < active.length; i++) {
+      const before = active[i - 1], after = active[i];
+      const gap = after.capturedAt - before.capturedAt;
+      if (!(gap > 0 && gap < .03) || !Number.isFinite(before.sourceVideoFrameNumber) ||
+          !Number.isFinite(after.sourceVideoFrameNumber) || before.sourceVideoFrameNumber === after.sourceVideoFrameNumber ||
+          !before.balls.length || before.balls.length !== after.balls.length ||
+          !before.roi.every((value, j) => value === after.roi[j])) continue;
+      if (after.balls.every((ball, j) => ball.score === before.balls[j].score &&
+          ball.box.every((value, k) => value === before.balls[j].box[k]))) adjacentMatches++;
+    }
+    return {samples: active.length, adjacentMatches};
+  }
   export({ startedAt = null, ...metadata }) {
     return { schema: 'courtstreak-round-evidence-v1', reviewRevision: REP_REVIEW_REVISION, ...metadata,
       droppedFrameRecords: this.droppedFrames,

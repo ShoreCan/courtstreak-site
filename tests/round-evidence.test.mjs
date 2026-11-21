@@ -79,3 +79,19 @@ test('live-work timings are snapshotted independently of the historical decision
   assert.ok(Number.isFinite(saved.passWorkMs.evidence));
   assert.doesNotThrow(() => new RoundEvidence(0).record(frame({passWorkMs})));
 });
+
+test('identical adjacent detections are diagnostic and leave camera cadence and scoring evidence intact', () => {
+  const evidence = new RoundEvidence();
+  const balls = [{box: [1, 2, 3, 4], score: .8}];
+  for (const row of [
+    {capturedAt: 10, sourceVideoFrameNumber: 10, balls},
+    {capturedAt: 10.02, sourceVideoFrameNumber: 11, balls},
+    {capturedAt: 10.04, sourceVideoFrameNumber: 12, balls, roi: [2, 0, 1280, 720]},
+    {capturedAt: 10.10, sourceVideoFrameNumber: 13, balls},
+    {capturedAt: 10.12, sourceVideoFrameNumber: 13, balls},
+    {capturedAt: 10.14, sourceVideoFrameNumber: 14},
+  ]) evidence.record(frame(row));
+  assert.deepEqual(evidence.activeDetectorRepeats(10, 1), {samples: 6, adjacentMatches: 1});
+  assert.equal(evidence.activeCameraCadence(10, 1).samples, 5);
+  assert.equal(evidence.frames.length, 6);
+});
