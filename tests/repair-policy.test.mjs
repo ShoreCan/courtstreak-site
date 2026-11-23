@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {repairBallROI,repairCounterPose,repairPoseNeeded,repairConfiguration} from '../src/lib/ai/repairPolicy.mjs';
+import {betweenLegsSearchROI,repairBallROI,repairCounterPose,repairPoseNeeded,repairConfiguration} from '../src/lib/ai/repairPolicy.mjs';
 import {createSessionTrackingState} from '../src/lib/ai/sessionTracking.mjs';
 import {safariConfiguration} from '../src/lib/ai/safariPolicy.mjs';
 import {configurationForEvidence} from '../src/lib/ai/trackerConfiguration.mjs';
@@ -10,6 +10,22 @@ test('hand-to-floor crop retains ball/wrist/floor margins and reacquires full vi
  assert.deepEqual(repairBallROI({...args,lastBallAt:9.5}),[0,0,1280,2276]);
  assert.deepEqual(repairBallROI({...args,poseAt:9.5}),[0,0,1280,2276]);
 });
+test('between-legs search improves vertical framing only after a stall or brief loss',()=>{
+ const roi=[0,182,1280,2276],p=person();
+ const args={person:p,poseAt:9.85,now:10,lastBallAt:9.8,missed:0,diameter:120};
+ const search=betweenLegsSearchROI(roi,args);
+ assert.deepEqual(search,[0,862,1280,1940]);
+ assert.equal(betweenLegsSearchROI(roi,{...args,lastBallAt:9.97}),roi);
+ assert.deepEqual(betweenLegsSearchROI(roi,{...args,lastBallAt:9.97,missed:1}),search);
+ assert.equal(betweenLegsSearchROI(roi,{...args,missed:2}),roi);
+ assert.deepEqual(betweenLegsSearchROI(roi,{...args,missed:3}),search);
+ assert.equal(betweenLegsSearchROI(roi,{...args,lastBallAt:9.5,missed:5}),roi);
+ assert.equal(betweenLegsSearchROI(roi,{...args,poseAt:9.69}),roi);
+ assert.equal(betweenLegsSearchROI([0,650,1280,1940],args)[1],650);
+ p.confidence[9]=0;
+ assert.equal(betweenLegsSearchROI(roi,args),roi);
+});
+
 test('older wrist coordinates cannot establish receipt while a fresh-enough floor anchor remains usable',()=>{
  const p=person();assert.equal(repairCounterPose(p,10,10.07,10.1),p);
  const masked=repairCounterPose(p,10,10.2,10.22);assert.equal(masked.confidence[9],0);assert.equal(masked.confidence[10],0);assert.equal(masked.confidence[15],.95);assert.equal(p.confidence[10],.95);

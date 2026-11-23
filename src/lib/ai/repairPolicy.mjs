@@ -126,6 +126,22 @@ export function flightPoseDecision({person, poseAt, lastRequestedAt, now, ball, 
  return routine();
 }
 
+// Try a higher-resolution view of the release, floor and catch on the normal
+// ball pass after a stall. Keep the full horizontal search and alternate with
+// the usual vertical view during a brief loss so unusual paths can reacquire.
+export function betweenLegsSearchROI(roi,{person,poseAt,now,lastBallAt,missed,diameter}){
+ const gap=now-lastBallAt,poseAge=now-poseAt;
+ if(!Number.isFinite(gap)||gap<0||gap>.45||!Number.isFinite(poseAge)||poseAge<0||poseAge>.3||
+    !(diameter>0)||![9,10,15,16].every(i=>visible(person,i)))return roi;
+ if(missed===0?gap<.10:missed%2===0)return roi;
+ const [left,top,right,bottom]=roi;
+ const targetTop=Math.max(top,Math.floor(Math.min(person.xy[9][1],person.xy[10][1])-diameter*1.15));
+ const targetBottom=Math.min(bottom,Math.ceil(Math.max(person.xy[15][1],person.xy[16][1])+diameter*2));
+ const targetHeight=targetBottom-targetTop;
+ if(targetHeight<diameter*3||Math.max(right-left,targetHeight)>Math.max(right-left,bottom-top)*.85)return roi;
+ return [left,targetTop,right,targetBottom];
+}
+
 // Diagnostic-only crop. The paired saved-frame comparison regressed indoors;
 // it is deliberately not used by the live candidate.
 // Concentrate the same model on the hand-to-floor region. Missing ball/body
